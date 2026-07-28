@@ -1,0 +1,50 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"math"
+	"os"
+
+	"mc2lua/internal/app"
+)
+
+func main() {
+	inputPath := flag.String("input", "region", "path to region files directory")
+	outputPath := flag.String("output", "output.lua", "output Lua file")
+	scale := flag.Int("scale", 4, "block scale factor")
+	noOffset := flag.Bool("no-offset", false, "disable auto-offset to y=0")
+	xmin := flag.Int("xmin", math.MinInt32, "minimum X")
+	xmax := flag.Int("xmax", math.MaxInt32, "maximum X")
+	ymin := flag.Int("ymin", math.MinInt32, "minimum Y")
+	ymax := flag.Int("ymax", math.MaxInt32, "maximum Y")
+	zmin := flag.Int("zmin", math.MinInt32, "minimum Z")
+	zmax := flag.Int("zmax", math.MaxInt32, "maximum Z")
+	help := flag.Bool("help", false, "show help")
+	flag.BoolVar(help, "h", false, "show help")
+
+	flag.Parse()
+
+	if *help {
+		flag.Usage()
+		return
+	}
+
+	cfg := app.AppConfig{
+		Input:  *inputPath,
+		Output: *outputPath,
+		Scale:  *scale,
+		NoOffset: *noOffset,
+		XMin:   *xmin,
+		XMax:   *xmax,
+		YMin:   *ymin,
+		YMax:   *ymax,
+		ZMin:   *zmin,
+		ZMax:   *zmax,
+	}
+
+	if err := app.New().Run(cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
