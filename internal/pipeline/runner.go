@@ -10,12 +10,23 @@ type regionReader interface {
 	Run(input string, bounds model.Bounds) ([]model.Block, error)
 }
 
-type Runner struct {
-	regionReader regionReader
+type coordNormalizer interface {
+	Run(blocks []model.Block, noOffset bool) ([]model.Block, error)
 }
 
-func NewRunner(rr regionReader) *Runner {
-	return &Runner{regionReader: rr}
+type Runner struct {
+	regionReader    regionReader
+	coordNormalizer coordNormalizer
+}
+
+func NewRunner(
+	rr regionReader,
+	cn coordNormalizer,
+) *Runner {
+	return &Runner{
+		regionReader:    rr,
+		coordNormalizer: cn,
+	}
 }
 
 type RunConfig struct {
@@ -27,10 +38,16 @@ type RunConfig struct {
 }
 
 func (svc *Runner) Run(cfg RunConfig) error {
-	_, err := svc.regionReader.Run(cfg.Input, cfg.Bounds)
+	blocks, err := svc.regionReader.Run(cfg.Input, cfg.Bounds)
 	if err != nil {
 		return fmt.Errorf("read world: %w", err)
 	}
 
+	blocks, err = svc.coordNormalizer.Run(blocks, cfg.NoOffset)
+	if err != nil {
+		return fmt.Errorf("normalize coords: %w", err)
+	}
+
+	_ = blocks
 	return nil
 }

@@ -17,11 +17,20 @@ func (m *mockRegionReader) Run(input string, bounds model.Bounds) ([]model.Block
 	return m.runFn(input, bounds)
 }
 
+type mockCoordNormalizer struct {
+	runFn func(blocks []model.Block, noOffset bool) ([]model.Block, error)
+}
+
+func (m *mockCoordNormalizer) Run(blocks []model.Block, noOffset bool) ([]model.Block, error) {
+	return m.runFn(blocks, noOffset)
+}
+
 func TestRunner_New(t *testing.T) {
 	t.Parallel()
 
-	mock := &mockRegionReader{}
-	r := NewRunner(mock)
+	mockRR := &mockRegionReader{}
+	mockCN := &mockCoordNormalizer{}
+	r := NewRunner(mockRR, mockCN)
 	require.NotNil(t, r)
 }
 
@@ -29,17 +38,22 @@ func TestRunner_Run(t *testing.T) {
 	t.Parallel()
 
 	errWorld := errors.New("world error")
+	errNormalize := errors.New("normalize error")
 
 	tests := []struct {
-		name        string
-		mockRun     func(input string, bounds model.Bounds) ([]model.Block, error)
-		wantErr     bool
-		wantErrMsg  string
+		name            string
+		mockRun         func(input string, bounds model.Bounds) ([]model.Block, error)
+		mockNormalize   func(blocks []model.Block, noOffset bool) ([]model.Block, error)
+		wantErr         bool
+		wantErrMsg      string
 	}{
 		{
 			name: "success",
 			mockRun: func(input string, bounds model.Bounds) ([]model.Block, error) {
 				return []model.Block{}, nil
+			},
+			mockNormalize: func(blocks []model.Block, noOffset bool) ([]model.Block, error) {
+				return blocks, nil
 			},
 		},
 		{
@@ -47,8 +61,22 @@ func TestRunner_Run(t *testing.T) {
 			mockRun: func(input string, bounds model.Bounds) ([]model.Block, error) {
 				return nil, errWorld
 			},
+			mockNormalize: func(blocks []model.Block, noOffset bool) ([]model.Block, error) {
+				return blocks, nil
+			},
 			wantErr:    true,
 			wantErrMsg: "read world: world error",
+		},
+		{
+			name: "coord normalizer error",
+			mockRun: func(input string, bounds model.Bounds) ([]model.Block, error) {
+				return []model.Block{}, nil
+			},
+			mockNormalize: func(blocks []model.Block, noOffset bool) ([]model.Block, error) {
+				return nil, errNormalize
+			},
+			wantErr:    true,
+			wantErrMsg: "normalize coords: normalize error",
 		},
 	}
 
@@ -57,8 +85,9 @@ func TestRunner_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mock := &mockRegionReader{runFn: tt.mockRun}
-			r := NewRunner(mock)
+			mockRR := &mockRegionReader{runFn: tt.mockRun}
+			mockCN := &mockCoordNormalizer{runFn: tt.mockNormalize}
+			r := NewRunner(mockRR, mockCN)
 
 			err := r.Run(RunConfig{
 				Input:  "/test",

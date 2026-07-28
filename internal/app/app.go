@@ -36,6 +36,7 @@ func buildDeps() *pipeline.Runner {
 	fs := runtime.NewFS()
 
 	regionReader := pipeline.NewRegionReader(fs)
+	coordNormalizer := pipeline.NewCoordNormalizer()
 
-	return pipeline.NewRunner(regionReader)
+	return pipeline.NewRunner(regionReader, coordNormalizer)
 }
