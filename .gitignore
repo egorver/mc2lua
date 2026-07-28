@@ -1,8 +1,8 @@
 docs/
 output/
 
-minecraft/**
-!minecraft/README.md
+assets/**
+!assets/README.md
 
 region/**
 !region/README.md

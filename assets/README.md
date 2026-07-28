@@ -1,4 +1,4 @@
-# minecraft/
+# assets/
 
 This directory contains unpacked **Minecraft mods and vanilla assets** — models, textures, and other resources used for conversion to Roblox Lua.
 
@@ -11,7 +11,7 @@ This directory contains unpacked **Minecraft mods and vanilla assets** — model
 ## Directory structure
 
 ```
-minecraft/
+assets/
 ├── minecraft-<version>-<build>/   # Vanilla Minecraft
 │   └── minecraft/
 │       ├── blockstates/
