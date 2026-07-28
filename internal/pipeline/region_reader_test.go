@@ -12,10 +12,10 @@ import (
 	"mc2lua/internal/runtime"
 )
 
-func TestWorldReader_ParseRegionCoord(t *testing.T) {
+func TestRegionReader_ParseRegionCoord(t *testing.T) {
 	t.Parallel()
 
-	svc := &WorldReader{}
+	svc := &RegionReader{}
 
 	tests := []struct {
 		name   string
@@ -42,10 +42,10 @@ func TestWorldReader_ParseRegionCoord(t *testing.T) {
 	}
 }
 
-func TestWorldReader_RangeOverlap(t *testing.T) {
+func TestRegionReader_RangeOverlap(t *testing.T) {
 	t.Parallel()
 
-	svc := &WorldReader{}
+	svc := &RegionReader{}
 
 	tests := []struct {
 		name          string
@@ -78,10 +78,10 @@ func TestWorldReader_RangeOverlap(t *testing.T) {
 	}
 }
 
-func TestWorldReader_NewBitStorage(t *testing.T) {
+func TestRegionReader_NewBitStorage(t *testing.T) {
 	t.Parallel()
 
-	svc := &WorldReader{}
+	svc := &RegionReader{}
 
 	tests := []struct {
 		name    string
@@ -109,10 +109,10 @@ func TestWorldReader_NewBitStorage(t *testing.T) {
 	}
 }
 
-func TestWorldReader_DecodeBlock(t *testing.T) {
+func TestRegionReader_DecodeBlock(t *testing.T) {
 	t.Parallel()
 
-	svc := &WorldReader{}
+	svc := &RegionReader{}
 	defaultBounds := model.Bounds{
 		XMin: -1000, XMax: 1000,
 		YMin: -1000, YMax: 1000,
@@ -245,7 +245,7 @@ func TestWorldReader_DecodeBlock(t *testing.T) {
 	}
 }
 
-func TestWorldReader_ListRegionFiles(t *testing.T) {
+func TestRegionReader_ListRegionFiles(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -313,7 +313,7 @@ func TestWorldReader_ListRegionFiles(t *testing.T) {
 			t.Parallel()
 			m := runtime.NewFSMock()
 			tt.setup(m)
-			svc := NewWorldReader(m)
+			svc := NewRegionReader(m)
 
 			got, err := svc.listRegionFiles(tt.input)
 			if tt.wantErr {
@@ -326,7 +326,7 @@ func TestWorldReader_ListRegionFiles(t *testing.T) {
 	}
 }
 
-func TestWorldReader_Run(t *testing.T) {
+func TestRegionReader_Run(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -334,10 +334,9 @@ func TestWorldReader_Run(t *testing.T) {
 		setup   func(m *runtime.FSMock)
 		bounds  model.Bounds
 		wantErr bool
-		wantNil bool
 	}{
 		{
-			name:  "empty input directory returns empty world",
+			name:  "empty input directory returns empty blocks",
 			setup: func(m *runtime.FSMock) {},
 			bounds: model.Bounds{
 				XMin: -1000, XMax: 1000,
@@ -346,7 +345,7 @@ func TestWorldReader_Run(t *testing.T) {
 			},
 		},
 		{
-			name: "region out of bounds returns empty world",
+			name: "region out of bounds returns empty blocks",
 			setup: func(m *runtime.FSMock) {
 				m.AddFile("/input/r.0.0.mca", nil, 0644)
 			},
@@ -363,7 +362,7 @@ func TestWorldReader_Run(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "region in bounds but file invalid returns empty world",
+			name: "region in bounds but file invalid returns empty blocks",
 			setup: func(m *runtime.FSMock) {
 				m.AddFile("/input/r.0.0.mca", []byte("not a real mca file"), 0644)
 			},
@@ -381,16 +380,15 @@ func TestWorldReader_Run(t *testing.T) {
 			t.Parallel()
 			m := runtime.NewFSMock()
 			tt.setup(m)
-			svc := NewWorldReader(m)
+			svc := NewRegionReader(m)
 
-			w, err := svc.Run("/input", tt.bounds)
+			blocks, err := svc.Run("/input", tt.bounds)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
-			require.NotNil(t, w)
-			require.Empty(t, w.Blocks)
+			require.Empty(t, blocks)
 		})
 	}
 }

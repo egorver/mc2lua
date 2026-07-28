@@ -9,18 +9,18 @@ import (
 	"mc2lua/internal/model"
 )
 
-type mockWorldReader struct {
-	runFn func(input string, bounds model.Bounds) (*model.World, error)
+type mockRegionReader struct {
+	runFn func(input string, bounds model.Bounds) ([]model.Block, error)
 }
 
-func (m *mockWorldReader) Run(input string, bounds model.Bounds) (*model.World, error) {
+func (m *mockRegionReader) Run(input string, bounds model.Bounds) ([]model.Block, error) {
 	return m.runFn(input, bounds)
 }
 
 func TestRunner_New(t *testing.T) {
 	t.Parallel()
 
-	mock := &mockWorldReader{}
+	mock := &mockRegionReader{}
 	r := NewRunner(mock)
 	require.NotNil(t, r)
 }
@@ -32,19 +32,19 @@ func TestRunner_Run(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		mockRun     func(input string, bounds model.Bounds) (*model.World, error)
+		mockRun     func(input string, bounds model.Bounds) ([]model.Block, error)
 		wantErr     bool
 		wantErrMsg  string
 	}{
 		{
 			name: "success",
-			mockRun: func(input string, bounds model.Bounds) (*model.World, error) {
-				return &model.World{}, nil
+			mockRun: func(input string, bounds model.Bounds) ([]model.Block, error) {
+				return []model.Block{}, nil
 			},
 		},
 		{
-			name: "world reader error",
-			mockRun: func(input string, bounds model.Bounds) (*model.World, error) {
+			name: "region reader error",
+			mockRun: func(input string, bounds model.Bounds) ([]model.Block, error) {
 				return nil, errWorld
 			},
 			wantErr:    true,
@@ -57,7 +57,7 @@ func TestRunner_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mock := &mockWorldReader{runFn: tt.mockRun}
+			mock := &mockRegionReader{runFn: tt.mockRun}
 			r := NewRunner(mock)
 
 			err := r.Run(RunConfig{

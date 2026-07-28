@@ -35,7 +35,7 @@ func buildConfig(cfg AppConfig) pipeline.RunConfig {
 func buildDeps() *pipeline.Runner {
 	fs := runtime.NewFS()
 
-	worldReader := pipeline.NewWorldReader(fs)
+	regionReader := pipeline.NewRegionReader(fs)
 
-	return pipeline.NewRunner(worldReader)
+	return pipeline.NewRunner(regionReader)
 }

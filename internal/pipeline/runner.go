@@ -6,16 +6,16 @@ import (
 	"mc2lua/internal/model"
 )
 
-type worldReader interface {
-	Run(input string, bounds model.Bounds) (*model.World, error)
+type regionReader interface {
+	Run(input string, bounds model.Bounds) ([]model.Block, error)
 }
 
 type Runner struct {
-	worldReader worldReader
+	regionReader regionReader
 }
 
-func NewRunner(wr worldReader) *Runner {
-	return &Runner{worldReader: wr}
+func NewRunner(rr regionReader) *Runner {
+	return &Runner{regionReader: rr}
 }
 
 type RunConfig struct {
@@ -27,7 +27,7 @@ type RunConfig struct {
 }
 
 func (svc *Runner) Run(cfg RunConfig) error {
-	_, err := svc.worldReader.Run(cfg.Input, cfg.Bounds)
+	_, err := svc.regionReader.Run(cfg.Input, cfg.Bounds)
 	if err != nil {
 		return fmt.Errorf("read world: %w", err)
 	}

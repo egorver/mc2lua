@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"fmt"
-	"math"
 	"math/bits"
 	"path/filepath"
 
@@ -13,28 +12,21 @@ import (
 	"mc2lua/internal/model"
 )
 
-type WorldReader struct {
+type RegionReader struct {
 	fs fsApi
 }
 
-func NewWorldReader(fs fsApi) *WorldReader {
-	return &WorldReader{fs: fs}
+func NewRegionReader(fs fsApi) *RegionReader {
+	return &RegionReader{fs: fs}
 }
 
-func (svc *WorldReader) Run(input string, bounds model.Bounds) (*model.World, error) {
+func (svc *RegionReader) Run(input string, bounds model.Bounds) ([]model.Block, error) {
 	files, err := svc.listRegionFiles(input)
 	if err != nil {
 		return nil, fmt.Errorf("list region files: %w", err)
 	}
 
-	if len(files) == 0 {
-		return &model.World{}, nil
-	}
-
 	var blocks []model.Block
-	minX, minY, minZ := math.MaxInt32, math.MaxInt32, math.MaxInt32
-	maxX, maxY, maxZ := math.MinInt32, math.MinInt32, math.MinInt32
-
 	for _, name := range files {
 		rx, rz := svc.parseRegionCoord(name)
 
@@ -44,52 +36,13 @@ func (svc *WorldReader) Run(input string, bounds model.Bounds) (*model.World, er
 		}
 
 		regionBlocks := svc.processRegion(input, name, rx, rz, bounds)
-		for _, b := range regionBlocks {
-			if b.X < minX {
-				minX = b.X
-			}
-			if b.X > maxX {
-				maxX = b.X
-			}
-			if b.Y < minY {
-				minY = b.Y
-			}
-			if b.Y > maxY {
-				maxY = b.Y
-			}
-			if b.Z < minZ {
-				minZ = b.Z
-			}
-			if b.Z > maxZ {
-				maxZ = b.Z
-			}
-		}
 		blocks = append(blocks, regionBlocks...)
 	}
 
-	if len(blocks) == 0 {
-		return &model.World{}, nil
-	}
-
-	lookup := make(map[[3]int]*model.Block, len(blocks))
-	for i := range blocks {
-		b := &blocks[i]
-		lookup[[3]int{b.X, b.Y, b.Z}] = b
-	}
-
-	return &model.World{
-		Blocks: blocks,
-		Lookup: lookup,
-		MinX:   minX,
-		MinY:   minY,
-		MinZ:   minZ,
-		MaxX:   maxX,
-		MaxY:   maxY,
-		MaxZ:   maxZ,
-	}, nil
+	return blocks, nil
 }
 
-func (svc *WorldReader) listRegionFiles(input string) ([]string, error) {
+func (svc *RegionReader) listRegionFiles(input string) ([]string, error) {
 	entries, err := svc.fs.ReadDir(input)
 	if err != nil {
 		return nil, err
@@ -109,7 +62,7 @@ func (svc *WorldReader) listRegionFiles(input string) ([]string, error) {
 	return files, nil
 }
 
-func (svc *WorldReader) processRegion(input, name string, rx, rz int, bounds model.Bounds) []model.Block {
+func (svc *RegionReader) processRegion(input, name string, rx, rz int, bounds model.Bounds) []model.Block {
 	r, err := region.Open(filepath.Join(input, name))
 	if err != nil {
 		return nil
@@ -138,7 +91,7 @@ func (svc *WorldReader) processRegion(input, name string, rx, rz int, bounds mod
 	return blocks
 }
 
-func (svc *WorldReader) processChunk(r *region.Region, lx, lz, chunkX, chunkZ int, bounds model.Bounds) []model.Block {
+func (svc *RegionReader) processChunk(r *region.Region, lx, lz, chunkX, chunkZ int, bounds model.Bounds) []model.Block {
 	data, err := r.ReadSector(lx, lz)
 	if err != nil {
 		return nil
@@ -161,7 +114,7 @@ func (svc *WorldReader) processChunk(r *region.Region, lx, lz, chunkX, chunkZ in
 	return blocks
 }
 
-func (svc *WorldReader) processSection(ssec save.Section, chunkX, chunkZ int, bounds model.Bounds) []model.Block {
+func (svc *RegionReader) processSection(ssec save.Section, chunkX, chunkZ int, bounds model.Bounds) []model.Block {
 	if len(ssec.BlockStates.Palette) == 0 {
 		return nil
 	}
@@ -184,7 +137,7 @@ func (svc *WorldReader) processSection(ssec save.Section, chunkX, chunkZ int, bo
 	return blocks
 }
 
-func (svc *WorldReader) newBitStorage(palSize int, data []uint64) *level.BitStorage {
+func (svc *RegionReader) newBitStorage(palSize int, data []uint64) *level.BitStorage {
 	if palSize == 1 {
 		return level.NewBitStorage(0, 4096, nil)
 	}
@@ -195,7 +148,7 @@ func (svc *WorldReader) newBitStorage(palSize int, data []uint64) *level.BitStor
 	return level.NewBitStorage(bitsPerEntry, 4096, data)
 }
 
-func (svc *WorldReader) decodeBlock(bs *level.BitStorage, j int, palette []save.BlockState, chunkX, chunkZ, baseY int, bounds model.Bounds) *model.Block {
+func (svc *RegionReader) decodeBlock(bs *level.BitStorage, j int, palette []save.BlockState, chunkX, chunkZ, baseY int, bounds model.Bounds) *model.Block {
 	idx := bs.Get(j)
 	if idx >= len(palette) {
 		return nil
@@ -237,12 +190,12 @@ func (svc *WorldReader) decodeBlock(bs *level.BitStorage, j int, palette []save.
 	}
 }
 
-func (svc *WorldReader) parseRegionCoord(name string) (int, int) {
+func (svc *RegionReader) parseRegionCoord(name string) (int, int) {
 	var rx, rz int
 	fmt.Sscanf(name, "r.%d.%d.mca", &rx, &rz)
 	return rx, rz
 }
 
-func (svc *WorldReader) rangeOverlap(min1, max1, min2, max2 int) bool {
+func (svc *RegionReader) rangeOverlap(min1, max1, min2, max2 int) bool {
 	return max(min1, min2) <= min(max1, max2)
 }
