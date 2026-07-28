@@ -1,6 +1,10 @@
 package pipeline
 
-import "mc2lua/internal/model"
+import (
+	"fmt"
+
+	"mc2lua/internal/model"
+)
 
 type worldReader interface {
 	Run(input string, bounds model.Bounds) (*model.World, error)
@@ -24,5 +28,9 @@ type RunConfig struct {
 
 func (svc *Runner) Run(cfg RunConfig) error {
 	_, err := svc.worldReader.Run(cfg.Input, cfg.Bounds)
-	return err
+	if err != nil {
+		return fmt.Errorf("read world: %w", err)
+	}
+
+	return nil
 }

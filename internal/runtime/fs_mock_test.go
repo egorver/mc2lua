@@ -258,6 +258,11 @@ func TestFSMock_FilepathHasPrefix(t *testing.T) {
 		{name: "no match", p: "/x/y/z", prefix: "/a/b/c", want: false},
 		{name: "shorter path no match", p: "/a", prefix: "/a/b/c", want: false},
 		{name: "prefix boundary", p: "/a/b/ccc", prefix: "/a/b/c", want: false},
+		{name: "empty path", p: "", prefix: "", want: true},
+		{name: "empty prefix", p: "/a", prefix: "", want: false},
+		{name: "root prefix", p: "/a", prefix: "/", want: false},
+		{name: "root path root prefix", p: "/", prefix: "/", want: true},
+		{name: "same prefix", p: "/a/b/c", prefix: "/a/b/c/d", want: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
