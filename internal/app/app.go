@@ -21,10 +21,11 @@ func (svc *App) Run(cfg AppConfig) error {
 
 func buildConfig(cfg AppConfig) pipeline.RunConfig {
 	return pipeline.RunConfig{
-		Input:    cfg.Input,
-		Output:   cfg.Output,
-		Scale:    cfg.Scale,
-		NoOffset: cfg.NoOffset,
+		Input:     cfg.Input,
+		AssetsDir: cfg.AssetsDir,
+		Output:    cfg.Output,
+		Scale:     cfg.Scale,
+		NoOffset:  cfg.NoOffset,
 		Bounds: model.Bounds{
 			XMin: cfg.XMin, XMax: cfg.XMax,
 			YMin: cfg.YMin, YMax: cfg.YMax,
@@ -41,8 +42,7 @@ func buildDeps() *pipeline.Runner {
 	blockstateParser := minecraft.NewBlockstateParser(fs)
 	modelAnalyzer := minecraft.NewModelAnalyzer()
 	modelParser := minecraft.NewModelParser(fs)
-	propertiesParser := minecraft.NewPropertiesParser()
-	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelAnalyzer, modelParser, propertiesParser)
+	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelAnalyzer, modelParser)
 
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
 	coordNormalizer := pipeline.NewCoordNormalizer()

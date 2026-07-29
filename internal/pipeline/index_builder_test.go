@@ -11,10 +11,10 @@ import (
 )
 
 type mockBlockResolver struct {
-	runFn func(id, props string, namespaces map[string][]string) (*model.ResolvedBlock, error)
+	runFn func(id string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error)
 }
 
-func (m *mockBlockResolver) Run(id, props string, namespaces map[string][]string) (*model.ResolvedBlock, error) {
+func (m *mockBlockResolver) Run(id string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error) {
 	return m.runFn(id, props, namespaces)
 }
 
@@ -34,17 +34,18 @@ func TestIndexBuilder_Run(t *testing.T) {
 	errResolve := errors.New("resolve failed")
 
 	tests := []struct {
-		name       string
-		blocks     []model.Block
-		resolveFn  func(id, props string, namespaces map[string][]string) (*model.ResolvedBlock, error)
-		wantErr    bool
-		wantErrMsg string
-		wantCheck  func(t *testing.T, idx *index.BlockIndex)
+		name           string
+		blocks         []model.Block
+		resolveFn      func(id string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error)
+		wantErr        bool
+		wantErrMsg     string
+		wantUnresolved map[string]string
+		wantCheck      func(t *testing.T, idx *index.BlockIndex)
 	}{
 		{
 			name:   "empty blocks",
 			blocks: []model.Block{},
-			resolveFn: func(id, props string, _ map[string][]string) (*model.ResolvedBlock, error) {
+			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
 				return resolvedStone, nil
 			},
 			wantCheck: func(t *testing.T, idx *index.BlockIndex) {
@@ -57,7 +58,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 			blocks: []model.Block{
 				{ID: "minecraft:stone"},
 			},
-			resolveFn: func(id, props string, _ map[string][]string) (*model.ResolvedBlock, error) {
+			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
 				return resolvedStone, nil
 			},
 			wantCheck: func(t *testing.T, idx *index.BlockIndex) {
@@ -72,7 +73,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 				{ID: "minecraft:stone"},
 				{ID: "minecraft:oak_fence"},
 			},
-			resolveFn: func(id, props string, _ map[string][]string) (*model.ResolvedBlock, error) {
+			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
 				if id == "minecraft:stone" {
 					return resolvedStone, nil
 				}
@@ -94,7 +95,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 				{ID: "minecraft:stone"},
 				{ID: "minecraft:stone"},
 			},
-			resolveFn: func(id, props string, _ map[string][]string) (*model.ResolvedBlock, error) {
+			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
 				return resolvedStone, nil
 			},
 			wantCheck: func(t *testing.T, idx *index.BlockIndex) {
@@ -110,7 +111,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 				{ID: "minecraft:oak_fence", Props: map[string]string{"water": "true"}},
 				{ID: "minecraft:stone", Props: map[string]string{"variant": "andesite"}},
 			},
-			resolveFn: func(id, props string, _ map[string][]string) (*model.ResolvedBlock, error) {
+			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
 				return resolvedFence, nil
 			},
 			wantCheck: func(t *testing.T, idx *index.BlockIndex) {
@@ -123,15 +124,25 @@ func TestIndexBuilder_Run(t *testing.T) {
 			},
 		},
 		{
-			name: "resolver error",
+			name: "resolver error skips block and reports unresolved",
 			blocks: []model.Block{
 				{ID: "minecraft:stone"},
+				{ID: "minecraft:dirt"},
 			},
-			resolveFn: func(id, props string, _ map[string][]string) (*model.ResolvedBlock, error) {
-				return nil, errResolve
+			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
+				if id == "minecraft:stone" {
+					return nil, errResolve
+				}
+				return resolvedStone, nil
 			},
-			wantErr:    true,
-			wantErrMsg: "resolve block minecraft:stone|",
+			wantUnresolved: map[string]string{"minecraft:stone": errResolve.Error()},
+			wantCheck: func(t *testing.T, idx *index.BlockIndex) {
+				_, ok := idx.Get("minecraft:stone", "")
+				require.False(t, ok)
+				v, ok := idx.Get("minecraft:dirt", "")
+				require.True(t, ok)
+				require.Equal(t, resolvedStone, v)
+			},
 		},
 	}
 
@@ -143,7 +154,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 			mr := &mockBlockResolver{runFn: tt.resolveFn}
 			svc := NewIndexBuilder(mr)
 
-			idx, err := svc.Run(tt.blocks, nil)
+			idx, unresolved, err := svc.Run(tt.blocks, nil)
 			if tt.wantErr {
 				require.Error(t, err)
 				if tt.wantErrMsg != "" {
@@ -153,6 +164,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.NotNil(t, idx)
+			require.Equal(t, tt.wantUnresolved, unresolved)
 			if tt.wantCheck != nil {
 				tt.wantCheck(t, idx)
 			}
@@ -165,7 +177,7 @@ func TestIndexBuilder_Run_ResolverCallCount(t *testing.T) {
 
 	callCount := 0
 	mr := &mockBlockResolver{
-		runFn: func(id, props string, _ map[string][]string) (*model.ResolvedBlock, error) {
+		runFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
 			callCount++
 			return &model.ResolvedBlock{IsFullBlock: true}, nil
 		},
@@ -178,7 +190,7 @@ func TestIndexBuilder_Run_ResolverCallCount(t *testing.T) {
 		{ID: "minecraft:stone"},
 		{ID: "minecraft:dirt"},
 	}
-	_, err := svc.Run(blocks, nil)
+	_, _, err := svc.Run(blocks, nil)
 	require.NoError(t, err)
 	require.Equal(t, 2, callCount, "resolver should be called once per unique id|props")
 }
@@ -187,7 +199,7 @@ func TestIndexBuilder_Run_DuplicatePropsAreDistinct(t *testing.T) {
 	t.Parallel()
 
 	mr := &mockBlockResolver{
-		runFn: func(id, props string, _ map[string][]string) (*model.ResolvedBlock, error) {
+		runFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
 			return &model.ResolvedBlock{IsFullBlock: id == "minecraft:stone"}, nil
 		},
 	}
@@ -197,7 +209,7 @@ func TestIndexBuilder_Run_DuplicatePropsAreDistinct(t *testing.T) {
 		{ID: "minecraft:stone", Props: map[string]string{"variant": "andesite"}},
 		{ID: "minecraft:stone", Props: map[string]string{"variant": "granite"}},
 	}
-	idx, err := svc.Run(blocks, nil)
+	idx, _, err := svc.Run(blocks, nil)
 	require.NoError(t, err)
 
 	v, ok := idx.Get("minecraft:stone", "variant=andesite")
@@ -209,7 +221,7 @@ func TestIndexBuilder_Run_DuplicatePropsAreDistinct(t *testing.T) {
 	require.True(t, v.IsFullBlock)
 }
 
-func TestIndexBuilder_SerializeProps(t *testing.T) {
+func TestIndexBuilder_PropsToKey(t *testing.T) {
 	t.Parallel()
 
 	svc := &IndexBuilder{}
@@ -229,7 +241,7 @@ func TestIndexBuilder_SerializeProps(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := svc.serializeProps(tt.props)
+			got := svc.propsToKey(tt.props)
 			require.Equal(t, tt.want, got)
 		})
 	}

@@ -11,6 +11,7 @@ import (
 
 func main() {
 	inputPath := flag.String("input", "region", "path to region files directory")
+	assetsDir := flag.String("assets", "assets", "path to Minecraft assets directory")
 	outputPath := flag.String("output", "output.lua", "output Lua file")
 	scale := flag.Int("scale", 4, "block scale factor")
 	noOffset := flag.Bool("no-offset", false, "disable auto-offset to y=0")
@@ -31,8 +32,9 @@ func main() {
 	}
 
 	cfg := app.AppConfig{
-		Input:    *inputPath,
-		Output:   *outputPath,
+		Input:     *inputPath,
+		AssetsDir: *assetsDir,
+		Output:    *outputPath,
 		Scale:    *scale,
 		NoOffset: *noOffset,
 		XMin:     *xmin,

@@ -1,7 +1,6 @@
 package pipeline
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 
@@ -10,7 +9,7 @@ import (
 )
 
 type blockResolver interface {
-	Run(id, props string, namespaces map[string][]string) (*model.ResolvedBlock, error)
+	Run(id string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error)
 }
 
 type IndexBuilder struct {
@@ -21,26 +20,36 @@ func NewIndexBuilder(br blockResolver) *IndexBuilder {
 	return &IndexBuilder{blockResolver: br}
 }
 
-func (svc *IndexBuilder) Run(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, error) {
+func (svc *IndexBuilder) Run(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, map[string]string, error) {
 	idx := index.NewBlockIndex()
+	var unresolvedErrs map[string]string
 
 	for _, b := range blocks {
-		propsStr := svc.serializeProps(b.Props)
-		if _, ok := idx.Get(b.ID, propsStr); ok {
+		propsKey := svc.propsToKey(b.Props)
+		if _, ok := idx.Get(b.ID, propsKey); ok {
 			continue
 		}
 
-		resolved, err := svc.blockResolver.Run(b.ID, propsStr, namespaces)
+		resolved, err := svc.blockResolver.Run(b.ID, b.Props, namespaces)
 		if err != nil {
-			return nil, fmt.Errorf("resolve block %s: %w", b.ID+"|"+propsStr, err)
+			if unresolvedErrs == nil {
+				unresolvedErrs = make(map[string]string)
+			}
+			if _, exists := unresolvedErrs[b.ID]; !exists {
+				unresolvedErrs[b.ID] = err.Error()
+			}
+			continue
 		}
-		idx.Add(b.ID, propsStr, resolved)
+		idx.Add(b.ID, propsKey, resolved)
 	}
 
-	return idx, nil
+	return idx, unresolvedErrs, nil
 }
 
-func (svc *IndexBuilder) serializeProps(props map[string]string) string {
+func (svc *IndexBuilder) propsToKey(props map[string]string) string {
+	if len(props) == 0 {
+		return ""
+	}
 	keys := make([]string, 0, len(props))
 	for k := range props {
 		keys = append(keys, k)

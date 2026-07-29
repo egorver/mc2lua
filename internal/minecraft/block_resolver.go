@@ -18,37 +18,29 @@ type modelParser interface {
 	Run(modelName string, namespaces map[string][]string) (*flattenedModel, error)
 }
 
-type propertiesParser interface {
-	Run(jsonStr string) map[string]string
-}
-
 type BlockResolver struct {
 	blockstateParser blockstateParser
 	modelAnalyzer    modelAnalyzer
 	modelParser      modelParser
-	propertiesParser propertiesParser
 }
 
 func NewBlockResolver(
 	blockstateParser blockstateParser,
 	modelAnalyzer modelAnalyzer,
 	modelParser modelParser,
-	propertiesParser propertiesParser,
 ) *BlockResolver {
 	return &BlockResolver{
 		blockstateParser: blockstateParser,
 		modelAnalyzer:    modelAnalyzer,
 		modelParser:      modelParser,
-		propertiesParser: propertiesParser,
 	}
 }
 
-func (svc *BlockResolver) Run(id, props string, namespaces map[string][]string) (*model.ResolvedBlock, error) {
+func (svc *BlockResolver) Run(id string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error) {
 
 	ns, blockID := svc.splitBlockID(id)
-	parsed := svc.propertiesParser.Run(props)
 
-	matches, err := svc.blockstateParser.Run(ns, blockID, parsed, namespaces)
+	matches, err := svc.blockstateParser.Run(ns, blockID, props, namespaces)
 	if err != nil {
 		return nil, fmt.Errorf("blockstate %s/%s: %w", ns, blockID, err)
 	}

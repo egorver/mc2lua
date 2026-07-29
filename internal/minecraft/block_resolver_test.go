@@ -9,14 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockPropertiesParser struct {
-	runFn func(jsonStr string) map[string]string
-}
-
-func (m *mockPropertiesParser) Run(jsonStr string) map[string]string {
-	return m.runFn(jsonStr)
-}
-
 type mockBlockstateParser struct {
 	runFn func(ns, blockID string, props map[string]string, namespaces map[string][]string) ([]blockstateMatch, error)
 }
@@ -69,31 +61,25 @@ func TestBlockResolver_SplitBlockID(t *testing.T) {
 func TestBlockResolver_New(t *testing.T) {
 	t.Parallel()
 
-	r := NewBlockResolver(nil, nil, nil, nil)
+	r := NewBlockResolver(nil, nil, nil)
 	require.NotNil(t, r)
 }
 
 func TestBlockResolver_Run_BlockstateParserError(t *testing.T) {
 	t.Parallel()
 
-	mockProps := &mockPropertiesParser{runFn: func(_ string) map[string]string {
-		return map[string]string{}
-	}}
 	mockBSP := &mockBlockstateParser{runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
 		return nil, errors.New("parse error")
 	}}
 
-	svc := NewBlockResolver(mockBSP, nil, nil, mockProps)
-	_, err := svc.Run("minecraft:stone", "", nil)
+	svc := NewBlockResolver(mockBSP, nil, nil)
+	_, err := svc.Run("minecraft:stone", nil, nil)
 	require.ErrorContains(t, err, "blockstate")
 }
 
 func TestBlockResolver_Run_NoElements(t *testing.T) {
 	t.Parallel()
 
-	mockProps := &mockPropertiesParser{runFn: func(_ string) map[string]string {
-		return map[string]string{}
-	}}
 	mockBSP := &mockBlockstateParser{runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
 		return []blockstateMatch{{Model: "model1"}, {Model: "model2"}}, nil
 	}}
@@ -101,17 +87,14 @@ func TestBlockResolver_Run_NoElements(t *testing.T) {
 		return nil, errors.New("model error")
 	}}
 
-	svc := NewBlockResolver(mockBSP, nil, mockMP, mockProps)
-	_, err := svc.Run("minecraft:stone", "", nil)
+	svc := NewBlockResolver(mockBSP, nil, mockMP)
+	_, err := svc.Run("minecraft:stone", nil, nil)
 	require.ErrorContains(t, err, "no elements found")
 }
 
 func TestBlockResolver_Run_DuplicateModels(t *testing.T) {
 	t.Parallel()
 
-	mockProps := &mockPropertiesParser{runFn: func(_ string) map[string]string {
-		return map[string]string{}
-	}}
 	mockBSP := &mockBlockstateParser{runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
 		return []blockstateMatch{
 			{Model: "minecraft:block/stone"},
@@ -129,8 +112,8 @@ func TestBlockResolver_Run_DuplicateModels(t *testing.T) {
 		return true
 	}}
 
-	svc := NewBlockResolver(mockBSP, mockMA, mockMP, mockProps)
-	resolved, err := svc.Run("minecraft:stone", "", nil)
+	svc := NewBlockResolver(mockBSP, mockMA, mockMP)
+	resolved, err := svc.Run("minecraft:stone", nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 	require.Equal(t, 1, callCount)
@@ -233,9 +216,6 @@ func TestBlockResolver_ResolveElements(t *testing.T) {
 func TestBlockResolver_Run(t *testing.T) {
 	t.Parallel()
 
-	mockProps := &mockPropertiesParser{runFn: func(jsonStr string) map[string]string {
-		return map[string]string{}
-	}}
 	mockBSP := &mockBlockstateParser{runFn: func(ns, blockID string, props map[string]string, namespaces map[string][]string) ([]blockstateMatch, error) {
 		return []blockstateMatch{{Model: "minecraft:block/stone"}}, nil
 	}}
@@ -250,16 +230,16 @@ func TestBlockResolver_Run(t *testing.T) {
 		return false
 	}}
 
-	svc := NewBlockResolver(mockBSP, mockMA, mockMP, mockProps)
+	svc := NewBlockResolver(mockBSP, mockMA, mockMP)
 
 	tests := []struct {
 		name  string
 		id    string
-		props string
+		props map[string]string
 	}{
-		{name: "empty id and props", id: "", props: ""},
-		{name: "non-empty id", id: "minecraft:stone", props: ""},
-		{name: "non-empty props", id: "minecraft:oak_log", props: "axis=y"},
+		{name: "nil props", id: "", props: nil},
+		{name: "non-empty id", id: "minecraft:stone", props: nil},
+		{name: "non-empty props", id: "minecraft:oak_log", props: map[string]string{"axis": "y"}},
 	}
 	for _, tt := range tests {
 		tt := tt

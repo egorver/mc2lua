@@ -41,11 +41,12 @@ type mockIndexBuilder struct {
 	runFn func(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, error)
 }
 
-func (m *mockIndexBuilder) Run(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, error) {
+func (m *mockIndexBuilder) Run(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, map[string]string, error) {
 	if m.runFn != nil {
-		return m.runFn(blocks, namespaces)
+		idx, err := m.runFn(blocks, namespaces)
+		return idx, nil, err
 	}
-	return index.NewBlockIndex(), nil
+	return index.NewBlockIndex(), nil, nil
 }
 
 func TestRunner_New(t *testing.T) {
@@ -153,8 +154,9 @@ func TestRunner_Run(t *testing.T) {
 			r := NewRunner(mockRR, mockCN, mockAS, mockIB)
 
 			err := r.Run(RunConfig{
-				Input:  "/test",
-				Bounds: model.Bounds{XMin: 0, XMax: 10, YMin: 0, YMax: 10, ZMin: 0, ZMax: 10},
+				Input:     "/test",
+				AssetsDir: "assets",
+				Bounds:    model.Bounds{XMin: 0, XMax: 10, YMin: 0, YMax: 10, ZMin: 0, ZMax: 10},
 			})
 			if tt.wantErr {
 				require.Error(t, err)
