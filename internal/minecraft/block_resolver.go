@@ -45,35 +45,36 @@ func (svc *BlockResolver) Run(id string, props map[string]string, namespaces map
 		return nil, fmt.Errorf("blockstate %s/%s: %w", ns, blockID, err)
 	}
 
-	elements := svc.resolveElements(matches, namespaces)
+	fm := svc.resolveFlattened(matches, namespaces)
 
-	if len(elements) == 0 {
+	if len(fm.Elements) == 0 {
 		return nil, fmt.Errorf("no elements found for block %s", id)
 	}
 
-	isFullBlock := svc.modelAnalyzer.Run(elements)
+	isFullBlock := svc.modelAnalyzer.Run(fm.Elements)
 
 	return &model.ResolvedBlock{
 		IsFullBlock: isFullBlock,
-		Elements:    elements,
+		Elements:    fm.Elements,
+		Textures:    fm.Textures,
 	}, nil
 }
 
-func (svc *BlockResolver) resolveElements(matches []blockstateMatch, namespaces map[string][]string) []model.ModelElement {
-	var elements []model.ModelElement
+func (svc *BlockResolver) resolveFlattened(matches []blockstateMatch, namespaces map[string][]string) *flattenedModel {
+	result := &flattenedModel{Textures: make(map[string]string)}
 	seenModels := make(map[string]bool)
 	for _, match := range matches {
 		if seenModels[match.Model] {
 			continue
 		}
 		seenModels[match.Model] = true
-		model, err := svc.modelParser.Run(match.Model, namespaces)
+		fm, err := svc.modelParser.Run(match.Model, namespaces)
 		if err != nil {
 			continue
 		}
-		elements = append(elements, model.Elements...)
+		result.merge(fm)
 	}
-	return elements
+	return result
 }
 
 func (svc *BlockResolver) splitBlockID(id string) (namespace, blockID string) {

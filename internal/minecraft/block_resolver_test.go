@@ -153,17 +153,19 @@ func TestBlockResolver_ResolveElements(t *testing.T) {
 		name    string
 		matches []blockstateMatch
 		modelFn func(name string, ns map[string][]string) (*flattenedModel, error)
-		want    []model.ModelElement
+		want    *flattenedModel
 	}{
 		{
 			name:    "empty matches",
 			matches: nil,
-			want:    nil,
+			modelFn: nil,
+			want:    &flattenedModel{Textures: map[string]string{}},
 		},
 		{
 			name:    "empty matches slice",
 			matches: []blockstateMatch{},
-			want:    nil,
+			modelFn: nil,
+			want:    &flattenedModel{Textures: map[string]string{}},
 		},
 		{
 			name:    "single match resolved",
@@ -171,7 +173,7 @@ func TestBlockResolver_ResolveElements(t *testing.T) {
 			modelFn: func(name string, ns map[string][]string) (*flattenedModel, error) {
 				return &flattenedModel{Elements: []model.ModelElement{elem1}}, nil
 			},
-			want: []model.ModelElement{elem1},
+			want: &flattenedModel{Elements: []model.ModelElement{elem1}, Textures: map[string]string{}},
 		},
 		{
 			name: "duplicate models parsed once",
@@ -182,7 +184,7 @@ func TestBlockResolver_ResolveElements(t *testing.T) {
 			modelFn: func(name string, ns map[string][]string) (*flattenedModel, error) {
 				return &flattenedModel{Elements: []model.ModelElement{elem1}}, nil
 			},
-			want: []model.ModelElement{elem1},
+			want: &flattenedModel{Elements: []model.ModelElement{elem1}, Textures: map[string]string{}},
 		},
 		{
 			name:    "model parse error skipped",
@@ -190,7 +192,7 @@ func TestBlockResolver_ResolveElements(t *testing.T) {
 			modelFn: func(name string, ns map[string][]string) (*flattenedModel, error) {
 				return nil, errors.New("parse error")
 			},
-			want: nil,
+			want: &flattenedModel{Textures: map[string]string{}},
 		},
 		{
 			name: "multiple different models",
@@ -206,7 +208,7 @@ func TestBlockResolver_ResolveElements(t *testing.T) {
 					return &flattenedModel{Elements: []model.ModelElement{elem2}}, nil
 				}
 			},
-			want: []model.ModelElement{elem1, elem2},
+			want: &flattenedModel{Elements: []model.ModelElement{elem1, elem2}, Textures: map[string]string{}},
 		},
 		{
 			name: "mixed success and error models",
@@ -220,7 +222,7 @@ func TestBlockResolver_ResolveElements(t *testing.T) {
 				}
 				return &flattenedModel{Elements: []model.ModelElement{elem1}}, nil
 			},
-			want: []model.ModelElement{elem1},
+			want: &flattenedModel{Elements: []model.ModelElement{elem1}, Textures: map[string]string{}},
 		},
 	}
 
@@ -231,7 +233,7 @@ func TestBlockResolver_ResolveElements(t *testing.T) {
 			mockMP := &mockModelParser{runFn: tt.modelFn}
 			svc := &BlockResolver{modelParser: mockMP}
 
-			got := svc.resolveElements(tt.matches, nil)
+			got := svc.resolveFlattened(tt.matches, nil)
 			require.Equal(t, tt.want, got)
 		})
 	}

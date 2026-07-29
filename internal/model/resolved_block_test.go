@@ -132,6 +132,15 @@ func TestResolvedBlock(t *testing.T) {
 			name: "not full block", block: ResolvedBlock{IsFullBlock: false, Elements: []ModelElement{{}, {}}},
 			wantElems: 2,
 		},
+		{
+			name: "with textures",
+			block: ResolvedBlock{
+				IsFullBlock: true,
+				Elements:    []ModelElement{{}},
+				Textures:    map[string]string{"#all": "block/stone"},
+			},
+			wantFull: true, wantElems: 1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -25,4 +25,5 @@ type ModelElement struct {
 type ResolvedBlock struct {
 	IsFullBlock bool
 	Elements    []ModelElement
+	Textures    map[string]string
 }

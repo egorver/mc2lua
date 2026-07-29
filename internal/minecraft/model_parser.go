@@ -117,11 +117,11 @@ func (svc *ModelParser) splitModelName(name string) (namespace, path string) {
 }
 
 type rawElement struct {
-	Shade    *bool                          `json:"shade"`
-	From     model.Vector3                  `json:"from"`
-	To       model.Vector3                  `json:"to"`
-	Rotation *model.ElementRotation         `json:"rotation,omitempty"`
-	Faces    map[string]model.ElementFace   `json:"faces,omitempty"`
+	Shade    *bool                        `json:"shade"`
+	From     model.Vector3                `json:"from"`
+	To       model.Vector3                `json:"to"`
+	Rotation *model.ElementRotation       `json:"rotation,omitempty"`
+	Faces    map[string]model.ElementFace `json:"faces,omitempty"`
 }
 
 func (svc *ModelParser) parseElements(raws []json.RawMessage) []model.ModelElement {
