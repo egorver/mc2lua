@@ -12,7 +12,7 @@ func NewCoordNormalizer() *CoordNormalizer {
 	return &CoordNormalizer{}
 }
 
-func (svc *CoordNormalizer) Run(blocks []model.Block, noOffset bool) ([]model.Block, error) {
+func (svc *CoordNormalizer) Run(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 	if len(blocks) == 0 {
 		return nil, fmt.Errorf("coord normalizer: empty block list")
 	}
@@ -24,7 +24,7 @@ func (svc *CoordNormalizer) Run(blocks []model.Block, noOffset bool) ([]model.Bl
 	return result, nil
 }
 
-func computeMinCoords(blocks []model.Block) (minX, minY, minZ int) {
+func computeMinCoords(blocks []model.RawBlock) (minX, minY, minZ int) {
 	minX, minY, minZ = blocks[0].X, blocks[0].Y, blocks[0].Z
 	for _, b := range blocks[1:] {
 		if b.X < minX {
@@ -48,10 +48,10 @@ func computeOffsets(minX, minY, minZ int, noOffset bool) (xOff, yOff, zOff int) 
 	return
 }
 
-func applyOffset(blocks []model.Block, xOff, yOff, zOff int) []model.Block {
-	out := make([]model.Block, len(blocks))
+func applyOffset(blocks []model.RawBlock, xOff, yOff, zOff int) []model.RawBlock {
+	out := make([]model.RawBlock, len(blocks))
 	for i, b := range blocks {
-		out[i] = model.Block{
+		out[i] = model.RawBlock{
 			ID:    b.ID,
 			Props: b.Props,
 			X:     b.X + xOff,

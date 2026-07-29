@@ -20,7 +20,7 @@ func NewIndexBuilder(br blockResolver) *IndexBuilder {
 	return &IndexBuilder{blockResolver: br}
 }
 
-func (svc *IndexBuilder) Run(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, map[string]string, error) {
+func (svc *IndexBuilder) Run(blocks []model.RawBlock, namespaces map[string][]string) (*index.BlockIndex, map[string]string, error) {
 	idx := index.NewBlockIndex()
 	var unresolvedErrs map[string]string
 

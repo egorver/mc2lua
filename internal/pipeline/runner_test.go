@@ -12,18 +12,18 @@ import (
 )
 
 type mockRegionReader struct {
-	runFn func(input string, bounds model.Bounds) ([]model.Block, error)
+	runFn func(input string, bounds model.Bounds) ([]model.RawBlock, error)
 }
 
-func (m *mockRegionReader) Run(input string, bounds model.Bounds) ([]model.Block, error) {
+func (m *mockRegionReader) Run(input string, bounds model.Bounds) ([]model.RawBlock, error) {
 	return m.runFn(input, bounds)
 }
 
 type mockCoordNormalizer struct {
-	runFn func(blocks []model.Block, noOffset bool) ([]model.Block, error)
+	runFn func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error)
 }
 
-func (m *mockCoordNormalizer) Run(blocks []model.Block, noOffset bool) ([]model.Block, error) {
+func (m *mockCoordNormalizer) Run(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 	return m.runFn(blocks, noOffset)
 }
 
@@ -39,10 +39,10 @@ func (m *mockAssetScanner) Run(root string) (map[string][]string, error) {
 }
 
 type mockIndexBuilder struct {
-	runFn func(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, error)
+	runFn func(blocks []model.RawBlock, namespaces map[string][]string) (*index.BlockIndex, error)
 }
 
-func (m *mockIndexBuilder) Run(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, map[string]string, error) {
+func (m *mockIndexBuilder) Run(blocks []model.RawBlock, namespaces map[string][]string) (*index.BlockIndex, map[string]string, error) {
 	if m.runFn != nil {
 		idx, err := m.runFn(blocks, namespaces)
 		return idx, nil, err
@@ -69,28 +69,28 @@ func TestRunner_Run(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		mockRun        func(input string, bounds model.Bounds) ([]model.Block, error)
-		mockNormalize  func(blocks []model.Block, noOffset bool) ([]model.Block, error)
+		mockRun        func(input string, bounds model.Bounds) ([]model.RawBlock, error)
+		mockNormalize  func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error)
 		mockAssetScan  func(root string) (map[string][]string, error)
-		mockIndexBuild func(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, error)
+		mockIndexBuild func(blocks []model.RawBlock, namespaces map[string][]string) (*index.BlockIndex, error)
 		wantErr        bool
 		wantErrMsg     string
 	}{
 		{
 			name: "success",
-			mockRun: func(input string, bounds model.Bounds) ([]model.Block, error) {
-				return []model.Block{}, nil
+			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
+				return []model.RawBlock{}, nil
 			},
-			mockNormalize: func(blocks []model.Block, noOffset bool) ([]model.Block, error) {
+			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 				return blocks, nil
 			},
 		},
 		{
 			name: "region reader error",
-			mockRun: func(input string, bounds model.Bounds) ([]model.Block, error) {
+			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
 				return nil, errWorld
 			},
-			mockNormalize: func(blocks []model.Block, noOffset bool) ([]model.Block, error) {
+			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 				return blocks, nil
 			},
 			wantErr:    true,
@@ -98,10 +98,10 @@ func TestRunner_Run(t *testing.T) {
 		},
 		{
 			name: "coord normalizer error",
-			mockRun: func(input string, bounds model.Bounds) ([]model.Block, error) {
-				return []model.Block{}, nil
+			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
+				return []model.RawBlock{}, nil
 			},
-			mockNormalize: func(blocks []model.Block, noOffset bool) ([]model.Block, error) {
+			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 				return nil, errNormalize
 			},
 			wantErr:    true,
@@ -109,10 +109,10 @@ func TestRunner_Run(t *testing.T) {
 		},
 		{
 			name: "asset scanner error",
-			mockRun: func(input string, bounds model.Bounds) ([]model.Block, error) {
-				return []model.Block{}, nil
+			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
+				return []model.RawBlock{}, nil
 			},
-			mockNormalize: func(blocks []model.Block, noOffset bool) ([]model.Block, error) {
+			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 				return blocks, nil
 			},
 			mockAssetScan: func(root string) (map[string][]string, error) {
@@ -123,13 +123,13 @@ func TestRunner_Run(t *testing.T) {
 		},
 		{
 			name: "index builder error",
-			mockRun: func(input string, bounds model.Bounds) ([]model.Block, error) {
-				return []model.Block{{ID: "minecraft:stone"}}, nil
+			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
+				return []model.RawBlock{{ID: "minecraft:stone"}}, nil
 			},
-			mockNormalize: func(blocks []model.Block, noOffset bool) ([]model.Block, error) {
+			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 				return blocks, nil
 			},
-			mockIndexBuild: func(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, error) {
+			mockIndexBuild: func(blocks []model.RawBlock, namespaces map[string][]string) (*index.BlockIndex, error) {
 				return nil, errors.New("build failed")
 			},
 			wantErr:    true,

@@ -11,10 +11,10 @@ import (
 )
 
 type mockChunkDecoder struct {
-	runFn func(data []byte, chunkX, chunkZ int) ([]model.Block, error)
+	runFn func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error)
 }
 
-func (m *mockChunkDecoder) Run(data []byte, chunkX, chunkZ int) ([]model.Block, error) {
+func (m *mockChunkDecoder) Run(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
 	if m.runFn != nil {
 		return m.runFn(data, chunkX, chunkZ)
 	}

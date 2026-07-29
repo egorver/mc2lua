@@ -11,11 +11,11 @@ import (
 )
 
 type regionReader interface {
-	Run(input string, bounds model.Bounds) ([]model.Block, error)
+	Run(input string, bounds model.Bounds) ([]model.RawBlock, error)
 }
 
 type coordNormalizer interface {
-	Run(blocks []model.Block, noOffset bool) ([]model.Block, error)
+	Run(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error)
 }
 
 type assetScanner interface {
@@ -23,7 +23,7 @@ type assetScanner interface {
 }
 
 type indexBuilder interface {
-	Run(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, map[string]string, error)
+	Run(blocks []model.RawBlock, namespaces map[string][]string) (*index.BlockIndex, map[string]string, error)
 }
 
 type Runner struct {

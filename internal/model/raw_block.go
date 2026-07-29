@@ -1,6 +1,6 @@
 package model
 
-type Block struct {
+type RawBlock struct {
 	ID      string
 	Props   map[string]string
 	X, Y, Z int

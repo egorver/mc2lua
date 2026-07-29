@@ -35,7 +35,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		blocks           []model.Block
+		blocks           []model.RawBlock
 		resolveFn        func(id string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error)
 		wantErr          bool
 		wantErrMsg       string
@@ -45,7 +45,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 	}{
 		{
 			name:   "empty blocks",
-			blocks: []model.Block{},
+			blocks: []model.RawBlock{},
 			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
 				return resolvedStone, nil
 			},
@@ -56,7 +56,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 		},
 		{
 			name: "single block",
-			blocks: []model.Block{
+			blocks: []model.RawBlock{
 				{ID: "minecraft:stone"},
 			},
 			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
@@ -70,7 +70,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 		},
 		{
 			name: "multiple different blocks",
-			blocks: []model.Block{
+			blocks: []model.RawBlock{
 				{ID: "minecraft:stone"},
 				{ID: "minecraft:oak_fence"},
 			},
@@ -89,7 +89,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 		},
 		{
 			name: "duplicate blocks call resolver once",
-			blocks: []model.Block{
+			blocks: []model.RawBlock{
 				{ID: "minecraft:stone"},
 				{ID: "minecraft:stone"},
 				{ID: "minecraft:stone"},
@@ -106,7 +106,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 		},
 		{
 			name: "blocks with properties",
-			blocks: []model.Block{
+			blocks: []model.RawBlock{
 				{ID: "minecraft:oak_fence", Props: map[string]string{"water": "true"}},
 				{ID: "minecraft:stone", Props: map[string]string{"variant": "andesite"}},
 			},
@@ -124,7 +124,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 		},
 		{
 			name: "resolver error skips block and reports unresolved",
-			blocks: []model.Block{
+			blocks: []model.RawBlock{
 				{ID: "minecraft:stone"},
 				{ID: "minecraft:dirt"},
 			},
@@ -145,7 +145,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 		},
 		{
 			name: "resolver called once per unique id|props",
-			blocks: []model.Block{
+			blocks: []model.RawBlock{
 				{ID: "minecraft:stone"},
 				{ID: "minecraft:stone"},
 				{ID: "minecraft:stone"},
@@ -162,7 +162,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 		},
 		{
 			name: "duplicate props are distinct keys",
-			blocks: []model.Block{
+			blocks: []model.RawBlock{
 				{ID: "minecraft:stone", Props: map[string]string{"variant": "andesite"}},
 				{ID: "minecraft:stone", Props: map[string]string{"variant": "granite"}},
 			},

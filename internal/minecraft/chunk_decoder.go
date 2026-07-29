@@ -15,7 +15,7 @@ func NewChunkDecoder() *ChunkDecoder {
 	return &ChunkDecoder{}
 }
 
-func (svc *ChunkDecoder) Run(data []byte, chunkX, chunkZ int) ([]model.Block, error) {
+func (svc *ChunkDecoder) Run(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
 	var sc save.Chunk
 	if err := sc.Load(data); err != nil {
 		return nil, err
@@ -25,7 +25,7 @@ func (svc *ChunkDecoder) Run(data []byte, chunkX, chunkZ int) ([]model.Block, er
 		return nil, nil
 	}
 
-	var blocks []model.Block
+	var blocks []model.RawBlock
 	for _, ssec := range sc.Sections {
 		sectionBlocks := svc.decodeSection(ssec, chunkX, chunkZ)
 		blocks = append(blocks, sectionBlocks...)
@@ -33,7 +33,7 @@ func (svc *ChunkDecoder) Run(data []byte, chunkX, chunkZ int) ([]model.Block, er
 	return blocks, nil
 }
 
-func (svc *ChunkDecoder) decodeSection(ssec save.Section, chunkX, chunkZ int) []model.Block {
+func (svc *ChunkDecoder) decodeSection(ssec save.Section, chunkX, chunkZ int) []model.RawBlock {
 	if len(ssec.BlockStates.Palette) == 0 {
 		return nil
 	}
@@ -42,7 +42,7 @@ func (svc *ChunkDecoder) decodeSection(ssec save.Section, chunkX, chunkZ int) []
 	bs := svc.newBitStorage(len(ssec.BlockStates.Palette), ssec.BlockStates.Data)
 	palette := ssec.BlockStates.Palette
 
-	var blocks []model.Block
+	var blocks []model.RawBlock
 	for j := 0; j < 4096; j++ {
 		block := svc.decodeBlock(bs, j, palette, chunkX, chunkZ, baseY)
 		if block != nil {
@@ -63,7 +63,7 @@ func (svc *ChunkDecoder) newBitStorage(palSize int, data []uint64) *level.BitSto
 	return level.NewBitStorage(bitsPerEntry, 4096, data)
 }
 
-func (svc *ChunkDecoder) decodeBlock(bs *level.BitStorage, j int, palette []save.BlockState, chunkX, chunkZ, baseY int) *model.Block {
+func (svc *ChunkDecoder) decodeBlock(bs *level.BitStorage, j int, palette []save.BlockState, chunkX, chunkZ, baseY int) *model.RawBlock {
 	idx := bs.Get(j)
 	if idx >= len(palette) {
 		return nil
@@ -86,7 +86,7 @@ func (svc *ChunkDecoder) decodeBlock(bs *level.BitStorage, j int, palette []save
 	z := (j >> 4) & 15
 	y := j >> 8
 
-	return &model.Block{
+	return &model.RawBlock{
 		ID:    blockName,
 		Props: props,
 		X:     chunkX*16 + x,

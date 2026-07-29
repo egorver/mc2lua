@@ -10,7 +10,7 @@ import (
 )
 
 type chunkDecoder interface {
-	Run(data []byte, chunkX, chunkZ int) ([]model.Block, error)
+	Run(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error)
 }
 
 type RegionReader struct {
@@ -22,13 +22,13 @@ func NewRegionReader(fs fsApi, decoder chunkDecoder) *RegionReader {
 	return &RegionReader{fs: fs, chunkDecoder: decoder}
 }
 
-func (svc *RegionReader) Run(input string, bounds model.Bounds) ([]model.Block, error) {
+func (svc *RegionReader) Run(input string, bounds model.Bounds) ([]model.RawBlock, error) {
 	files, err := svc.listRegionFiles(input)
 	if err != nil {
 		return nil, fmt.Errorf("list region files: %w", err)
 	}
 
-	var blocks []model.Block
+	var blocks []model.RawBlock
 	for _, name := range files {
 		rx, rz := svc.parseRegionCoord(name)
 
@@ -64,14 +64,14 @@ func (svc *RegionReader) listRegionFiles(input string) ([]string, error) {
 	return files, nil
 }
 
-func (svc *RegionReader) processRegion(input, name string, rx, rz int, bounds model.Bounds) []model.Block {
+func (svc *RegionReader) processRegion(input, name string, rx, rz int, bounds model.Bounds) []model.RawBlock {
 	r, err := region.Open(filepath.Join(input, name))
 	if err != nil {
 		return nil
 	}
 	defer r.Close()
 
-	var blocks []model.Block
+	var blocks []model.RawBlock
 	for lx := 0; lx < 32; lx++ {
 		for lz := 0; lz < 32; lz++ {
 			if !r.ExistSector(lx, lz) {
@@ -93,7 +93,7 @@ func (svc *RegionReader) processRegion(input, name string, rx, rz int, bounds mo
 	return blocks
 }
 
-func (svc *RegionReader) processChunk(r *region.Region, lx, lz, chunkX, chunkZ int, bounds model.Bounds) []model.Block {
+func (svc *RegionReader) processChunk(r *region.Region, lx, lz, chunkX, chunkZ int, bounds model.Bounds) []model.RawBlock {
 	data, err := r.ReadSector(lx, lz)
 	if err != nil {
 		return nil
