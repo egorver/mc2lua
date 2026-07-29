@@ -10,29 +10,29 @@ type blockstateParser interface {
 	Run(ns, blockID string, props map[string]string, namespaces map[string][]string) ([]blockstateMatch, error)
 }
 
-type modelAnalyzer interface {
-	Run(elements []model.ModelElement) bool
-}
-
 type modelParser interface {
 	Run(modelName string, namespaces map[string][]string) (*flattenedModel, error)
 }
 
+type textureResolver interface {
+	Run(textures map[string]string) map[string]string
+}
+
 type BlockResolver struct {
 	blockstateParser blockstateParser
-	modelAnalyzer    modelAnalyzer
 	modelParser      modelParser
+	textureResolver  textureResolver
 }
 
 func NewBlockResolver(
 	blockstateParser blockstateParser,
-	modelAnalyzer modelAnalyzer,
 	modelParser modelParser,
+	textureResolver textureResolver,
 ) *BlockResolver {
 	return &BlockResolver{
 		blockstateParser: blockstateParser,
-		modelAnalyzer:    modelAnalyzer,
 		modelParser:      modelParser,
+		textureResolver:  textureResolver,
 	}
 }
 
@@ -51,13 +51,19 @@ func (svc *BlockResolver) Run(id string, props map[string]string, namespaces map
 		return nil, fmt.Errorf("no elements found for block %s", id)
 	}
 
-	isFullBlock := svc.modelAnalyzer.Run(fm.Elements)
+	textures := svc.textureResolver.Run(fm.Textures)
 
 	return &model.ResolvedBlock{
-		IsFullBlock: isFullBlock,
-		Elements:    fm.Elements,
-		Textures:    fm.Textures,
+		Elements: fm.Elements,
+		Textures: textures,
 	}, nil
+}
+
+func (svc *BlockResolver) splitBlockID(id string) (namespace, blockID string) {
+	if parts := strings.SplitN(id, ":", 2); len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return "minecraft", id
 }
 
 func (svc *BlockResolver) resolveFlattened(matches []blockstateMatch, namespaces map[string][]string) *flattenedModel {
@@ -75,11 +81,4 @@ func (svc *BlockResolver) resolveFlattened(matches []blockstateMatch, namespaces
 		result.merge(fm)
 	}
 	return result
-}
-
-func (svc *BlockResolver) splitBlockID(id string) (namespace, blockID string) {
-	if parts := strings.SplitN(id, ":", 2); len(parts) == 2 {
-		return parts[0], parts[1]
-	}
-	return "minecraft", id
 }

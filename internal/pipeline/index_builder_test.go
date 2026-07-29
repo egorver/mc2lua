@@ -29,8 +29,8 @@ func TestIndexBuilder_New(t *testing.T) {
 func TestIndexBuilder_Run(t *testing.T) {
 	t.Parallel()
 
-	resolvedStone := &model.ResolvedBlock{IsFullBlock: true}
-	resolvedFence := &model.ResolvedBlock{IsFullBlock: false}
+	resolvedStone := &model.ResolvedBlock{}
+	resolvedFence := &model.ResolvedBlock{}
 	errResolve := errors.New("resolve failed")
 
 	tests := []struct {
@@ -81,12 +81,10 @@ func TestIndexBuilder_Run(t *testing.T) {
 				return resolvedFence, nil
 			},
 			wantCheck: func(t *testing.T, idx *index.BlockIndex) {
-				v1, ok := idx.Get("minecraft:stone", "")
+				_, ok := idx.Get("minecraft:stone", "")
 				require.True(t, ok)
-				require.True(t, v1.IsFullBlock)
-				v2, ok := idx.Get("minecraft:oak_fence", "")
+				_, ok = idx.Get("minecraft:oak_fence", "")
 				require.True(t, ok)
-				require.False(t, v2.IsFullBlock)
 			},
 		},
 		{
@@ -154,7 +152,7 @@ func TestIndexBuilder_Run(t *testing.T) {
 				{ID: "minecraft:dirt"},
 			},
 			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
-				return &model.ResolvedBlock{IsFullBlock: true}, nil
+				return &model.ResolvedBlock{}, nil
 			},
 			resolveCallCount: 2,
 			wantCheck: func(t *testing.T, idx *index.BlockIndex) {
@@ -169,15 +167,13 @@ func TestIndexBuilder_Run(t *testing.T) {
 				{ID: "minecraft:stone", Props: map[string]string{"variant": "granite"}},
 			},
 			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
-				return &model.ResolvedBlock{IsFullBlock: true}, nil
+				return &model.ResolvedBlock{}, nil
 			},
 			wantCheck: func(t *testing.T, idx *index.BlockIndex) {
-				v, ok := idx.Get("minecraft:stone", "variant=andesite")
+				_, ok := idx.Get("minecraft:stone", "variant=andesite")
 				require.True(t, ok)
-				require.True(t, v.IsFullBlock)
-				v, ok = idx.Get("minecraft:stone", "variant=granite")
+				_, ok = idx.Get("minecraft:stone", "variant=granite")
 				require.True(t, ok)
-				require.True(t, v.IsFullBlock)
 			},
 		},
 	}

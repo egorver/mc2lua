@@ -16,19 +16,18 @@ func TestNewBlockIndex(t *testing.T) {
 func TestBlockIndexAddAndGet(t *testing.T) {
 	idx := NewBlockIndex()
 
-	idx.Add("minecraft:stone", "", &model.ResolvedBlock{IsFullBlock: true})
-	idx.Add("minecraft:oak_fence", "water=true", &model.ResolvedBlock{IsFullBlock: false})
+	idx.Add("minecraft:stone", "", &model.ResolvedBlock{})
+	idx.Add("minecraft:oak_fence", "water=true", &model.ResolvedBlock{})
 
 	tests := []struct {
 		name      string
 		id        string
 		props     string
 		wantBlock bool
-		wantFull  bool
 		wantOk    bool
 	}{
-		{name: "existing key no props", id: "minecraft:stone", props: "", wantBlock: true, wantFull: true, wantOk: true},
-		{name: "existing key with props", id: "minecraft:oak_fence", props: "water=true", wantBlock: true, wantFull: false, wantOk: true},
+		{name: "existing key no props", id: "minecraft:stone", props: "", wantBlock: true, wantOk: true},
+		{name: "existing key with props", id: "minecraft:oak_fence", props: "water=true", wantBlock: true, wantOk: true},
 		{name: "non-existing key", id: "minecraft:air", props: "", wantBlock: false, wantOk: false},
 		{name: "non-existing props", id: "minecraft:stone", props: "variant=andesite", wantBlock: false, wantOk: false},
 		{name: "wrong ID", id: "stone", props: "", wantBlock: false, wantOk: false},
@@ -39,7 +38,6 @@ func TestBlockIndexAddAndGet(t *testing.T) {
 			require.Equal(t, tt.wantOk, ok)
 			if tt.wantOk {
 				require.NotNil(t, got)
-				require.Equal(t, tt.wantFull, got.IsFullBlock)
 			} else {
 				require.Nil(t, got)
 			}
@@ -62,12 +60,11 @@ func TestBlockIndex_Add_NilResolved_DoesNotPanic(t *testing.T) {
 
 func TestBlockIndexGetWithColonInProperties(t *testing.T) {
 	idx := NewBlockIndex()
-	idx.Add("minecraft:stone", "mod:variant", &model.ResolvedBlock{IsFullBlock: true})
+	idx.Add("minecraft:stone", "mod:variant", &model.ResolvedBlock{})
 
 	got, ok := idx.Get("minecraft:stone", "mod:variant")
 	require.True(t, ok)
 	require.NotNil(t, got)
-	require.True(t, got.IsFullBlock)
 }
 
 func TestBlockIndex_Len(t *testing.T) {

@@ -25,12 +25,12 @@ func (m *mockModelParser) Run(modelName string, namespaces map[string][]string) 
 	return m.runFn(modelName, namespaces)
 }
 
-type mockModelAnalyzer struct {
-	runFn func(elements []model.ModelElement) bool
+type mockTextureResolver struct {
+	runFn func(textures map[string]string) map[string]string
 }
 
-func (m *mockModelAnalyzer) Run(elements []model.ModelElement) bool {
-	return m.runFn(elements)
+func (m *mockTextureResolver) Run(textures map[string]string) map[string]string {
+	return m.runFn(textures)
 }
 
 func TestBlockResolver_SplitBlockID(t *testing.T) {
@@ -74,7 +74,6 @@ func TestBlockResolver_Run(t *testing.T) {
 		props      map[string]string
 		bspFn      func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error)
 		mpFn       func(_ string, _ map[string][]string) (*flattenedModel, error)
-		maFn       func(_ []model.ModelElement) bool
 		wantErr    string
 		wantModels int
 	}{
@@ -106,7 +105,6 @@ func TestBlockResolver_Run(t *testing.T) {
 			mpFn: func(_ string, _ map[string][]string) (*flattenedModel, error) {
 				return &flattenedModel{Elements: []model.ModelElement{{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true}}}, nil
 			},
-			maFn:       func(_ []model.ModelElement) bool { return true },
 			wantModels: 1,
 		},
 	}
@@ -126,9 +124,13 @@ func TestBlockResolver_Run(t *testing.T) {
 				callCount++
 				return mpFn(name, ns)
 			}}
-			mockMA := &mockModelAnalyzer{runFn: tt.maFn}
+			mockTR := &mockTextureResolver{
+				runFn: func(textures map[string]string) map[string]string {
+					return textures
+				},
+			}
 
-			svc := NewBlockResolver(mockBSP, mockMA, mockMP)
+			svc := NewBlockResolver(mockBSP, mockMP, mockTR)
 			resolved, err := svc.Run(tt.id, tt.props, nil)
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
@@ -238,5 +240,3 @@ func TestBlockResolver_ResolveElements(t *testing.T) {
 		})
 	}
 }
-
-

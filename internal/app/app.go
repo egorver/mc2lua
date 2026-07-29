@@ -42,9 +42,10 @@ func buildDeps() *pipeline.Runner {
 	chunkDecoder := minecraft.NewChunkDecoder()
 	assetScanner := minecraft.NewAssetScanner(fs)
 	blockstateParser := minecraft.NewBlockstateParser(fs)
-	modelAnalyzer := minecraft.NewModelAnalyzer()
+	// modelAnalyzer := minecraft.NewModelAnalyzer()
 	modelParser := minecraft.NewModelParser(fs)
-	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelAnalyzer, modelParser)
+	textureResolver := minecraft.NewTextureResolver()
+	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelParser, textureResolver)
 
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
 	coordNormalizer := pipeline.NewCoordNormalizer()

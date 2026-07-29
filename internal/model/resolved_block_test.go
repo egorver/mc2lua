@@ -120,32 +120,29 @@ func TestResolvedBlock(t *testing.T) {
 	tests := []struct {
 		name      string
 		block     ResolvedBlock
-		wantFull  bool
 		wantElems int
 	}{
 		{name: "zero value"},
 		{
-			name: "full block", block: ResolvedBlock{IsFullBlock: true, Elements: []ModelElement{{}}},
-			wantFull: true, wantElems: 1,
+			name: "full block", block: ResolvedBlock{Elements: []ModelElement{{}}},
+			wantElems: 1,
 		},
 		{
-			name: "not full block", block: ResolvedBlock{IsFullBlock: false, Elements: []ModelElement{{}, {}}},
+			name: "not full block", block: ResolvedBlock{Elements: []ModelElement{{}, {}}},
 			wantElems: 2,
 		},
 		{
 			name: "with textures",
 			block: ResolvedBlock{
-				IsFullBlock: true,
-				Elements:    []ModelElement{{}},
-				Textures:    map[string]string{"#all": "block/stone"},
+				Elements: []ModelElement{{}},
+				Textures: map[string]string{"#all": "block/stone"},
 			},
-			wantFull: true, wantElems: 1,
+			wantElems: 1,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tt.wantFull, tt.block.IsFullBlock)
 			require.Len(t, tt.block.Elements, tt.wantElems)
 		})
 	}
