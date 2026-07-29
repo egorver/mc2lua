@@ -2,22 +2,24 @@ package pipeline
 
 import (
 	"fmt"
-	"math/bits"
 	"path/filepath"
 
 	"mc2lua/internal/model"
 
-	"github.com/Tnze/go-mc/level"
-	"github.com/Tnze/go-mc/save"
 	"github.com/Tnze/go-mc/save/region"
 )
 
-type RegionReader struct {
-	fs fsApi
+type chunkDecoder interface {
+	Run(data []byte, chunkX, chunkZ int) ([]model.Block, error)
 }
 
-func NewRegionReader(fs fsApi) *RegionReader {
-	return &RegionReader{fs: fs}
+type RegionReader struct {
+	fs           fsApi
+	chunkDecoder chunkDecoder
+}
+
+func NewRegionReader(fs fsApi, decoder chunkDecoder) *RegionReader {
+	return &RegionReader{fs: fs, chunkDecoder: decoder}
 }
 
 func (svc *RegionReader) Run(input string, bounds model.Bounds) ([]model.Block, error) {
@@ -97,97 +99,20 @@ func (svc *RegionReader) processChunk(r *region.Region, lx, lz, chunkX, chunkZ i
 		return nil
 	}
 
-	var sc save.Chunk
-	if err := sc.Load(data); err != nil {
+	blocks, err := svc.chunkDecoder.Run(data, chunkX, chunkZ)
+	if err != nil {
 		return nil
 	}
 
-	if sc.Status != "full" && sc.Status != "minecraft:full" {
-		return nil
-	}
-
-	var blocks []model.Block
-	for _, ssec := range sc.Sections {
-		sectionBlocks := svc.processSection(ssec, chunkX, chunkZ, bounds)
-		blocks = append(blocks, sectionBlocks...)
-	}
-	return blocks
-}
-
-func (svc *RegionReader) processSection(ssec save.Section, chunkX, chunkZ int, bounds model.Bounds) []model.Block {
-	if len(ssec.BlockStates.Palette) == 0 {
-		return nil
-	}
-
-	baseY := int(ssec.Y) * 16
-	if !svc.rangeOverlap(baseY, baseY+15, bounds.YMin, bounds.YMax) {
-		return nil
-	}
-
-	bs := svc.newBitStorage(len(ssec.BlockStates.Palette), ssec.BlockStates.Data)
-	palette := ssec.BlockStates.Palette
-
-	var blocks []model.Block
-	for j := 0; j < 4096; j++ {
-		block := svc.decodeBlock(bs, j, palette, chunkX, chunkZ, baseY, bounds)
-		if block != nil {
-			blocks = append(blocks, *block)
+	filtered := blocks[:0]
+	for _, b := range blocks {
+		if b.X >= bounds.XMin && b.X <= bounds.XMax &&
+			b.Y >= bounds.YMin && b.Y <= bounds.YMax &&
+			b.Z >= bounds.ZMin && b.Z <= bounds.ZMax {
+			filtered = append(filtered, b)
 		}
 	}
-	return blocks
-}
-
-func (svc *RegionReader) newBitStorage(palSize int, data []uint64) *level.BitStorage {
-	if palSize <= 1 {
-		return level.NewBitStorage(0, 4096, nil)
-	}
-	bitsPerEntry := bits.Len(uint(palSize - 1)) //nolint:gosec
-	if bitsPerEntry < 4 {
-		bitsPerEntry = 4
-	}
-	return level.NewBitStorage(bitsPerEntry, 4096, data)
-}
-
-func (svc *RegionReader) decodeBlock(bs *level.BitStorage, j int, palette []save.BlockState, chunkX, chunkZ, baseY int, bounds model.Bounds) *model.Block {
-	idx := bs.Get(j)
-	if idx >= len(palette) {
-		return nil
-	}
-
-	blockName := palette[idx].Name
-	if blockName == "minecraft:air" || blockName == "minecraft:cave_air" || blockName == "minecraft:void_air" {
-		return nil
-	}
-
-	var props map[string]string
-	if p := palette[idx].Properties; p.Type != 0 {
-		var m map[string]string
-		if err := p.Unmarshal(&m); err == nil && len(m) > 0 {
-			props = m
-		}
-	}
-
-	x := j & 15
-	z := (j >> 4) & 15
-	y := j >> 8
-
-	worldX := chunkX*16 + x
-	worldY := baseY + y
-	worldZ := chunkZ*16 + z
-
-	if worldX < bounds.XMin || worldX > bounds.XMax ||
-		worldY < bounds.YMin || worldY > bounds.YMax ||
-		worldZ < bounds.ZMin || worldZ > bounds.ZMax {
-		return nil
-	}
-
-	return &model.Block{
-		ID:    blockName,
-		Props: props,
-		X:     worldX,
-		Y:     worldY,
-		Z:     worldZ,
-	}
+	return filtered
 }
 
 func (svc *RegionReader) parseRegionCoord(name string) (int, int) {

@@ -9,15 +9,15 @@ import (
 	"mc2lua/internal/model"
 )
 
-type builderBlockResolver interface {
+type blockResolver interface {
 	Run(id, props string) (*model.ResolvedBlock, error)
 }
 
 type IndexBuilder struct {
-	blockResolver builderBlockResolver
+	blockResolver blockResolver
 }
 
-func NewIndexBuilder(br builderBlockResolver) *IndexBuilder {
+func NewIndexBuilder(br blockResolver) *IndexBuilder {
 	return &IndexBuilder{blockResolver: br}
 }
 

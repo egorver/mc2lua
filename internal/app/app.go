@@ -36,9 +36,11 @@ func buildConfig(cfg AppConfig) pipeline.RunConfig {
 func buildDeps() *pipeline.Runner {
 	fs := runtime.NewFS()
 
-	regionReader := pipeline.NewRegionReader(fs)
-	coordNormalizer := pipeline.NewCoordNormalizer()
+	chunkDecoder := minecraft.NewChunkDecoder()
 	blockResolver := minecraft.NewBlockResolver()
+
+	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
+	coordNormalizer := pipeline.NewCoordNormalizer()
 	indexBuilder := pipeline.NewIndexBuilder(blockResolver)
 
 	return pipeline.NewRunner(regionReader, coordNormalizer, indexBuilder)
