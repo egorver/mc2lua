@@ -27,7 +27,7 @@ func TestFS_Create_Error(t *testing.T) {
 			path: func() string {
 				tmp := t.TempDir()
 				fpath := filepath.Join(tmp, "file")
-				require.NoError(t, os.WriteFile(fpath, []byte("x"), 0644))
+				require.NoError(t, os.WriteFile(fpath, []byte("x"), 0600))
 				return filepath.Join(fpath, "sub", "created.txt")
 			}(),
 		},
@@ -50,7 +50,7 @@ func TestFS_ReadFile(t *testing.T) {
 	f := NewFS()
 	td := t.TempDir()
 	fn := td + string(os.PathSeparator) + "readfile_test.txt"
-	err := os.WriteFile(fn, []byte("readfile content"), 0644)
+	err := os.WriteFile(fn, []byte("readfile content"), 0600)
 	require.NoError(t, err)
 
 	b, err := f.ReadFile(fn)
@@ -88,7 +88,7 @@ func TestFS_ReadDir(t *testing.T) {
 			name: "mixed files and subdirs",
 			setup: func(t *testing.T) string {
 				td := t.TempDir()
-				require.NoError(t, os.WriteFile(filepath.Join(td, "a.txt"), []byte("a"), 0644))
+				require.NoError(t, os.WriteFile(filepath.Join(td, "a.txt"), []byte("a"), 0600))
 				require.NoError(t, os.MkdirAll(filepath.Join(td, "sub"), 0755))
 				return td
 			},
@@ -112,7 +112,7 @@ func TestFS_ReadDir(t *testing.T) {
 			name: "path is file",
 			setup: func(t *testing.T) string {
 				fn := filepath.Join(t.TempDir(), "file.txt")
-				require.NoError(t, os.WriteFile(fn, []byte("x"), 0644))
+				require.NoError(t, os.WriteFile(fn, []byte("x"), 0600))
 				return fn
 			},
 			wantErr: true,

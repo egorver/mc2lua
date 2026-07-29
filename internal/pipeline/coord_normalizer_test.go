@@ -3,9 +3,9 @@ package pipeline
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"mc2lua/internal/model"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCoordNormalizer_Run(t *testing.T) {
@@ -19,13 +19,13 @@ func TestCoordNormalizer_Run(t *testing.T) {
 		wantErr    bool
 	}{
 		{
-			name:     "empty blocks",
-			blocks:   nil,
+			name:    "empty blocks",
+			blocks:  nil,
 			wantErr: true,
 		},
 		{
-			name:     "empty blocks slice",
-			blocks:   []model.Block{},
+			name:    "empty blocks slice",
+			blocks:  []model.Block{},
 			wantErr: true,
 		},
 		{
@@ -179,11 +179,11 @@ func TestCoordNormalizer_Run(t *testing.T) {
 		{
 			name: "preserves properties map",
 			blocks: []model.Block{
-				{ID: "minecraft:oak_log", Properties: map[string]string{"axis": "y"}, X: 10, Y: 5, Z: 20},
+				{ID: "minecraft:oak_log", Props: map[string]string{"axis": "y"}, X: 10, Y: 5, Z: 20},
 			},
 			noOffset: false,
 			wantBlocks: []model.Block{
-				{ID: "minecraft:oak_log", Properties: map[string]string{"axis": "y"}, X: 0, Y: 0, Z: 0},
+				{ID: "minecraft:oak_log", Props: map[string]string{"axis": "y"}, X: 0, Y: 0, Z: 0},
 			},
 		},
 		{
@@ -273,6 +273,179 @@ func TestCoordNormalizer_Run_ResultNotAliasingInput(t *testing.T) {
 
 	result[0].X = 999
 	require.Equal(t, 10, input[0].X, "modifying result must not affect input")
+}
+
+func TestComputeMinCoords(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		blocks       []model.Block
+		wantMinX, wantMinY, wantMinZ int
+	}{
+		{
+			name:   "single block",
+			blocks: []model.Block{{X: 10, Y: 5, Z: 20}},
+			wantMinX: 10, wantMinY: 5, wantMinZ: 20,
+		},
+		{
+			name: "multiple blocks",
+			blocks: []model.Block{
+				{X: 10, Y: 5, Z: 20},
+				{X: -3, Y: 8, Z: 15},
+				{X: 7, Y: -2, Z: 30},
+			},
+			wantMinX: -3, wantMinY: -2, wantMinZ: 15,
+		},
+		{
+			name: "all negative coords",
+			blocks: []model.Block{
+				{X: -10, Y: -5, Z: -20},
+				{X: -3, Y: -8, Z: -15},
+			},
+			wantMinX: -10, wantMinY: -8, wantMinZ: -20,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			minX, minY, minZ := computeMinCoords(tt.blocks)
+			require.Equal(t, tt.wantMinX, minX)
+			require.Equal(t, tt.wantMinY, minY)
+			require.Equal(t, tt.wantMinZ, minZ)
+		})
+	}
+}
+
+func TestComputeOffsets(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                 string
+		minX, minY, minZ     int
+		noOffset             bool
+		wantXOff, wantYOff, wantZOff int
+	}{
+		{
+			name:     "positive coords without noOffset",
+			minX: 10, minY: 5, minZ: 20,
+			noOffset:     false,
+			wantXOff: -10, wantYOff: -5, wantZOff: -20,
+		},
+		{
+			name:     "negative coords without noOffset",
+			minX: -10, minY: -5, minZ: -20,
+			noOffset:     false,
+			wantXOff: 10, wantYOff: 5, wantZOff: 20,
+		},
+		{
+			name:     "positive coords with noOffset",
+			minX: 10, minY: 5, minZ: 20,
+			noOffset:     true,
+			wantXOff: -10, wantYOff: 0, wantZOff: -20,
+		},
+		{
+			name:     "negative coords with noOffset",
+			minX: -10, minY: -5, minZ: -20,
+			noOffset:     true,
+			wantXOff: 10, wantYOff: 0, wantZOff: 20,
+		},
+		{
+			name:     "minY=0 without noOffset keeps Y offset zero",
+			minX: 10, minY: 0, minZ: 20,
+			noOffset:     false,
+			wantXOff: -10, wantYOff: 0, wantZOff: -20,
+		},
+		{
+			name:     "minY=0 with noOffset keeps Y offset zero",
+			minX: 10, minY: 0, minZ: 20,
+			noOffset:     true,
+			wantXOff: -10, wantYOff: 0, wantZOff: -20,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			xOff, yOff, zOff := computeOffsets(tt.minX, tt.minY, tt.minZ, tt.noOffset)
+			require.Equal(t, tt.wantXOff, xOff)
+			require.Equal(t, tt.wantYOff, yOff)
+			require.Equal(t, tt.wantZOff, zOff)
+		})
+	}
+}
+
+func TestApplyOffset(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		blocks     []model.Block
+		xOff, yOff, zOff int
+		want       []model.Block
+	}{
+		{
+			name:   "zero offset",
+			blocks: []model.Block{{ID: "stone", X: 10, Y: 5, Z: 20}},
+			want:   []model.Block{{ID: "stone", X: 10, Y: 5, Z: 20}},
+		},
+		{
+			name:   "positive offset",
+			blocks: []model.Block{{ID: "stone", X: 10, Y: 5, Z: 20}},
+			xOff: 5, yOff: 3, zOff: 7,
+			want: []model.Block{{ID: "stone", X: 15, Y: 8, Z: 27}},
+		},
+		{
+			name:   "negative offset",
+			blocks: []model.Block{{ID: "stone", X: 10, Y: 5, Z: 20}},
+			xOff: -10, yOff: -5, zOff: -20,
+			want: []model.Block{{ID: "stone", X: 0, Y: 0, Z: 0}},
+		},
+		{
+			name: "multiple blocks",
+			blocks: []model.Block{
+				{ID: "stone", X: 10, Y: 5, Z: 20},
+				{ID: "dirt", X: 15, Y: 8, Z: 25},
+			},
+			xOff: -10, yOff: -5, zOff: -20,
+			want: []model.Block{
+				{ID: "stone", X: 0, Y: 0, Z: 0},
+				{ID: "dirt", X: 5, Y: 3, Z: 5},
+			},
+		},
+		{
+			name: "preserves props",
+			blocks: []model.Block{
+				{ID: "oak_log", Props: map[string]string{"axis": "y"}, X: 10, Y: 5, Z: 20},
+			},
+			xOff: -10, yOff: -5, zOff: -20,
+			want: []model.Block{
+				{ID: "oak_log", Props: map[string]string{"axis": "y"}, X: 0, Y: 0, Z: 0},
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := applyOffset(tt.blocks, tt.xOff, tt.yOff, tt.zOff)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestApplyOffset_Immutability(t *testing.T) {
+	t.Parallel()
+
+	original := []model.Block{
+		{ID: "stone", X: 10, Y: 5, Z: 20},
+	}
+	input := make([]model.Block, len(original))
+	copy(input, original)
+
+	_ = applyOffset(input, -10, -5, -20)
+	require.Equal(t, original, input, "input must not be modified")
 }
 
 func copyBlocks(blocks []model.Block) []model.Block {

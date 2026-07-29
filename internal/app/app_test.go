@@ -4,10 +4,10 @@ import (
 	"math"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"mc2lua/internal/model"
 	"mc2lua/internal/pipeline"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
@@ -15,6 +15,23 @@ func TestNew(t *testing.T) {
 
 	a := New()
 	require.NotNil(t, a)
+}
+
+func TestBuildDeps(t *testing.T) {
+	t.Parallel()
+
+	r := buildDeps()
+	require.NotNil(t, r)
+}
+
+func TestApp_Run_WithNonExistentInput_ReturnsError(t *testing.T) {
+	t.Parallel()
+
+	a := New()
+	err := a.Run(AppConfig{
+		Input: t.TempDir() + "nonexistent",
+	})
+	require.Error(t, err)
 }
 
 func TestBuildConfig(t *testing.T) {

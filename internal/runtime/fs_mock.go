@@ -103,7 +103,7 @@ type mockFSWriter struct {
 }
 
 func (w *mockFSWriter) Write(p []byte) (int, error) { return w.buf.Write(p) }
-func (w *mockFSWriter) Close() error                 { return nil }
+func (w *mockFSWriter) Close() error                { return nil }
 
 type dirEntry struct {
 	name string

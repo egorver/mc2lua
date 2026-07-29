@@ -5,11 +5,11 @@ import (
 	"math/bits"
 	"path/filepath"
 
+	"mc2lua/internal/model"
+
 	"github.com/Tnze/go-mc/level"
 	"github.com/Tnze/go-mc/save"
 	"github.com/Tnze/go-mc/save/region"
-
-	"mc2lua/internal/model"
 )
 
 type RegionReader struct {
@@ -138,10 +138,10 @@ func (svc *RegionReader) processSection(ssec save.Section, chunkX, chunkZ int, b
 }
 
 func (svc *RegionReader) newBitStorage(palSize int, data []uint64) *level.BitStorage {
-	if palSize == 1 {
+	if palSize <= 1 {
 		return level.NewBitStorage(0, 4096, nil)
 	}
-	bitsPerEntry := bits.Len(uint(palSize - 1))
+	bitsPerEntry := bits.Len(uint(palSize - 1)) //nolint:gosec
 	if bitsPerEntry < 4 {
 		bitsPerEntry = 4
 	}
@@ -182,17 +182,17 @@ func (svc *RegionReader) decodeBlock(bs *level.BitStorage, j int, palette []save
 	}
 
 	return &model.Block{
-		ID:         blockName,
-		Properties: props,
-		X:          worldX,
-		Y:          worldY,
-		Z:          worldZ,
+		ID:    blockName,
+		Props: props,
+		X:     worldX,
+		Y:     worldY,
+		Z:     worldZ,
 	}
 }
 
 func (svc *RegionReader) parseRegionCoord(name string) (int, int) {
 	var rx, rz int
-	fmt.Sscanf(name, "r.%d.%d.mca", &rx, &rz)
+	_, _ = fmt.Sscanf(name, "r.%d.%d.mca", &rx, &rz)
 	return rx, rz
 }
 

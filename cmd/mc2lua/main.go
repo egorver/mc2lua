@@ -31,16 +31,16 @@ func main() {
 	}
 
 	cfg := app.AppConfig{
-		Input:  *inputPath,
-		Output: *outputPath,
-		Scale:  *scale,
+		Input:    *inputPath,
+		Output:   *outputPath,
+		Scale:    *scale,
 		NoOffset: *noOffset,
-		XMin:   *xmin,
-		XMax:   *xmax,
-		YMin:   *ymin,
-		YMax:   *ymax,
-		ZMin:   *zmin,
-		ZMax:   *zmax,
+		XMin:     *xmin,
+		XMax:     *xmax,
+		YMin:     *ymin,
+		YMax:     *ymax,
+		ZMin:     *zmin,
+		ZMax:     *zmax,
 	}
 
 	if err := app.New().Run(cfg); err != nil {

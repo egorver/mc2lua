@@ -1,6 +1,7 @@
 package app
 
 import (
+	"mc2lua/internal/minecraft"
 	"mc2lua/internal/model"
 	"mc2lua/internal/pipeline"
 	"mc2lua/internal/runtime"
@@ -37,6 +38,8 @@ func buildDeps() *pipeline.Runner {
 
 	regionReader := pipeline.NewRegionReader(fs)
 	coordNormalizer := pipeline.NewCoordNormalizer()
+	blockResolver := minecraft.NewBlockResolver()
+	indexBuilder := pipeline.NewIndexBuilder(blockResolver)
 
-	return pipeline.NewRunner(regionReader, coordNormalizer)
+	return pipeline.NewRunner(regionReader, coordNormalizer, indexBuilder)
 }

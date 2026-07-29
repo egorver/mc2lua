@@ -3,6 +3,7 @@ package pipeline
 import (
 	"fmt"
 
+	"mc2lua/internal/index"
 	"mc2lua/internal/model"
 )
 
@@ -14,18 +15,25 @@ type coordNormalizer interface {
 	Run(blocks []model.Block, noOffset bool) ([]model.Block, error)
 }
 
+type indexBuilder interface {
+	Run(blocks []model.Block) (*index.BlockIndex, error)
+}
+
 type Runner struct {
 	regionReader    regionReader
 	coordNormalizer coordNormalizer
+	indexBuilder    indexBuilder
 }
 
 func NewRunner(
 	rr regionReader,
 	cn coordNormalizer,
+	ib indexBuilder,
 ) *Runner {
 	return &Runner{
 		regionReader:    rr,
 		coordNormalizer: cn,
+		indexBuilder:    ib,
 	}
 }
 
@@ -48,6 +56,10 @@ func (svc *Runner) Run(cfg RunConfig) error {
 		return fmt.Errorf("normalize coords: %w", err)
 	}
 
-	_ = blocks
+	_, err = svc.indexBuilder.Run(blocks)
+	if err != nil {
+		return fmt.Errorf("build index: %w", err)
+	}
+
 	return nil
 }

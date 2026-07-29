@@ -11,7 +11,6 @@ import (
 )
 
 var (
-	errBoom     = errors.New("boom")
 	errCreate   = errors.New("create fail")
 	errReadDir  = errors.New("readdir fail")
 	errReadFile = errors.New("read fail")
@@ -226,6 +225,23 @@ func TestFSMock_ReadFile(t *testing.T) {
 			require.Equal(t, tc.want, string(data))
 		})
 	}
+}
+
+func TestFSMock_Create_Overwrite(t *testing.T) {
+	t.Parallel()
+
+	m := NewFSMock()
+	m.AddFile("/existing.txt", []byte("original"), 0644)
+
+	w, err := m.Create("/existing.txt")
+	require.NoError(t, err)
+	_, err = w.Write([]byte("overwritten"))
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+
+	data, err := m.ReadFile("/existing.txt")
+	require.NoError(t, err)
+	require.Equal(t, "overwritten", string(data))
 }
 
 func TestFSMock_CallsRecording(t *testing.T) {

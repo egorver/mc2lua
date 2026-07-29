@@ -4,9 +4,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
+	"mc2lua/internal/index"
 	"mc2lua/internal/model"
+
+	"github.com/stretchr/testify/require"
 )
 
 type mockRegionReader struct {
@@ -25,12 +26,24 @@ func (m *mockCoordNormalizer) Run(blocks []model.Block, noOffset bool) ([]model.
 	return m.runFn(blocks, noOffset)
 }
 
+type mockIndexBuilder struct {
+	runFn func(blocks []model.Block) (*index.BlockIndex, error)
+}
+
+func (m *mockIndexBuilder) Run(blocks []model.Block) (*index.BlockIndex, error) {
+	if m.runFn != nil {
+		return m.runFn(blocks)
+	}
+	return index.NewBlockIndex(), nil
+}
+
 func TestRunner_New(t *testing.T) {
 	t.Parallel()
 
 	mockRR := &mockRegionReader{}
 	mockCN := &mockCoordNormalizer{}
-	r := NewRunner(mockRR, mockCN)
+	mockIB := &mockIndexBuilder{}
+	r := NewRunner(mockRR, mockCN, mockIB)
 	require.NotNil(t, r)
 }
 
@@ -41,11 +54,11 @@ func TestRunner_Run(t *testing.T) {
 	errNormalize := errors.New("normalize error")
 
 	tests := []struct {
-		name            string
-		mockRun         func(input string, bounds model.Bounds) ([]model.Block, error)
-		mockNormalize   func(blocks []model.Block, noOffset bool) ([]model.Block, error)
-		wantErr         bool
-		wantErrMsg      string
+		name          string
+		mockRun       func(input string, bounds model.Bounds) ([]model.Block, error)
+		mockNormalize func(blocks []model.Block, noOffset bool) ([]model.Block, error)
+		wantErr       bool
+		wantErrMsg    string
 	}{
 		{
 			name: "success",
@@ -87,7 +100,8 @@ func TestRunner_Run(t *testing.T) {
 
 			mockRR := &mockRegionReader{runFn: tt.mockRun}
 			mockCN := &mockCoordNormalizer{runFn: tt.mockNormalize}
-			r := NewRunner(mockRR, mockCN)
+			mockIB := &mockIndexBuilder{}
+			r := NewRunner(mockRR, mockCN, mockIB)
 
 			err := r.Run(RunConfig{
 				Input:  "/test",

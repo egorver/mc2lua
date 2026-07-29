@@ -52,11 +52,11 @@ func applyOffset(blocks []model.Block, xOff, yOff, zOff int) []model.Block {
 	out := make([]model.Block, len(blocks))
 	for i, b := range blocks {
 		out[i] = model.Block{
-			ID:         b.ID,
-			Properties: b.Properties,
-			X:          b.X + xOff,
-			Y:          b.Y + yOff,
-			Z:          b.Z + zOff,
+			ID:    b.ID,
+			Props: b.Props,
+			X:     b.X + xOff,
+			Y:     b.Y + yOff,
+			Z:     b.Z + zOff,
 		}
 	}
 	return out
