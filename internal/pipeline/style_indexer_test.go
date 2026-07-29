@@ -3,6 +3,7 @@ package pipeline
 import (
 	"testing"
 
+	"mc2lua/internal/index"
 	"mc2lua/internal/model"
 
 	"github.com/stretchr/testify/require"
@@ -37,7 +38,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 		blocks    []model.ResolvedBlock
 		analyzer  func([]model.ModelElement) bool
 		wantLen   int
-		wantCheck func(t *testing.T, idx *model.StyleIndex)
+		wantCheck func(t *testing.T, idx *index.StyleIndex)
 	}{
 		{
 			name:    "empty input",
@@ -50,8 +51,8 @@ func TestStyleIndexer_Run(t *testing.T) {
 				{ID: "minecraft:stone", Elements: []model.ModelElement{fullBlock}},
 			},
 			analyzer: func(elements []model.ModelElement) bool { return true },
-			wantLen: 1,
-			wantCheck: func(t *testing.T, idx *model.StyleIndex) {
+			wantLen:  1,
+			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
 				b, ok := idx.Get("minecraft:stone", "")
 				require.True(t, ok)
 				require.True(t, b.IsFullBlock)
@@ -64,8 +65,8 @@ func TestStyleIndexer_Run(t *testing.T) {
 				{ID: "minecraft:oak_fence", PropsKey: "water=true", Elements: []model.ModelElement{halfBlock}},
 			},
 			analyzer: func(elements []model.ModelElement) bool { return false },
-			wantLen: 1,
-			wantCheck: func(t *testing.T, idx *model.StyleIndex) {
+			wantLen:  1,
+			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
 				b, ok := idx.Get("minecraft:oak_fence", "water=true")
 				require.True(t, ok)
 				require.False(t, b.IsFullBlock)
@@ -79,7 +80,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 				{ID: "minecraft:dirt", Elements: []model.ModelElement{fullBlock}},
 			},
 			analyzer: func(elements []model.ModelElement) bool { return true },
-			wantLen: 2,
+			wantLen:  2,
 		},
 		{
 			name: "element faces stripped in styled element",
@@ -97,8 +98,8 @@ func TestStyleIndexer_Run(t *testing.T) {
 				},
 			},
 			analyzer: func(elements []model.ModelElement) bool { return true },
-			wantLen: 1,
-			wantCheck: func(t *testing.T, idx *model.StyleIndex) {
+			wantLen:  1,
+			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
 				b, ok := idx.Get("minecraft:stone", "")
 				require.True(t, ok)
 				require.Len(t, b.Elements, 1)

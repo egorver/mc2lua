@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	"mc2lua/internal/index"
 	"mc2lua/internal/model"
 
 	"github.com/stretchr/testify/require"
@@ -49,14 +50,14 @@ func (m *mockCollector) Run(blocks []model.RawBlock, namespaces map[string][]str
 }
 
 type mockIndexer struct {
-	runFn func(blocks []model.ResolvedBlock) *model.StyleIndex
+	runFn func(blocks []model.ResolvedBlock) *index.StyleIndex
 }
 
-func (m *mockIndexer) Run(blocks []model.ResolvedBlock) *model.StyleIndex {
+func (m *mockIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 	if m.runFn != nil {
 		return m.runFn(blocks)
 	}
-	return model.NewStyleIndex()
+	return index.NewStyleIndex()
 }
 
 func TestRunner_New(t *testing.T) {

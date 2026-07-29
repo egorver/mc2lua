@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"mc2lua/internal/index"
 	"mc2lua/internal/model"
 )
 
@@ -26,7 +27,7 @@ type blockCollector interface {
 }
 
 type styleIndexer interface {
-	Run(blocks []model.ResolvedBlock) *model.StyleIndex
+	Run(blocks []model.ResolvedBlock) *index.StyleIndex
 }
 
 type Runner struct {

@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"mc2lua/internal/index"
 	"mc2lua/internal/model"
 )
 
@@ -16,8 +17,8 @@ func NewStyleIndexer(ma indexerModelAnalyzer) *StyleIndexer {
 	return &StyleIndexer{modelAnalyzer: ma}
 }
 
-func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *model.StyleIndex {
-	idx := model.NewStyleIndex()
+func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
+	idx := index.NewStyleIndex()
 
 	for _, b := range blocks {
 		isFullBlock := svc.modelAnalyzer.Run(b.Elements)
