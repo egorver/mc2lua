@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
@@ -30,6 +31,7 @@ type Runner struct {
 	coordNormalizer coordNormalizer
 	assetScanner    assetScanner
 	indexBuilder    indexBuilder
+	logOutput       io.Writer
 }
 
 func NewRunner(
@@ -37,12 +39,14 @@ func NewRunner(
 	cn coordNormalizer,
 	as assetScanner,
 	ib indexBuilder,
+	logOutput io.Writer,
 ) *Runner {
 	return &Runner{
 		regionReader:    rr,
 		coordNormalizer: cn,
 		assetScanner:    as,
 		indexBuilder:    ib,
+		logOutput:       logOutput,
 	}
 }
 
@@ -60,37 +64,50 @@ func (svc *Runner) Run(cfg RunConfig) error {
 	if err != nil {
 		return fmt.Errorf("read world: %w", err)
 	}
-	fmt.Printf("Read %d blocks\n", len(blocks))
+	svc.log("Read %d blocks\n", len(blocks))
 
 	blocks, err = svc.coordNormalizer.Run(blocks, cfg.NoOffset)
 	if err != nil {
 		return fmt.Errorf("normalize coords: %w", err)
 	}
-	fmt.Printf("Adjusted coordinates for %d blocks\n", len(blocks))
+	svc.log("Adjusted coordinates for %d blocks\n", len(blocks))
 
 	namespaces, err := svc.assetScanner.Run(cfg.AssetsDir)
 	if err != nil {
 		return fmt.Errorf("scan assets: %w", err)
 	}
-	nsNames := make([]string, 0, len(namespaces))
-	for ns := range namespaces {
-		nsNames = append(nsNames, ns)
-	}
-	fmt.Printf("Found %d namespace(s): %s\n", len(namespaces), strings.Join(nsNames, ", "))
+	svc.logNamespaces(namespaces)
 
 	idx, unresolvedErrs, err := svc.indexBuilder.Run(blocks, namespaces)
 	if err != nil {
 		return fmt.Errorf("build index: %w", err)
 	}
-	ids := make([]string, 0, len(unresolvedErrs))
-	for id := range unresolvedErrs {
+	svc.logUnresolved(unresolvedErrs)
+	svc.log("Built index: %d unique block variant(s)\n", idx.Len())
+
+	return nil
+}
+
+func (svc *Runner) log(format string, args ...any) {
+	fmt.Fprintf(svc.logOutput, format, args...)
+}
+
+func (svc *Runner) logNamespaces(namespaces map[string][]string) {
+	nsNames := make([]string, 0, len(namespaces))
+	for ns := range namespaces {
+		nsNames = append(nsNames, ns)
+	}
+	sort.Strings(nsNames)
+	svc.log("Found %d namespace(s): %s\n", len(namespaces), strings.Join(nsNames, ", "))
+}
+
+func (svc *Runner) logUnresolved(unresolved map[string]string) {
+	ids := make([]string, 0, len(unresolved))
+	for id := range unresolved {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
 	for _, id := range ids {
-		fmt.Printf("Warning: skipping %s: %s\n", id, unresolvedErrs[id])
+		svc.log("Warning: skipping %s: %s\n", id, unresolved[id])
 	}
-	fmt.Printf("Built index: %d unique block variant(s)\n", idx.Len())
-
-	return nil
 }

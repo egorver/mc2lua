@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"errors"
+	"io"
 	"testing"
 
 	"mc2lua/internal/index"
@@ -56,7 +57,7 @@ func TestRunner_New(t *testing.T) {
 	mockCN := &mockCoordNormalizer{}
 	mockAS := &mockAssetScanner{}
 	mockIB := &mockIndexBuilder{}
-	r := NewRunner(mockRR, mockCN, mockAS, mockIB)
+	r := NewRunner(mockRR, mockCN, mockAS, mockIB, io.Discard)
 	require.NotNil(t, r)
 }
 
@@ -151,7 +152,7 @@ func TestRunner_Run(t *testing.T) {
 			if tt.mockIndexBuild != nil {
 				mockIB.runFn = tt.mockIndexBuild
 			}
-			r := NewRunner(mockRR, mockCN, mockAS, mockIB)
+			r := NewRunner(mockRR, mockCN, mockAS, mockIB, io.Discard)
 
 			err := r.Run(RunConfig{
 				Input:     "/test",
