@@ -55,6 +55,12 @@ func (svc *ModelParser) flatten(modelName string, namespaces map[string][]string
 		Textures: raw.Textures,
 	})
 
+	if len(result.Elements) == 0 && len(result.Textures) > 0 {
+		result.Elements = []model.ModelElement{
+			{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true},
+		}
+	}
+
 	return result, nil
 }
 

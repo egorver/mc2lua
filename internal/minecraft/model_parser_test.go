@@ -53,10 +53,10 @@ func TestModelParserRun(t *testing.T) {
 			},
 		},
 		{
-			name:      "no elements model",
+			name:      "no elements model falls back to default",
 			modelName: "minecraft:block/leaves",
 			want: &flattenedModel{
-				Elements: nil,
+				Elements: []model.ModelElement{{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true}},
 				Textures: map[string]string{"particle": "block/stone"},
 			},
 		},

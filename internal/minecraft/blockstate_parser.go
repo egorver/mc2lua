@@ -31,10 +31,13 @@ func (svc *BlockstateParser) Run(ns, blockID string, props map[string]string, na
 	if err != nil {
 		return nil, err
 	}
-	if len(raw.Variants) == 0 {
-		return nil, fmt.Errorf("blockstate %s: no variants or multipart not supported", source)
+	if len(raw.Variants) > 0 {
+		return svc.matchVariant(raw.Variants, props)
 	}
-	return svc.matchVariant(raw.Variants, props)
+	if len(raw.Multipart) > 0 {
+		return svc.matchMultipart(raw.Multipart, props)
+	}
+	return nil, fmt.Errorf("blockstate %s: no variants or multipart data", source)
 }
 
 func (svc *BlockstateParser) readBlockstateFile(ns, blockID string, namespaces map[string][]string) (*rawBlockstate, string, error) {
@@ -158,4 +161,74 @@ func (svc *BlockstateParser) propsToKey(props map[string]string) string {
 		sb.WriteString(props[k])
 	}
 	return sb.String()
+}
+
+type rawMultipartPart struct {
+	When  json.RawMessage `json:"when,omitempty"`
+	Apply rawApply        `json:"apply"`
+}
+
+type rawWhenAND struct {
+	AND []map[string]interface{} `json:"AND"`
+}
+
+type rawApply struct {
+	Model  string  `json:"model"`
+	X      float64 `json:"x,omitempty"`
+	Y      float64 `json:"y,omitempty"`
+}
+
+func (svc *BlockstateParser) matchMultipart(parts []json.RawMessage, props map[string]string) ([]blockstateMatch, error) {
+	var matches []blockstateMatch
+	for _, rawPart := range parts {
+		var part rawMultipartPart
+		if err := json.Unmarshal(rawPart, &part); err != nil {
+			return nil, fmt.Errorf("parse multipart part: %w", err)
+		}
+		if !svc.matchWhen(part.When, props) {
+			continue
+		}
+		matches = append(matches, blockstateMatch{
+			Model: part.Apply.Model,
+			RotX:  part.Apply.X,
+			RotY:  part.Apply.Y,
+		})
+	}
+	if len(matches) == 0 {
+		propStr := svc.propsToKey(props)
+		return nil, fmt.Errorf("no multipart conditions match [%s]", propStr)
+	}
+	return matches, nil
+}
+
+func (svc *BlockstateParser) matchWhen(rawWhen json.RawMessage, props map[string]string) bool {
+	if len(rawWhen) == 0 {
+		return true
+	}
+
+	var andWhen rawWhenAND
+	if err := json.Unmarshal(rawWhen, &andWhen); err == nil && len(andWhen.AND) > 0 {
+		for _, cond := range andWhen.AND {
+			if !svc.matchSimpleWhen(cond, props) {
+				return false
+			}
+		}
+		return true
+	}
+
+	var simple map[string]interface{}
+	if err := json.Unmarshal(rawWhen, &simple); err != nil {
+		return false
+	}
+	return svc.matchSimpleWhen(simple, props)
+}
+
+func (svc *BlockstateParser) matchSimpleWhen(cond map[string]interface{}, props map[string]string) bool {
+	for k, v := range cond {
+		sv := fmt.Sprintf("%v", v)
+		if props[k] != sv {
+			return false
+		}
+	}
+	return true
 }

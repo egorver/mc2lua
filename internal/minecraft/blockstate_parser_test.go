@@ -83,22 +83,22 @@ func TestBlockstateParserRun(t *testing.T) {
 			wantErr: "parse blockstate",
 		},
 		{
-			name:      "multipart not supported",
+			name:      "multipart without when",
 			namespace: "minecraft", blockID: "multipart",
-			props:   map[string]string{},
-			wantErr: "multipart not supported",
+			props: map[string]string{},
+			want:  []blockstateMatch{{Model: "block/block"}},
 		},
 		{
 			name:      "no variants field",
 			namespace: "minecraft", blockID: "no_variants",
 			props:   map[string]string{},
-			wantErr: "no variants or multipart not supported",
+			wantErr: "no variants or multipart data",
 		},
 		{
 			name:      "empty variants object",
 			namespace: "minecraft", blockID: "empty_variants",
 			props:   map[string]string{},
-			wantErr: "no variants or multipart not supported",
+			wantErr: "no variants or multipart data",
 		},
 	}
 	for _, tt := range tests {
@@ -138,43 +138,31 @@ func TestBlockstateParserRunMultipleRoots(t *testing.T) {
 func TestBlockstateParserParseVariantValue(t *testing.T) {
 	svc := NewBlockstateParser(nil)
 
-	t.Run("single object", func(t *testing.T) {
-		matches, err := svc.parseVariantValue([]byte(`{"model":"block/cube"}`))
-		require.NoError(t, err)
-		require.Equal(t, []blockstateMatch{{Model: "block/cube"}}, matches)
-	})
-
-	t.Run("object with rotation", func(t *testing.T) {
-		matches, err := svc.parseVariantValue([]byte(`{"model":"block/furnace","x":90,"y":180}`))
-		require.NoError(t, err)
-		require.Equal(t, []blockstateMatch{{Model: "block/furnace", RotX: 90, RotY: 180}}, matches)
-	})
-
-	t.Run("array of variants", func(t *testing.T) {
-		matches, err := svc.parseVariantValue([]byte(`[{"model":"block/stone"},{"model":"block/andesite"}]`))
-		require.NoError(t, err)
-		require.Equal(t, []blockstateMatch{{Model: "block/stone"}, {Model: "block/andesite"}}, matches)
-	})
-
-	t.Run("empty value", func(t *testing.T) {
-		_, err := svc.parseVariantValue([]byte(``))
-		require.ErrorContains(t, err, "empty variant value")
-	})
-
-	t.Run("whitespace only", func(t *testing.T) {
-		_, err := svc.parseVariantValue([]byte(`   `))
-		require.ErrorContains(t, err, "empty variant value")
-	})
-
-	t.Run("invalid JSON object", func(t *testing.T) {
-		_, err := svc.parseVariantValue([]byte(`{broken`))
-		require.ErrorContains(t, err, "parse variant object")
-	})
-
-	t.Run("invalid JSON array", func(t *testing.T) {
-		_, err := svc.parseVariantValue([]byte(`[{broken`))
-		require.ErrorContains(t, err, "parse variant array")
-	})
+	tests := []struct {
+		name    string
+		input   []byte
+		want    []blockstateMatch
+		wantErr string
+	}{
+		{name: "single object", input: []byte(`{"model":"block/cube"}`), want: []blockstateMatch{{Model: "block/cube"}}},
+		{name: "object with rotation", input: []byte(`{"model":"block/furnace","x":90,"y":180}`), want: []blockstateMatch{{Model: "block/furnace", RotX: 90, RotY: 180}}},
+		{name: "array of variants", input: []byte(`[{"model":"block/stone"},{"model":"block/andesite"}]`), want: []blockstateMatch{{Model: "block/stone"}, {Model: "block/andesite"}}},
+		{name: "empty value", input: []byte(``), wantErr: "empty variant value"},
+		{name: "whitespace only", input: []byte(`   `), wantErr: "empty variant value"},
+		{name: "invalid JSON object", input: []byte(`{broken`), wantErr: "parse variant object"},
+		{name: "invalid JSON array", input: []byte(`[{broken`), wantErr: "parse variant array"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := svc.parseVariantValue(tt.input)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
 }
 
 func TestBlockstateParserPropsToKey(t *testing.T) {
@@ -363,6 +351,128 @@ func TestBlockstateParserReadBlockstateFile(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestBlockstateParserMatchMultipart(t *testing.T) {
+	t.Parallel()
+
+	svc := NewBlockstateParser(nil)
+
+	tests := []struct {
+		name    string
+		parts   []json.RawMessage
+		props   map[string]string
+		want    []blockstateMatch
+		wantErr string
+	}{
+		{
+			name: "no when matches all parts",
+			parts: []json.RawMessage{
+				json.RawMessage(`{"apply":{"model":"block/a"}}`),
+				json.RawMessage(`{"apply":{"model":"block/b"}}`),
+			},
+			want: []blockstateMatch{{Model: "block/a"}, {Model: "block/b"}},
+		},
+		{
+			name: "simple when match",
+			parts: []json.RawMessage{
+				json.RawMessage(`{"when":{"north":"true"},"apply":{"model":"block/side"}}`),
+			},
+			props: map[string]string{"north": "true"},
+			want:  []blockstateMatch{{Model: "block/side"}},
+		},
+		{
+			name: "simple when no match",
+			parts: []json.RawMessage{
+				json.RawMessage(`{"when":{"north":"true"},"apply":{"model":"block/side"}}`),
+			},
+			props:   map[string]string{"north": "false"},
+			wantErr: "no multipart conditions match",
+		},
+		{
+			name: "AND when all match",
+			parts: []json.RawMessage{
+				json.RawMessage(`{"when":{"AND":[{"age":"0"},{"rooted":"false"}]},"apply":{"model":"block/seed"}}`),
+			},
+			props: map[string]string{"age": "0", "rooted": "false"},
+			want:  []blockstateMatch{{Model: "block/seed"}},
+		},
+		{
+			name: "AND when partial match",
+			parts: []json.RawMessage{
+				json.RawMessage(`{"when":{"AND":[{"age":"0"},{"rooted":"false"}]},"apply":{"model":"block/seed"}}`),
+			},
+			props:   map[string]string{"age": "0", "rooted": "true"},
+			wantErr: "no multipart conditions match",
+		},
+		{
+			name: "mixed when and no-when parts",
+			parts: []json.RawMessage{
+				json.RawMessage(`{"apply":{"model":"block/post"}}`),
+				json.RawMessage(`{"when":{"north":"true"},"apply":{"model":"block/side"}}`),
+				json.RawMessage(`{"when":{"north":"false"},"apply":{"model":"block/noside"}}`),
+			},
+			props: map[string]string{"north": "true"},
+			want:  []blockstateMatch{{Model: "block/post"}, {Model: "block/side"}},
+		},
+		{
+			name: "with rotation",
+			parts: []json.RawMessage{
+				json.RawMessage(`{"when":{"east":"true"},"apply":{"model":"block/side","y":90}}`),
+			},
+			props: map[string]string{"east": "true"},
+			want:  []blockstateMatch{{Model: "block/side", RotY: 90}},
+		},
+		{
+			name:    "empty parts",
+			parts:   []json.RawMessage{},
+			wantErr: "no multipart conditions match",
+		},
+		{
+			name:    "invalid part JSON",
+			parts:   []json.RawMessage{json.RawMessage(`{bad}`)},
+			wantErr: "parse multipart part",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := svc.matchMultipart(tt.parts, tt.props)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestBlockstateParserMatchWhen(t *testing.T) {
+	t.Parallel()
+
+	svc := NewBlockstateParser(nil)
+
+	tests := []struct {
+		name  string
+		when  json.RawMessage
+		props map[string]string
+		want  bool
+	}{
+		{name: "empty when always matches", when: nil, props: nil, want: true},
+		{name: "simple when matches", when: json.RawMessage(`{"north":"true"}`), props: map[string]string{"north": "true"}, want: true},
+		{name: "simple when mismatches", when: json.RawMessage(`{"north":"true"}`), props: map[string]string{"north": "false"}, want: false},
+		{name: "AND when all match", when: json.RawMessage(`{"AND":[{"age":"0"},{"rooted":"false"}]}`), props: map[string]string{"age": "0", "rooted": "false"}, want: true},
+		{name: "AND when one mismatches", when: json.RawMessage(`{"AND":[{"age":"0"},{"rooted":"false"}]}`), props: map[string]string{"age": "0", "rooted": "true"}, want: false},
+		{name: "extra props ignored in when", when: json.RawMessage(`{"north":"true"}`), props: map[string]string{"north": "true", "waterlogged": "false"}, want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := svc.matchWhen(tt.when, tt.props)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

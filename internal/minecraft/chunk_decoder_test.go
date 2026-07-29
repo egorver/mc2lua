@@ -164,15 +164,6 @@ func TestChunkDecoder_DecodeSection(t *testing.T) {
 	}
 }
 
-func TestChunkDecoder_Run_InvalidData(t *testing.T) {
-	t.Parallel()
-
-	svc := NewChunkDecoder()
-
-	_, err := svc.Run([]byte{0xFF, 0xFF, 0xFF}, 0, 0)
-	require.Error(t, err)
-}
-
 func encodeChunkNBT(chunk map[string]interface{}) ([]byte, error) {
 	raw, err := nbt.Marshal(chunk)
 	if err != nil {
@@ -190,61 +181,89 @@ func encodeChunkNBT(chunk map[string]interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func TestChunkDecoder_Run_NonFullStatus(t *testing.T) {
+func TestChunkDecoder_Run(t *testing.T) {
 	t.Parallel()
 
-	data, err := encodeChunkNBT(map[string]interface{}{
-		"Status": "partial",
-		"sections": []interface{}{
-			map[string]interface{}{
-				"Y": int8(0),
-				"block_states": map[string]interface{}{
-					"palette": []interface{}{
-						map[string]interface{}{
-							"Name": "minecraft:stone",
+	tests := []struct {
+		name    string
+		chunk   map[string]interface{}
+		rawData []byte
+		wantNil bool
+		wantLen int
+		wantID  string
+		wantY   int
+		wantErr bool
+	}{
+		{
+			name:    "invalid data",
+			rawData: []byte{0xFF, 0xFF, 0xFF},
+			wantErr: true,
+		},
+		{
+			name: "non-full status",
+			chunk: map[string]interface{}{
+				"Status": "partial",
+				"sections": []interface{}{
+					map[string]interface{}{
+						"Y": int8(0),
+						"block_states": map[string]interface{}{
+							"palette": []interface{}{map[string]interface{}{"Name": "minecraft:stone"}},
+							"data":    []int64{},
 						},
 					},
-					"data": []int64{},
 				},
 			},
+			wantNil: true,
 		},
-	})
-	require.NoError(t, err)
-
-	svc := NewChunkDecoder()
-	blocks, err := svc.Run(data, 0, 0)
-	require.NoError(t, err)
-	require.Nil(t, blocks)
-}
-
-func TestChunkDecoder_Run_FullChunk(t *testing.T) {
-	t.Parallel()
-
-	data, err := encodeChunkNBT(map[string]interface{}{
-		"Status": "full",
-		"sections": []interface{}{
-			map[string]interface{}{
-				"Y": int8(4),
-				"block_states": map[string]interface{}{
-					"palette": []interface{}{
-						map[string]interface{}{
-							"Name": "minecraft:stone",
+		{
+			name: "full chunk",
+			chunk: map[string]interface{}{
+				"Status": "full",
+				"sections": []interface{}{
+					map[string]interface{}{
+						"Y": int8(4),
+						"block_states": map[string]interface{}{
+							"palette": []interface{}{map[string]interface{}{"Name": "minecraft:stone"}},
+							"data":    []int64{},
 						},
 					},
-					"data": []int64{},
 				},
 			},
+			wantNil: false,
+			wantLen: 4096,
+			wantID:  "minecraft:stone",
+			wantY:   64,
 		},
-	})
-	require.NoError(t, err)
+	}
 
-	svc := NewChunkDecoder()
-	blocks, err := svc.Run(data, 0, 0)
-	require.NoError(t, err)
-	require.NotNil(t, blocks)
-	require.Len(t, blocks, 4096)
-	require.Equal(t, "minecraft:stone", blocks[0].ID)
-	require.Equal(t, 64, blocks[0].Y)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc := NewChunkDecoder()
+			var data []byte
+			if tt.rawData != nil {
+				data = tt.rawData
+			} else {
+				var err error
+				data, err = encodeChunkNBT(tt.chunk)
+				require.NoError(t, err)
+			}
+			blocks, err := svc.Run(data, 0, 0)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantNil {
+				require.Nil(t, blocks)
+				return
+			}
+			require.NotNil(t, blocks)
+			require.Len(t, blocks, tt.wantLen)
+			require.Equal(t, tt.wantID, blocks[0].ID)
+			require.Equal(t, tt.wantY, blocks[0].Y)
+		})
+	}
 }
 
 func TestChunkDecoder_DecodeBlock(t *testing.T) {

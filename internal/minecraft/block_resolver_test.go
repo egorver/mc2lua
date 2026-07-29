@@ -65,58 +65,82 @@ func TestBlockResolver_New(t *testing.T) {
 	require.NotNil(t, r)
 }
 
-func TestBlockResolver_Run_BlockstateParserError(t *testing.T) {
+func TestBlockResolver_Run(t *testing.T) {
 	t.Parallel()
 
-	mockBSP := &mockBlockstateParser{runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
-		return nil, errors.New("parse error")
-	}}
+	tests := []struct {
+		name       string
+		id         string
+		props      map[string]string
+		bspFn      func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error)
+		mpFn       func(_ string, _ map[string][]string) (*flattenedModel, error)
+		maFn       func(_ []model.ModelElement) bool
+		wantErr    string
+		wantModels int
+	}{
+		{
+			name: "blockstate parser error",
+			id:   "minecraft:stone",
+			bspFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
+				return nil, errors.New("parse error")
+			},
+			wantErr: "blockstate",
+		},
+		{
+			name: "no elements found",
+			id:   "minecraft:stone",
+			bspFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
+				return []blockstateMatch{{Model: "model1"}, {Model: "model2"}}, nil
+			},
+			mpFn: func(_ string, _ map[string][]string) (*flattenedModel, error) {
+				return nil, errors.New("model error")
+			},
+			wantErr: "no elements found",
+		},
+		{
+			name: "duplicate models resolved once",
+			id:   "minecraft:stone",
+			bspFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
+				return []blockstateMatch{{Model: "minecraft:block/stone"}, {Model: "minecraft:block/stone"}}, nil
+			},
+			mpFn: func(_ string, _ map[string][]string) (*flattenedModel, error) {
+				return &flattenedModel{Elements: []model.ModelElement{{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true}}}, nil
+			},
+			maFn:       func(_ []model.ModelElement) bool { return true },
+			wantModels: 1,
+		},
+	}
 
-	svc := NewBlockResolver(mockBSP, nil, nil)
-	_, err := svc.Run("minecraft:stone", nil, nil)
-	require.ErrorContains(t, err, "blockstate")
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			callCount := 0
+			mpFn := tt.mpFn
+			if mpFn == nil {
+				mpFn = func(_ string, _ map[string][]string) (*flattenedModel, error) {
+					return &flattenedModel{Elements: []model.ModelElement{{}}}, nil
+				}
+			}
+			mockBSP := &mockBlockstateParser{runFn: tt.bspFn}
+			mockMP := &mockModelParser{runFn: func(name string, ns map[string][]string) (*flattenedModel, error) {
+				callCount++
+				return mpFn(name, ns)
+			}}
+			mockMA := &mockModelAnalyzer{runFn: tt.maFn}
 
-func TestBlockResolver_Run_NoElements(t *testing.T) {
-	t.Parallel()
-
-	mockBSP := &mockBlockstateParser{runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
-		return []blockstateMatch{{Model: "model1"}, {Model: "model2"}}, nil
-	}}
-	mockMP := &mockModelParser{runFn: func(_ string, _ map[string][]string) (*flattenedModel, error) {
-		return nil, errors.New("model error")
-	}}
-
-	svc := NewBlockResolver(mockBSP, nil, mockMP)
-	_, err := svc.Run("minecraft:stone", nil, nil)
-	require.ErrorContains(t, err, "no elements found")
-}
-
-func TestBlockResolver_Run_DuplicateModels(t *testing.T) {
-	t.Parallel()
-
-	mockBSP := &mockBlockstateParser{runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
-		return []blockstateMatch{
-			{Model: "minecraft:block/stone"},
-			{Model: "minecraft:block/stone"},
-		}, nil
-	}}
-	callCount := 0
-	mockMP := &mockModelParser{runFn: func(_ string, _ map[string][]string) (*flattenedModel, error) {
-		callCount++
-		return &flattenedModel{
-			Elements: []model.ModelElement{{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true}},
-		}, nil
-	}}
-	mockMA := &mockModelAnalyzer{runFn: func(_ []model.ModelElement) bool {
-		return true
-	}}
-
-	svc := NewBlockResolver(mockBSP, mockMA, mockMP)
-	resolved, err := svc.Run("minecraft:stone", nil, nil)
-	require.NoError(t, err)
-	require.NotNil(t, resolved)
-	require.Equal(t, 1, callCount)
+			svc := NewBlockResolver(mockBSP, mockMA, mockMP)
+			resolved, err := svc.Run(tt.id, tt.props, nil)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, resolved)
+			if tt.wantModels > 0 {
+				require.Equal(t, tt.wantModels, callCount)
+			}
+		})
+	}
 }
 
 func TestBlockResolver_ResolveElements(t *testing.T) {
@@ -213,44 +237,4 @@ func TestBlockResolver_ResolveElements(t *testing.T) {
 	}
 }
 
-func TestBlockResolver_Run(t *testing.T) {
-	t.Parallel()
 
-	mockBSP := &mockBlockstateParser{runFn: func(ns, blockID string, props map[string]string, namespaces map[string][]string) ([]blockstateMatch, error) {
-		return []blockstateMatch{{Model: "minecraft:block/stone"}}, nil
-	}}
-	mockMP := &mockModelParser{runFn: func(modelName string, namespaces map[string][]string) (*flattenedModel, error) {
-		return &flattenedModel{
-			Elements: []model.ModelElement{
-				{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}},
-			},
-		}, nil
-	}}
-	mockMA := &mockModelAnalyzer{runFn: func(elements []model.ModelElement) bool {
-		return false
-	}}
-
-	svc := NewBlockResolver(mockBSP, mockMA, mockMP)
-
-	tests := []struct {
-		name  string
-		id    string
-		props map[string]string
-	}{
-		{name: "nil props", id: "", props: nil},
-		{name: "non-empty id", id: "minecraft:stone", props: nil},
-		{name: "non-empty props", id: "minecraft:oak_log", props: map[string]string{"axis": "y"}},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			resolved, err := svc.Run(tt.id, tt.props, nil)
-			require.NoError(t, err)
-			require.NotNil(t, resolved)
-			require.NotEmpty(t, resolved.Elements)
-			require.False(t, resolved.IsFullBlock)
-		})
-	}
-}

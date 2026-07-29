@@ -34,13 +34,14 @@ func TestIndexBuilder_Run(t *testing.T) {
 	errResolve := errors.New("resolve failed")
 
 	tests := []struct {
-		name           string
-		blocks         []model.Block
-		resolveFn      func(id string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error)
-		wantErr        bool
-		wantErrMsg     string
-		wantUnresolved map[string]string
-		wantCheck      func(t *testing.T, idx *index.BlockIndex)
+		name             string
+		blocks           []model.Block
+		resolveFn        func(id string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error)
+		wantErr          bool
+		wantErrMsg       string
+		wantUnresolved   map[string]string
+		resolveCallCount int
+		wantCheck        func(t *testing.T, idx *index.BlockIndex)
 	}{
 		{
 			name:   "empty blocks",
@@ -144,6 +145,41 @@ func TestIndexBuilder_Run(t *testing.T) {
 				require.Equal(t, resolvedStone, v)
 			},
 		},
+		{
+			name: "resolver called once per unique id|props",
+			blocks: []model.Block{
+				{ID: "minecraft:stone"},
+				{ID: "minecraft:stone"},
+				{ID: "minecraft:stone"},
+				{ID: "minecraft:dirt"},
+			},
+			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
+				return &model.ResolvedBlock{IsFullBlock: true}, nil
+			},
+			resolveCallCount: 2,
+			wantCheck: func(t *testing.T, idx *index.BlockIndex) {
+				_, ok := idx.Get("minecraft:stone", "")
+				require.True(t, ok)
+			},
+		},
+		{
+			name: "duplicate props are distinct keys",
+			blocks: []model.Block{
+				{ID: "minecraft:stone", Props: map[string]string{"variant": "andesite"}},
+				{ID: "minecraft:stone", Props: map[string]string{"variant": "granite"}},
+			},
+			resolveFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
+				return &model.ResolvedBlock{IsFullBlock: true}, nil
+			},
+			wantCheck: func(t *testing.T, idx *index.BlockIndex) {
+				v, ok := idx.Get("minecraft:stone", "variant=andesite")
+				require.True(t, ok)
+				require.True(t, v.IsFullBlock)
+				v, ok = idx.Get("minecraft:stone", "variant=granite")
+				require.True(t, ok)
+				require.True(t, v.IsFullBlock)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -151,7 +187,16 @@ func TestIndexBuilder_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mr := &mockBlockResolver{runFn: tt.resolveFn}
+			callCount := 0
+			resolveFn := tt.resolveFn
+			if resolveFn != nil {
+				wrappedFn := resolveFn
+				resolveFn = func(id string, props map[string]string, ns map[string][]string) (*model.ResolvedBlock, error) {
+					callCount++
+					return wrappedFn(id, props, ns)
+				}
+			}
+			mr := &mockBlockResolver{runFn: resolveFn}
 			svc := NewIndexBuilder(mr)
 
 			idx, unresolved, err := svc.Run(tt.blocks, nil)
@@ -165,60 +210,14 @@ func TestIndexBuilder_Run(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, idx)
 			require.Equal(t, tt.wantUnresolved, unresolved)
+			if tt.resolveCallCount > 0 {
+				require.Equal(t, tt.resolveCallCount, callCount)
+			}
 			if tt.wantCheck != nil {
 				tt.wantCheck(t, idx)
 			}
 		})
 	}
-}
-
-func TestIndexBuilder_Run_ResolverCallCount(t *testing.T) {
-	t.Parallel()
-
-	callCount := 0
-	mr := &mockBlockResolver{
-		runFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
-			callCount++
-			return &model.ResolvedBlock{IsFullBlock: true}, nil
-		},
-	}
-	svc := NewIndexBuilder(mr)
-
-	blocks := []model.Block{
-		{ID: "minecraft:stone"},
-		{ID: "minecraft:stone"},
-		{ID: "minecraft:stone"},
-		{ID: "minecraft:dirt"},
-	}
-	_, _, err := svc.Run(blocks, nil)
-	require.NoError(t, err)
-	require.Equal(t, 2, callCount, "resolver should be called once per unique id|props")
-}
-
-func TestIndexBuilder_Run_DuplicatePropsAreDistinct(t *testing.T) {
-	t.Parallel()
-
-	mr := &mockBlockResolver{
-		runFn: func(id string, props map[string]string, _ map[string][]string) (*model.ResolvedBlock, error) {
-			return &model.ResolvedBlock{IsFullBlock: id == "minecraft:stone"}, nil
-		},
-	}
-	svc := NewIndexBuilder(mr)
-
-	blocks := []model.Block{
-		{ID: "minecraft:stone", Props: map[string]string{"variant": "andesite"}},
-		{ID: "minecraft:stone", Props: map[string]string{"variant": "granite"}},
-	}
-	idx, _, err := svc.Run(blocks, nil)
-	require.NoError(t, err)
-
-	v, ok := idx.Get("minecraft:stone", "variant=andesite")
-	require.True(t, ok)
-	require.True(t, v.IsFullBlock)
-
-	v, ok = idx.Get("minecraft:stone", "variant=granite")
-	require.True(t, ok)
-	require.True(t, v.IsFullBlock)
 }
 
 func TestIndexBuilder_PropsToKey(t *testing.T) {

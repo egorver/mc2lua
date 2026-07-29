@@ -6,7 +6,7 @@ const testBlockstateDefault = `{"variants":{"":{"model":"block/cube"}}}`
 const testBlockstateVariants = `{"variants":{"facing=north":{"model":"block/furnace"},"facing=south":{"model":"block/furnace","y":180},"facing=east,lit=true":{"model":"block/furnace_on","y":90}}}`
 const testBlockstatePartial = `{"variants":{"facing=north":{"model":"block/furnace"},"facing=south":{"model":"block/furnace","y":180}}}`
 const testBlockstateArray = `{"variants":{"":[{"model":"block/grass"},{"model":"block/grass_alt"}]}}`
-const testBlockstateMultipart = `{"multipart":[{"apply":{"model":"block/block"}}]}`
+const testBlockstateMultipart = `{"multipart":[{"apply":{"model":"block/block"}},{"when":{"north":"true"},"apply":{"model":"block/side"}},{"when":{"AND":[{"age":"0"},{"rooted":"false"}]},"apply":{"model":"block/plant","x":90}}]}`
 const testBlockstateEmptyVariants = `{"variants":{}}`
 const testBlockstateNoVariants = `{}`
 const testBlockstateInvalidJSON = `{bad json`
