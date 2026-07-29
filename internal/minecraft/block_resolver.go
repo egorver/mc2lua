@@ -2,8 +2,9 @@ package minecraft
 
 import (
 	"fmt"
-	"mc2lua/internal/model"
 	"strings"
+
+	"mc2lua/internal/model"
 )
 
 type blockstateParser interface {
@@ -36,7 +37,7 @@ func NewBlockResolver(
 	}
 }
 
-func (svc *BlockResolver) Run(id string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error) {
+func (svc *BlockResolver) Run(id string, propsKey string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error) {
 
 	ns, blockID := svc.splitBlockID(id)
 
@@ -54,6 +55,8 @@ func (svc *BlockResolver) Run(id string, props map[string]string, namespaces map
 	textures := svc.textureResolver.Run(fm.Textures)
 
 	return &model.ResolvedBlock{
+		ID:       id,
+		PropsKey: propsKey,
 		Elements: fm.Elements,
 		Textures: textures,
 	}, nil

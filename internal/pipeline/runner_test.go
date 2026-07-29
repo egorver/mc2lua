@@ -5,7 +5,6 @@ import (
 	"io"
 	"testing"
 
-	"mc2lua/internal/index"
 	"mc2lua/internal/model"
 
 	"github.com/stretchr/testify/require"
@@ -38,16 +37,26 @@ func (m *mockAssetScanner) Run(root string) (map[string][]string, error) {
 	return map[string][]string{}, nil
 }
 
-type mockIndexBuilder struct {
-	runFn func(blocks []model.RawBlock, namespaces map[string][]string) (*index.BlockIndex, error)
+type mockCollector struct {
+	runFn func(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string)
 }
 
-func (m *mockIndexBuilder) Run(blocks []model.RawBlock, namespaces map[string][]string) (*index.BlockIndex, map[string]string, error) {
+func (m *mockCollector) Run(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string) {
 	if m.runFn != nil {
-		idx, err := m.runFn(blocks, namespaces)
-		return idx, nil, err
+		return m.runFn(blocks, namespaces)
 	}
-	return index.NewBlockIndex(), nil, nil
+	return nil, nil
+}
+
+type mockIndexer struct {
+	runFn func(blocks []model.ResolvedBlock) *model.StyleIndex
+}
+
+func (m *mockIndexer) Run(blocks []model.ResolvedBlock) *model.StyleIndex {
+	if m.runFn != nil {
+		return m.runFn(blocks)
+	}
+	return model.NewStyleIndex()
 }
 
 func TestRunner_New(t *testing.T) {
@@ -56,8 +65,9 @@ func TestRunner_New(t *testing.T) {
 	mockRR := &mockRegionReader{}
 	mockCN := &mockCoordNormalizer{}
 	mockAS := &mockAssetScanner{}
-	mockIB := &mockIndexBuilder{}
-	r := NewRunner(mockRR, mockCN, mockAS, mockIB, io.Discard)
+	mockCol := &mockCollector{}
+	mockIdx := &mockIndexer{}
+	r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, io.Discard)
 	require.NotNil(t, r)
 }
 
@@ -68,13 +78,13 @@ func TestRunner_Run(t *testing.T) {
 	errNormalize := errors.New("normalize error")
 
 	tests := []struct {
-		name           string
-		mockRun        func(input string, bounds model.Bounds) ([]model.RawBlock, error)
-		mockNormalize  func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error)
-		mockAssetScan  func(root string) (map[string][]string, error)
-		mockIndexBuild func(blocks []model.RawBlock, namespaces map[string][]string) (*index.BlockIndex, error)
-		wantErr        bool
-		wantErrMsg     string
+		name          string
+		mockRun       func(input string, bounds model.Bounds) ([]model.RawBlock, error)
+		mockNormalize func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error)
+		mockScan      func(root string) (map[string][]string, error)
+		mockCollect   func(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string)
+		wantErr       bool
+		wantErrMsg    string
 	}{
 		{
 			name: "success",
@@ -115,25 +125,11 @@ func TestRunner_Run(t *testing.T) {
 			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 				return blocks, nil
 			},
-			mockAssetScan: func(root string) (map[string][]string, error) {
+			mockScan: func(root string) (map[string][]string, error) {
 				return nil, errors.New("scan failed")
 			},
 			wantErr:    true,
 			wantErrMsg: "scan assets: scan failed",
-		},
-		{
-			name: "index builder error",
-			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
-				return []model.RawBlock{{ID: "minecraft:stone"}}, nil
-			},
-			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
-				return blocks, nil
-			},
-			mockIndexBuild: func(blocks []model.RawBlock, namespaces map[string][]string) (*index.BlockIndex, error) {
-				return nil, errors.New("build failed")
-			},
-			wantErr:    true,
-			wantErrMsg: "build index: build failed",
 		},
 	}
 
@@ -145,14 +141,15 @@ func TestRunner_Run(t *testing.T) {
 			mockRR := &mockRegionReader{runFn: tt.mockRun}
 			mockCN := &mockCoordNormalizer{runFn: tt.mockNormalize}
 			mockAS := &mockAssetScanner{}
-			if tt.mockAssetScan != nil {
-				mockAS.runFn = tt.mockAssetScan
+			if tt.mockScan != nil {
+				mockAS.runFn = tt.mockScan
 			}
-			mockIB := &mockIndexBuilder{}
-			if tt.mockIndexBuild != nil {
-				mockIB.runFn = tt.mockIndexBuild
+			mockCol := &mockCollector{}
+			if tt.mockCollect != nil {
+				mockCol.runFn = tt.mockCollect
 			}
-			r := NewRunner(mockRR, mockCN, mockAS, mockIB, io.Discard)
+			mockIdx := &mockIndexer{}
+			r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, io.Discard)
 
 			err := r.Run(RunConfig{
 				Input:     "/test",

@@ -120,6 +120,8 @@ func TestResolvedBlock(t *testing.T) {
 	tests := []struct {
 		name      string
 		block     ResolvedBlock
+		wantID    string
+		wantProps string
 		wantElems int
 	}{
 		{name: "zero value"},
@@ -132,17 +134,28 @@ func TestResolvedBlock(t *testing.T) {
 			wantElems: 2,
 		},
 		{
+			name: "with id and props",
+			block: ResolvedBlock{
+				ID: "minecraft:stone", PropsKey: "variant=andesite",
+				Elements: []ModelElement{{}},
+			},
+			wantID: "minecraft:stone", wantProps: "variant=andesite", wantElems: 1,
+		},
+		{
 			name: "with textures",
 			block: ResolvedBlock{
+				ID: "minecraft:stone",
 				Elements: []ModelElement{{}},
 				Textures: map[string]string{"#all": "block/stone"},
 			},
-			wantElems: 1,
+			wantID: "minecraft:stone", wantElems: 1,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			require.Equal(t, tt.wantID, tt.block.ID)
+			require.Equal(t, tt.wantProps, tt.block.PropsKey)
 			require.Len(t, tt.block.Elements, tt.wantElems)
 		})
 	}

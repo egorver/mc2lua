@@ -71,6 +71,7 @@ func TestBlockResolver_Run(t *testing.T) {
 	tests := []struct {
 		name       string
 		id         string
+		propsKey   string
 		props      map[string]string
 		bspFn      func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error)
 		mpFn       func(_ string, _ map[string][]string) (*flattenedModel, error)
@@ -131,7 +132,7 @@ func TestBlockResolver_Run(t *testing.T) {
 			}
 
 			svc := NewBlockResolver(mockBSP, mockMP, mockTR)
-			resolved, err := svc.Run(tt.id, tt.props, nil)
+			resolved, err := svc.Run(tt.id, tt.propsKey, tt.props, nil)
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				return

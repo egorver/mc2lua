@@ -23,6 +23,8 @@ type ModelElement struct {
 }
 
 type ResolvedBlock struct {
+	ID       string
+	PropsKey string
 	Elements []ModelElement
 	Textures map[string]string
 }

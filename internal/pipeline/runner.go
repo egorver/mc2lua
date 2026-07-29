@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"mc2lua/internal/index"
 	"mc2lua/internal/model"
 )
 
@@ -22,15 +21,20 @@ type assetScanner interface {
 	Run(root string) (map[string][]string, error)
 }
 
-type indexBuilder interface {
-	Run(blocks []model.RawBlock, namespaces map[string][]string) (*index.BlockIndex, map[string]string, error)
+type blockCollector interface {
+	Run(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string)
+}
+
+type styleIndexer interface {
+	Run(blocks []model.ResolvedBlock) *model.StyleIndex
 }
 
 type Runner struct {
 	regionReader    regionReader
 	coordNormalizer coordNormalizer
 	assetScanner    assetScanner
-	indexBuilder    indexBuilder
+	blockCollector  blockCollector
+	styleIndexer    styleIndexer
 	logOutput       io.Writer
 }
 
@@ -38,14 +42,16 @@ func NewRunner(
 	rr regionReader,
 	cn coordNormalizer,
 	as assetScanner,
-	ib indexBuilder,
+	bc blockCollector,
+	si styleIndexer,
 	logOutput io.Writer,
 ) *Runner {
 	return &Runner{
 		regionReader:    rr,
 		coordNormalizer: cn,
 		assetScanner:    as,
-		indexBuilder:    ib,
+		blockCollector:  bc,
+		styleIndexer:    si,
 		logOutput:       logOutput,
 	}
 }
@@ -78,12 +84,12 @@ func (svc *Runner) Run(cfg RunConfig) error {
 	}
 	svc.logNamespaces(namespaces)
 
-	idx, unresolvedErrs, err := svc.indexBuilder.Run(blocks, namespaces)
-	if err != nil {
-		return fmt.Errorf("build index: %w", err)
-	}
-	svc.logUnresolved(unresolvedErrs)
-	svc.log("Built index: %d unique block variant(s)\n", idx.Len())
+	resolved, unresolved := svc.blockCollector.Run(blocks, namespaces)
+	svc.logUnresolved(unresolved)
+	svc.log("Collected %d unique block variant(s)\n", len(resolved))
+
+	styledIdx := svc.styleIndexer.Run(resolved)
+	svc.log("Built style index: %d entries\n", styledIdx.Len())
 
 	return nil
 }
