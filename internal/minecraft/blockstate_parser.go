@@ -7,12 +7,17 @@ import (
 	"strings"
 )
 
-type BlockstateParser struct {
-	fs fsApi
+type propsKeyBuilder interface {
+	Run(props map[string]string) string
 }
 
-func NewBlockstateParser(fs fsApi) *BlockstateParser {
-	return &BlockstateParser{fs: fs}
+type BlockstateParser struct {
+	fs              fsApi
+	propsKeyBuilder propsKeyBuilder
+}
+
+func NewBlockstateParser(fs fsApi, pkb propsKeyBuilder) *BlockstateParser {
+	return &BlockstateParser{fs: fs, propsKeyBuilder: pkb}
 }
 
 type blockstateMatch struct {
@@ -65,7 +70,7 @@ func (svc *BlockstateParser) matchVariant(variants map[string]json.RawMessage, p
 		return nil, fmt.Errorf("no variants defined")
 	}
 
-	propStr := svc.propsToKey(props)
+	propStr := svc.propsKeyBuilder.Run(props)
 
 	if raw, ok := variants[propStr]; ok {
 		return svc.parseVariantValue(raw)
@@ -142,27 +147,6 @@ func (svc *BlockstateParser) parseVariantValue(raw json.RawMessage) ([]blockstat
 	return []blockstateMatch{{Model: entry.Model, RotX: entry.X, RotY: entry.Y}}, nil
 }
 
-func (svc *BlockstateParser) propsToKey(props map[string]string) string {
-	if len(props) == 0 {
-		return ""
-	}
-	keys := make([]string, 0, len(props))
-	for k := range props {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	var sb strings.Builder
-	for i, k := range keys {
-		if i > 0 {
-			sb.WriteByte(',')
-		}
-		sb.WriteString(k)
-		sb.WriteByte('=')
-		sb.WriteString(props[k])
-	}
-	return sb.String()
-}
-
 type rawMultipartPart struct {
 	When  json.RawMessage `json:"when,omitempty"`
 	Apply rawApply        `json:"apply"`
@@ -173,9 +157,9 @@ type rawWhenAND struct {
 }
 
 type rawApply struct {
-	Model  string  `json:"model"`
-	X      float64 `json:"x,omitempty"`
-	Y      float64 `json:"y,omitempty"`
+	Model string  `json:"model"`
+	X     float64 `json:"x,omitempty"`
+	Y     float64 `json:"y,omitempty"`
 }
 
 func (svc *BlockstateParser) matchMultipart(parts []json.RawMessage, props map[string]string) ([]blockstateMatch, error) {
@@ -194,10 +178,12 @@ func (svc *BlockstateParser) matchMultipart(parts []json.RawMessage, props map[s
 			RotY:  part.Apply.Y,
 		})
 	}
+
 	if len(matches) == 0 {
-		propStr := svc.propsToKey(props)
+		propStr := svc.propsKeyBuilder.Run(props)
 		return nil, fmt.Errorf("no multipart conditions match [%s]", propStr)
 	}
+
 	return matches, nil
 }
 

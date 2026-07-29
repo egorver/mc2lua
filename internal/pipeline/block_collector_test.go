@@ -21,7 +21,7 @@ func TestBlockCollector_New(t *testing.T) {
 	t.Parallel()
 
 	mr := &mockCollectorBlockResolver{}
-	bc := NewBlockCollector(mr)
+	bc := NewBlockCollector(mr, &mockCollectorPropsKeyBuilder{})
 	require.NotNil(t, bc)
 }
 
@@ -177,7 +177,7 @@ func TestBlockCollector_Run(t *testing.T) {
 			t.Parallel()
 
 			mr := &mockCollectorBlockResolver{runFn: tt.resolveFn}
-			svc := NewBlockCollector(mr)
+			svc := NewBlockCollector(mr, &mockCollectorPropsKeyBuilder{})
 
 			result, unresolved := svc.Run(tt.blocks, nil)
 			require.Equal(t, tt.wantUnres, unresolved)
@@ -189,28 +189,15 @@ func TestBlockCollector_Run(t *testing.T) {
 	}
 }
 
-func TestBlockCollector_PropsToKey(t *testing.T) {
-	t.Parallel()
+type mockCollectorPropsKeyBuilder struct{}
 
-	svc := &BlockCollector{}
-
-	tests := []struct {
-		name  string
-		props map[string]string
-		want  string
-	}{
-		{name: "nil map", props: nil, want: ""},
-		{name: "empty map", props: map[string]string{}, want: ""},
-		{name: "single key", props: map[string]string{"water": "true"}, want: "water=true"},
-		{name: "multiple keys sorted", props: map[string]string{"facing": "north", "water": "true"}, want: "facing=north,water=true"},
-		{name: "reverse order keys", props: map[string]string{"z": "1", "a": "2", "m": "3"}, want: "a=2,m=3,z=1"},
+func (m *mockCollectorPropsKeyBuilder) Run(props map[string]string) string {
+	if len(props) == 0 {
+		return ""
 	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			got := svc.propsToKey(tt.props)
-			require.Equal(t, tt.want, got)
-		})
+	keys := make([]string, 0, len(props))
+	for k := range props {
+		keys = append(keys, k)
 	}
+	return keys[0] + "=" + props[keys[0]]
 }

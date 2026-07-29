@@ -18,7 +18,7 @@ func TestBlockstateParserRun(t *testing.T) {
 	addBlockstate(fs, "minecraft", "bad_json", []byte(testBlockstateInvalidJSON))
 	addBlockstate(fs, "minecraft", "no_variants", []byte(testBlockstateNoVariants))
 
-	svc := NewBlockstateParser(fs)
+	svc := NewBlockstateParser(fs, NewPropsKeyBuilder())
 
 	tests := []struct {
 		name      string
@@ -128,7 +128,7 @@ func TestBlockstateParserRunMultipleRoots(t *testing.T) {
 	nsToRoots := map[string][]string{
 		"minecraft": {"assets/mod1/minecraft", "assets/mod2/minecraft"},
 	}
-	svc := NewBlockstateParser(fs)
+	svc := NewBlockstateParser(fs, NewPropsKeyBuilder())
 
 	matches, err := svc.Run("minecraft", "stone", nil, nsToRoots)
 	require.NoError(t, err)
@@ -136,7 +136,7 @@ func TestBlockstateParserRunMultipleRoots(t *testing.T) {
 }
 
 func TestBlockstateParserParseVariantValue(t *testing.T) {
-	svc := NewBlockstateParser(nil)
+	svc := NewBlockstateParser(nil, NewPropsKeyBuilder())
 
 	tests := []struct {
 		name    string
@@ -165,30 +165,10 @@ func TestBlockstateParserParseVariantValue(t *testing.T) {
 	}
 }
 
-func TestBlockstateParserPropsToKey(t *testing.T) {
-	svc := NewBlockstateParser(nil)
 
-	tests := []struct {
-		name  string
-		props map[string]string
-		want  string
-	}{
-		{name: "empty", props: map[string]string{}, want: ""},
-		{name: "single", props: map[string]string{"facing": "north"}, want: "facing=north"},
-		{name: "two props sorted", props: map[string]string{"lit": "true", "facing": "east"}, want: "facing=east,lit=true"},
-		{name: "three props sorted", props: map[string]string{"z": "3", "a": "1", "m": "2"}, want: "a=1,m=2,z=3"},
-		{name: "value with special chars", props: map[string]string{"variant": "oak_planks[1]"}, want: "variant=oak_planks[1]"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := svc.propsToKey(tt.props)
-			require.Equal(t, tt.want, got)
-		})
-	}
-}
 
 func TestBlockstateParserMatchKey(t *testing.T) {
-	svc := NewBlockstateParser(nil)
+	svc := NewBlockstateParser(nil, NewPropsKeyBuilder())
 
 	tests := []struct {
 		name  string
@@ -217,7 +197,7 @@ func TestBlockstateParserMatchKey(t *testing.T) {
 func TestBlockstateParser_MatchVariant(t *testing.T) {
 	t.Parallel()
 
-	svc := NewBlockstateParser(nil)
+	svc := NewBlockstateParser(nil, NewPropsKeyBuilder())
 
 	tests := []struct {
 		name     string
@@ -343,7 +323,7 @@ func TestBlockstateParserReadBlockstateFile(t *testing.T) {
 			if tt.setup != nil {
 				tt.setup(fs)
 			}
-			svc := NewBlockstateParser(fs)
+			svc := NewBlockstateParser(fs, NewPropsKeyBuilder())
 
 			_, _, err := svc.readBlockstateFile(tt.ns, tt.blockID, tt.namespaces)
 			if tt.wantErr != "" {
@@ -358,7 +338,7 @@ func TestBlockstateParserReadBlockstateFile(t *testing.T) {
 func TestBlockstateParserMatchMultipart(t *testing.T) {
 	t.Parallel()
 
-	svc := NewBlockstateParser(nil)
+	svc := NewBlockstateParser(nil, NewPropsKeyBuilder())
 
 	tests := []struct {
 		name    string
@@ -453,7 +433,7 @@ func TestBlockstateParserMatchMultipart(t *testing.T) {
 func TestBlockstateParserMatchWhen(t *testing.T) {
 	t.Parallel()
 
-	svc := NewBlockstateParser(nil)
+	svc := NewBlockstateParser(nil, NewPropsKeyBuilder())
 
 	tests := []struct {
 		name  string
@@ -478,7 +458,7 @@ func TestBlockstateParserMatchWhen(t *testing.T) {
 }
 
 func TestBlockstateParserSortedKeys(t *testing.T) {
-	svc := NewBlockstateParser(nil)
+	svc := NewBlockstateParser(nil, NewPropsKeyBuilder())
 
 	tests := []struct {
 		name string

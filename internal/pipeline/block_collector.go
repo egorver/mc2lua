@@ -1,9 +1,6 @@
 package pipeline
 
 import (
-	"slices"
-	"strings"
-
 	"mc2lua/internal/model"
 )
 
@@ -11,12 +8,17 @@ type blockResolver interface {
 	Run(id string, propsKey string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error)
 }
 
-type BlockCollector struct {
-	blockResolver blockResolver
+type propsKeyBuilder interface {
+	Run(props map[string]string) string
 }
 
-func NewBlockCollector(br blockResolver) *BlockCollector {
-	return &BlockCollector{blockResolver: br}
+type BlockCollector struct {
+	blockResolver   blockResolver
+	propsKeyBuilder propsKeyBuilder
+}
+
+func NewBlockCollector(br blockResolver, pkb propsKeyBuilder) *BlockCollector {
+	return &BlockCollector{blockResolver: br, propsKeyBuilder: pkb}
 }
 
 func (svc *BlockCollector) Run(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string) {
@@ -25,7 +27,7 @@ func (svc *BlockCollector) Run(blocks []model.RawBlock, namespaces map[string][]
 	var unresolved map[string]string
 
 	for _, b := range blocks {
-		propsKey := svc.propsToKey(b.Props)
+		propsKey := svc.propsKeyBuilder.Run(b.Props)
 		key := b.ID + "|" + propsKey
 		if seen[key] {
 			continue
@@ -47,26 +49,4 @@ func (svc *BlockCollector) Run(blocks []model.RawBlock, namespaces map[string][]
 	}
 
 	return result, unresolved
-}
-
-func (svc *BlockCollector) propsToKey(props map[string]string) string {
-	if len(props) == 0 {
-		return ""
-	}
-	keys := make([]string, 0, len(props))
-	for k := range props {
-		keys = append(keys, k)
-	}
-	slices.Sort(keys)
-
-	var b strings.Builder
-	for i, k := range keys {
-		if i > 0 {
-			b.WriteByte(',')
-		}
-		b.WriteString(k)
-		b.WriteByte('=')
-		b.WriteString(props[k])
-	}
-	return b.String()
 }
