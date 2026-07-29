@@ -69,3 +69,27 @@ func TestBlockIndexGetWithColonInProperties(t *testing.T) {
 	require.NotNil(t, got)
 	require.True(t, got.IsFullBlock)
 }
+
+func TestBlockIndex_Len(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		ids  []string
+		want int
+	}{
+		{name: "empty index", ids: nil, want: 0},
+		{name: "one entry", ids: []string{"stone"}, want: 1},
+		{name: "multiple entries", ids: []string{"stone", "dirt", "grass"}, want: 3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			idx := NewBlockIndex()
+			for _, id := range tt.ids {
+				idx.Add(id, "", &model.ResolvedBlock{})
+			}
+			require.Equal(t, tt.want, idx.Len())
+		})
+	}
+}

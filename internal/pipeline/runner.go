@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"fmt"
+	"strings"
 
 	"mc2lua/internal/index"
 	"mc2lua/internal/model"
@@ -15,24 +16,31 @@ type coordNormalizer interface {
 	Run(blocks []model.Block, noOffset bool) ([]model.Block, error)
 }
 
+type assetScanner interface {
+	Run(root string) (map[string][]string, error)
+}
+
 type indexBuilder interface {
-	Run(blocks []model.Block) (*index.BlockIndex, error)
+	Run(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, error)
 }
 
 type Runner struct {
 	regionReader    regionReader
 	coordNormalizer coordNormalizer
+	assetScanner    assetScanner
 	indexBuilder    indexBuilder
 }
 
 func NewRunner(
 	rr regionReader,
 	cn coordNormalizer,
+	as assetScanner,
 	ib indexBuilder,
 ) *Runner {
 	return &Runner{
 		regionReader:    rr,
 		coordNormalizer: cn,
+		assetScanner:    as,
 		indexBuilder:    ib,
 	}
 }
@@ -50,16 +58,30 @@ func (svc *Runner) Run(cfg RunConfig) error {
 	if err != nil {
 		return fmt.Errorf("read world: %w", err)
 	}
+	fmt.Printf("Read %d blocks\n", len(blocks))
 
+	beforeCount := len(blocks)
 	blocks, err = svc.coordNormalizer.Run(blocks, cfg.NoOffset)
 	if err != nil {
 		return fmt.Errorf("normalize coords: %w", err)
 	}
+	fmt.Printf("Adjusted coordinates for %d blocks\n", beforeCount)
 
-	_, err = svc.indexBuilder.Run(blocks)
+	namespaces, err := svc.assetScanner.Run(cfg.Input)
+	if err != nil {
+		return fmt.Errorf("scan assets: %w", err)
+	}
+	nsNames := make([]string, 0, len(namespaces))
+	for ns := range namespaces {
+		nsNames = append(nsNames, ns)
+	}
+	fmt.Printf("Found %d namespace(s): %s\n", len(namespaces), strings.Join(nsNames, ", "))
+
+	idx, err := svc.indexBuilder.Run(blocks, namespaces)
 	if err != nil {
 		return fmt.Errorf("build index: %w", err)
 	}
+	fmt.Printf("Built index: %d unique block variant(s)\n", idx.Len())
 
 	return nil
 }

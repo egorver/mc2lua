@@ -10,7 +10,7 @@ import (
 )
 
 type blockResolver interface {
-	Run(id, props string) (*model.ResolvedBlock, error)
+	Run(id, props string, namespaces map[string][]string) (*model.ResolvedBlock, error)
 }
 
 type IndexBuilder struct {
@@ -21,7 +21,7 @@ func NewIndexBuilder(br blockResolver) *IndexBuilder {
 	return &IndexBuilder{blockResolver: br}
 }
 
-func (svc *IndexBuilder) Run(blocks []model.Block) (*index.BlockIndex, error) {
+func (svc *IndexBuilder) Run(blocks []model.Block, namespaces map[string][]string) (*index.BlockIndex, error) {
 	idx := index.NewBlockIndex()
 
 	for _, b := range blocks {
@@ -30,7 +30,7 @@ func (svc *IndexBuilder) Run(blocks []model.Block) (*index.BlockIndex, error) {
 			continue
 		}
 
-		resolved, err := svc.blockResolver.Run(b.ID, propsStr)
+		resolved, err := svc.blockResolver.Run(b.ID, propsStr, namespaces)
 		if err != nil {
 			return nil, fmt.Errorf("resolve block %s: %w", b.ID+"|"+propsStr, err)
 		}

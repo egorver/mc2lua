@@ -41,6 +41,17 @@ func (m *FSMock) AddFile(path string, content []byte, mode fs.FileMode) {
 	m.files[filepath.Clean(path)] = mf
 }
 
+func (m *FSMock) AddDir(path string, perm fs.FileMode) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.files[filepath.Clean(path)] = &mockFile{
+		name:    path,
+		data:    bytes.NewBuffer(nil),
+		mode:    perm | fs.ModeDir,
+		modTime: time.Now(),
+	}
+}
+
 func (m *FSMock) Record(call string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

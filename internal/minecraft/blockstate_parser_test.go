@@ -1,0 +1,389 @@
+package minecraft
+
+import (
+	"encoding/json"
+	"mc2lua/internal/runtime"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestBlockstateParserRun(t *testing.T) {
+	fs, nsToRoots := setupTestFS()
+	addBlockstate(fs, "minecraft", "furnace", []byte(testBlockstateVariants))
+	addBlockstate(fs, "minecraft", "grass", []byte(testBlockstateArray))
+	addBlockstate(fs, "minecraft", "default", []byte(testBlockstateDefault))
+	addBlockstate(fs, "minecraft", "multipart", []byte(testBlockstateMultipart))
+	addBlockstate(fs, "minecraft", "empty_variants", []byte(testBlockstateEmptyVariants))
+	addBlockstate(fs, "minecraft", "bad_json", []byte(testBlockstateInvalidJSON))
+	addBlockstate(fs, "minecraft", "no_variants", []byte(testBlockstateNoVariants))
+
+	svc := NewBlockstateParser(fs)
+
+	tests := []struct {
+		name      string
+		namespace string
+		blockID   string
+		props     map[string]string
+		want      []blockstateMatch
+		wantErr   string
+	}{
+		{
+			name:      "exact variant match",
+			namespace: "minecraft", blockID: "furnace",
+			props: map[string]string{"facing": "north"},
+			want:  []blockstateMatch{{Model: "block/furnace"}},
+		},
+		{
+			name:      "variant with rotation",
+			namespace: "minecraft", blockID: "furnace",
+			props: map[string]string{"facing": "south"},
+			want:  []blockstateMatch{{Model: "block/furnace", RotY: 180}},
+		},
+		{
+			name:      "variant multiple properties",
+			namespace: "minecraft", blockID: "furnace",
+			props: map[string]string{"lit": "true", "facing": "east"},
+			want:  []blockstateMatch{{Model: "block/furnace_on", RotY: 90}},
+		},
+		{
+			name:      "fallback to empty variant",
+			namespace: "minecraft", blockID: "default",
+			props: map[string]string{"unused": "x"},
+			want:  []blockstateMatch{{Model: "block/cube"}},
+		},
+		{
+			name:      "array variant",
+			namespace: "minecraft", blockID: "grass",
+			props: map[string]string{},
+			want:  []blockstateMatch{{Model: "block/grass"}, {Model: "block/grass_alt"}},
+		},
+		{
+			name:      "no matching variant",
+			namespace: "minecraft", blockID: "furnace",
+			props:   map[string]string{"facing": "up"},
+			wantErr: "no matching variant",
+		},
+		{
+			name:      "unknown namespace",
+			namespace: "unknown", blockID: "stone",
+			props:   map[string]string{},
+			wantErr: "unknown namespace",
+		},
+		{
+			name:      "file not found",
+			namespace: "minecraft", blockID: "nonexistent",
+			props:   map[string]string{},
+			wantErr: "not found in any mod directory",
+		},
+		{
+			name:      "invalid JSON",
+			namespace: "minecraft", blockID: "bad_json",
+			props:   map[string]string{},
+			wantErr: "parse blockstate",
+		},
+		{
+			name:      "multipart not supported",
+			namespace: "minecraft", blockID: "multipart",
+			props:   map[string]string{},
+			wantErr: "multipart not supported",
+		},
+		{
+			name:      "no variants field",
+			namespace: "minecraft", blockID: "no_variants",
+			props:   map[string]string{},
+			wantErr: "no variants or multipart not supported",
+		},
+		{
+			name:      "empty variants object",
+			namespace: "minecraft", blockID: "empty_variants",
+			props:   map[string]string{},
+			wantErr: "no variants or multipart not supported",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := svc.Run(tt.namespace, tt.blockID, tt.props, nsToRoots)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestBlockstateParserRunMultipleRoots(t *testing.T) {
+	fs := runtime.NewFSMock()
+	fs.AddDir("assets", 0755)
+	fs.AddDir("assets/mod1", 0755)
+	fs.AddDir("assets/mod1/minecraft", 0755)
+	fs.AddDir("assets/mod1/minecraft/blockstates", 0755)
+	fs.AddDir("assets/mod2", 0755)
+	fs.AddDir("assets/mod2/minecraft", 0755)
+	fs.AddDir("assets/mod2/minecraft/blockstates", 0755)
+	addBlockstate(fs, "mod2/minecraft", "stone", []byte(testBlockstateDefault))
+
+	nsToRoots := map[string][]string{
+		"minecraft": {"assets/mod1/minecraft", "assets/mod2/minecraft"},
+	}
+	svc := NewBlockstateParser(fs)
+
+	matches, err := svc.Run("minecraft", "stone", nil, nsToRoots)
+	require.NoError(t, err)
+	require.Equal(t, []blockstateMatch{{Model: "block/cube"}}, matches)
+}
+
+func TestBlockstateParserParseVariantValue(t *testing.T) {
+	svc := NewBlockstateParser(nil)
+
+	t.Run("single object", func(t *testing.T) {
+		matches, err := svc.parseVariantValue([]byte(`{"model":"block/cube"}`))
+		require.NoError(t, err)
+		require.Equal(t, []blockstateMatch{{Model: "block/cube"}}, matches)
+	})
+
+	t.Run("object with rotation", func(t *testing.T) {
+		matches, err := svc.parseVariantValue([]byte(`{"model":"block/furnace","x":90,"y":180}`))
+		require.NoError(t, err)
+		require.Equal(t, []blockstateMatch{{Model: "block/furnace", RotX: 90, RotY: 180}}, matches)
+	})
+
+	t.Run("array of variants", func(t *testing.T) {
+		matches, err := svc.parseVariantValue([]byte(`[{"model":"block/stone"},{"model":"block/andesite"}]`))
+		require.NoError(t, err)
+		require.Equal(t, []blockstateMatch{{Model: "block/stone"}, {Model: "block/andesite"}}, matches)
+	})
+
+	t.Run("empty value", func(t *testing.T) {
+		_, err := svc.parseVariantValue([]byte(``))
+		require.ErrorContains(t, err, "empty variant value")
+	})
+
+	t.Run("whitespace only", func(t *testing.T) {
+		_, err := svc.parseVariantValue([]byte(`   `))
+		require.ErrorContains(t, err, "empty variant value")
+	})
+
+	t.Run("invalid JSON object", func(t *testing.T) {
+		_, err := svc.parseVariantValue([]byte(`{broken`))
+		require.ErrorContains(t, err, "parse variant object")
+	})
+
+	t.Run("invalid JSON array", func(t *testing.T) {
+		_, err := svc.parseVariantValue([]byte(`[{broken`))
+		require.ErrorContains(t, err, "parse variant array")
+	})
+}
+
+func TestBlockstateParserPropsToKey(t *testing.T) {
+	svc := NewBlockstateParser(nil)
+
+	tests := []struct {
+		name  string
+		props map[string]string
+		want  string
+	}{
+		{name: "empty", props: map[string]string{}, want: ""},
+		{name: "single", props: map[string]string{"facing": "north"}, want: "facing=north"},
+		{name: "two props sorted", props: map[string]string{"lit": "true", "facing": "east"}, want: "facing=east,lit=true"},
+		{name: "three props sorted", props: map[string]string{"z": "3", "a": "1", "m": "2"}, want: "a=1,m=2,z=3"},
+		{name: "value with special chars", props: map[string]string{"variant": "oak_planks[1]"}, want: "variant=oak_planks[1]"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := svc.propsToKey(tt.props)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestBlockstateParserMatchKey(t *testing.T) {
+	svc := NewBlockstateParser(nil)
+
+	tests := []struct {
+		name  string
+		key   string
+		props map[string]string
+		want  bool
+	}{
+		{name: "exact match", key: "facing=north", props: map[string]string{"facing": "north"}, want: true},
+		{name: "mismatch", key: "facing=north", props: map[string]string{"facing": "south"}, want: false},
+		{name: "multiple props match", key: "facing=north,lit=true", props: map[string]string{"facing": "north", "lit": "true"}, want: true},
+		{name: "multiple props one mismatch", key: "facing=north,lit=true", props: map[string]string{"facing": "north", "lit": "false"}, want: false},
+		{name: "missing prop", key: "facing=north", props: map[string]string{}, want: false},
+		{name: "empty key returns true", key: "", props: map[string]string{"anything": "x"}, want: true},
+		{name: "empty key empty props", key: "", props: map[string]string{}, want: true},
+		{name: "key without equals ignored", key: "invalid", props: map[string]string{}, want: true},
+		{name: "extra props ignored", key: "facing=north", props: map[string]string{"facing": "north", "unused": "x"}, want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := svc.matchKey(tt.key, tt.props)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestBlockstateParser_MatchVariant(t *testing.T) {
+	t.Parallel()
+
+	svc := NewBlockstateParser(nil)
+
+	tests := []struct {
+		name     string
+		variants map[string]json.RawMessage
+		props    map[string]string
+		want     []blockstateMatch
+		wantErr  string
+	}{
+		{
+			name: "exact match",
+			variants: map[string]json.RawMessage{
+				"facing=north": json.RawMessage(`{"model":"block/furnace"}`),
+			},
+			props: map[string]string{"facing": "north"},
+			want:  []blockstateMatch{{Model: "block/furnace"}},
+		},
+		{
+			name: "fallback to empty variant",
+			variants: map[string]json.RawMessage{
+				"facing=north": json.RawMessage(`{"model":"block/furnace"}`),
+				"":             json.RawMessage(`{"model":"block/default"}`),
+			},
+			props: map[string]string{"facing": "south"},
+			want:  []blockstateMatch{{Model: "block/default"}},
+		},
+		{
+			name: "match by key iteration",
+			variants: map[string]json.RawMessage{
+				"facing=north,lit=true": json.RawMessage(`{"model":"block/furnace_on"}`),
+				"facing=north":          json.RawMessage(`{"model":"block/furnace"}`),
+			},
+			props: map[string]string{"facing": "north", "lit": "false"},
+			want:  []blockstateMatch{{Model: "block/furnace"}},
+		},
+		{
+			name: "no matching variant",
+			variants: map[string]json.RawMessage{
+				"facing=north": json.RawMessage(`{"model":"block/furnace"}`),
+			},
+			props:   map[string]string{"facing": "up"},
+			wantErr: "no matching variant",
+		},
+		{
+			name:     "empty variants map",
+			variants: map[string]json.RawMessage{},
+			props:    map[string]string{},
+			wantErr:  "no variants defined",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := svc.matchVariant(tt.variants, tt.props)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestBlockstateParserReadBlockstateFile(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		ns         string
+		blockID    string
+		namespaces map[string][]string
+		setup      func(fs *runtime.FSMock)
+		wantErr    string
+	}{
+		{
+			name:       "unknown namespace",
+			ns:         "unknown",
+			blockID:    "stone",
+			namespaces: map[string][]string{"minecraft": {"assets/minecraft"}},
+			wantErr:    "unknown namespace",
+		},
+		{
+			name:       "file not found",
+			ns:         "minecraft",
+			blockID:    "nonexistent",
+			namespaces: map[string][]string{"minecraft": {"assets/minecraft"}},
+			setup:      func(fs *runtime.FSMock) {},
+			wantErr:    "not found in any mod directory",
+		},
+		{
+			name:       "invalid JSON",
+			ns:         "minecraft",
+			blockID:    "bad",
+			namespaces: map[string][]string{"minecraft": {"assets/minecraft"}},
+			setup: func(fs *runtime.FSMock) {
+				addBlockstate(fs, "minecraft", "bad", []byte(`{bad json`))
+			},
+			wantErr: "parse blockstate",
+		},
+		{
+			name:       "success",
+			ns:         "minecraft",
+			blockID:    "stone",
+			namespaces: map[string][]string{"minecraft": {"assets/minecraft"}},
+			setup: func(fs *runtime.FSMock) {
+				addBlockstate(fs, "minecraft", "stone", []byte(testBlockstateDefault))
+			},
+		},
+		{
+			name:       "multiple roots second has file",
+			ns:         "minecraft",
+			blockID:    "stone",
+			namespaces: map[string][]string{"minecraft": {"assets/mod1/minecraft", "assets/mod2/minecraft"}},
+			setup: func(fs *runtime.FSMock) {
+				addBlockstate(fs, "mod2/minecraft", "stone", []byte(testBlockstateDefault))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fs := runtime.NewFSMock()
+			if tt.setup != nil {
+				tt.setup(fs)
+			}
+			svc := NewBlockstateParser(fs)
+
+			_, _, err := svc.readBlockstateFile(tt.ns, tt.blockID, tt.namespaces)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestBlockstateParserSortedKeys(t *testing.T) {
+	svc := NewBlockstateParser(nil)
+
+	tests := []struct {
+		name string
+		m    map[string]json.RawMessage
+		want []string
+	}{
+		{name: "nil", m: nil, want: []string{}},
+		{name: "empty", m: map[string]json.RawMessage{}, want: []string{}},
+		{name: "single", m: map[string]json.RawMessage{"a": nil}, want: []string{"a"}},
+		{name: "sorted", m: map[string]json.RawMessage{"z": nil, "a": nil, "m": nil}, want: []string{"a", "m", "z"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := svc.sortedKeys(tt.m)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}

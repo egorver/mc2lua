@@ -1,22 +1,22 @@
+version: "2"
 linters:
   enable:
-    - gci
     - govet
     - staticcheck
     - errcheck
     - ineffassign
     - unused
-    - gosimple
     - gosec
     - gocritic
-
-linters-settings:
-  gci:
-    custom-order: true
-    sections:
-      - standard
-      - prefix(mc2lua)
-      - default
-
+formatters:
+  enable:
+    - gci
+  settings:
+    gci:
+      custom-order: true
+      sections:
+        - standard
+        - prefix(mc2lua)
+        - default
 run:
   timeout: 5m

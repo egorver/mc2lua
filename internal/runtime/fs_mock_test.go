@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -76,6 +77,23 @@ func TestFSMock_Create(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFSMock_AddDir(t *testing.T) {
+	t.Parallel()
+
+	m := NewFSMock()
+	m.AddDir("/root/dir", 0755)
+
+	entries, err := m.ReadDir("/root")
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	require.Equal(t, "dir", entries[0].Name())
+	require.True(t, entries[0].IsDir())
+
+	data, err := m.ReadFile("/root/dir")
+	require.NoError(t, err)
+	require.Empty(t, data)
 }
 
 func TestFSMock_ReadDir(t *testing.T) {
@@ -259,6 +277,31 @@ func TestFSMock_CallsRecording(t *testing.T) {
 		"ReadDir:/d",
 		"ReadFile:/f",
 	}, m.Calls)
+}
+
+func TestFileInfo_Methods(t *testing.T) {
+	t.Parallel()
+
+	fi := fileInfo{name: "test.txt", size: 42, mode: 0644, mod: time.Unix(1000, 0)}
+
+	tests := []struct {
+		name string
+		got  any
+		want any
+	}{
+		{name: "Name", got: fi.Name(), want: "test.txt"},
+		{name: "Size", got: fi.Size(), want: int64(42)},
+		{name: "Mode", got: fi.Mode(), want: fs.FileMode(0644)},
+		{name: "ModTime", got: fi.ModTime(), want: time.Unix(1000, 0)},
+		{name: "IsDir", got: fi.IsDir(), want: false},
+		{name: "Sys", got: fi.Sys(), want: nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, tt.got)
+		})
+	}
 }
 
 func TestFSMock_FilepathHasPrefix(t *testing.T) {

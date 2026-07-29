@@ -18,6 +18,10 @@ func (i *BlockIndex) Add(id, props string, resolved *model.ResolvedBlock) {
 	i.entries[id+"|"+props] = resolved
 }
 
+func (i *BlockIndex) Len() int {
+	return len(i.entries)
+}
+
 func (i *BlockIndex) Get(id, props string) (*model.ResolvedBlock, bool) {
 	key := id + "|" + props
 	v, ok := i.entries[key]
