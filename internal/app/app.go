@@ -18,11 +18,17 @@ func New() *App {
 
 func (svc *App) Run(cfg AppConfig) error {
 	runCfg := buildConfig(cfg)
+
 	runner, err := buildDeps(cfg.MaterialsPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("build runner: %w", err)
 	}
-	return runner.Run(runCfg)
+
+	if err := runner.Run(runCfg); err != nil {
+		return fmt.Errorf("run pipeline: %w", err)
+	}
+
+	return nil
 }
 
 func buildConfig(cfg AppConfig) pipeline.RunConfig {

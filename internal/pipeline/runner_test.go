@@ -133,15 +133,13 @@ func TestRunner_Run(t *testing.T) {
 			},
 		},
 		{
-			name: "region reader error",
+			name: "region reader error is logged not returned",
 			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
 				return nil, errWorld
 			},
 			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 				return blocks, nil
 			},
-			wantErr:    true,
-			wantErrMsg: "read world: world error",
 		},
 		{
 			name: "coord normalizer error",

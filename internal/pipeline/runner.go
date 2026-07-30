@@ -89,9 +89,7 @@ type RunConfig struct {
 
 func (svc *Runner) Run(cfg RunConfig) error {
 	blocks, err := svc.regionReader.Run(cfg.Input, cfg.Bounds)
-	if err != nil {
-		return fmt.Errorf("read world: %w", err)
-	}
+	svc.logRegionErrors(err)
 	svc.log("Read %d blocks\n", len(blocks))
 
 	blocks, err = svc.coordNormalizer.Run(blocks, cfg.NoOffset)
@@ -130,6 +128,16 @@ func (svc *Runner) Run(cfg RunConfig) error {
 
 func (svc *Runner) log(format string, args ...any) {
 	fmt.Fprintf(svc.logOutput, format, args...)
+}
+
+func (svc *Runner) logRegionErrors(err error) {
+	if err == nil {
+		return
+	}
+	svc.log("Warning: errors reading regions:\n")
+	for _, line := range strings.Split(err.Error(), "\n") {
+		svc.log("  %s\n", line)
+	}
 }
 
 func (svc *Runner) logNamespaces(namespaces map[string][]string) {

@@ -34,7 +34,7 @@ type rawBlockstate struct {
 func (svc *BlockstateParser) Run(ns, blockID string, props map[string]string, namespaces map[string][]string) ([]blockstateMatch, error) {
 	raw, source, err := svc.readBlockstateFile(ns, blockID, namespaces)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolve blockstate %s/%s: %w", ns, blockID, err)
 	}
 	if len(raw.Variants) > 0 {
 		return svc.matchVariant(raw.Variants, props)

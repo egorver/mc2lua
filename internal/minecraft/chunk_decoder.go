@@ -1,6 +1,7 @@
 package minecraft
 
 import (
+	"fmt"
 	"math/bits"
 
 	"mc2lua/internal/model"
@@ -18,7 +19,7 @@ func NewChunkDecoder() *ChunkDecoder {
 func (svc *ChunkDecoder) Run(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
 	var sc save.Chunk
 	if err := sc.Load(data); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode chunk (%d, %d): %w", chunkX, chunkZ, err)
 	}
 
 	if sc.Status != "full" && sc.Status != "minecraft:full" {

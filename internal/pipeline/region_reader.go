@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -29,6 +30,7 @@ func (svc *RegionReader) Run(input string, bounds model.Bounds) ([]model.RawBloc
 	}
 
 	var blocks []model.RawBlock
+	var errs []error
 	for _, name := range files {
 		rx, rz := svc.parseRegionCoord(name)
 
@@ -37,17 +39,23 @@ func (svc *RegionReader) Run(input string, bounds model.Bounds) ([]model.RawBloc
 			continue
 		}
 
-		regionBlocks := svc.processRegion(input, name, rx, rz, bounds)
+		regionBlocks, err := svc.processRegion(input, name, rx, rz, bounds)
+		if err != nil {
+			errs = append(errs, err)
+		}
 		blocks = append(blocks, regionBlocks...)
 	}
 
+	if len(errs) > 0 {
+		return blocks, fmt.Errorf("region reader: %w", errors.Join(errs...))
+	}
 	return blocks, nil
 }
 
 func (svc *RegionReader) listRegionFiles(input string) ([]string, error) {
 	entries, err := svc.fs.ReadDir(input)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list region files in %s: %w", input, err)
 	}
 
 	var files []string
@@ -64,14 +72,15 @@ func (svc *RegionReader) listRegionFiles(input string) ([]string, error) {
 	return files, nil
 }
 
-func (svc *RegionReader) processRegion(input, name string, rx, rz int, bounds model.Bounds) []model.RawBlock {
+func (svc *RegionReader) processRegion(input, name string, rx, rz int, bounds model.Bounds) ([]model.RawBlock, error) {
 	r, err := region.Open(filepath.Join(input, name))
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("open region %s: %w", name, err)
 	}
 	defer r.Close()
 
 	var blocks []model.RawBlock
+	var errs []error
 	for lx := 0; lx < 32; lx++ {
 		for lz := 0; lz < 32; lz++ {
 			if !r.ExistSector(lx, lz) {
@@ -86,22 +95,29 @@ func (svc *RegionReader) processRegion(input, name string, rx, rz int, bounds mo
 				continue
 			}
 
-			chunkBlocks := svc.processChunk(r, lx, lz, chunkX, chunkZ, bounds)
+			chunkBlocks, err := svc.processChunk(r, lx, lz, chunkX, chunkZ, bounds)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
 			blocks = append(blocks, chunkBlocks...)
 		}
 	}
-	return blocks
+	if len(errs) > 0 {
+		return blocks, fmt.Errorf("process region %s: %w", name, errors.Join(errs...))
+	}
+	return blocks, nil
 }
 
-func (svc *RegionReader) processChunk(r *region.Region, lx, lz, chunkX, chunkZ int, bounds model.Bounds) []model.RawBlock {
+func (svc *RegionReader) processChunk(r *region.Region, lx, lz, chunkX, chunkZ int, bounds model.Bounds) ([]model.RawBlock, error) {
 	data, err := r.ReadSector(lx, lz)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("read sector for chunk (%d, %d): %w", chunkX, chunkZ, err)
 	}
 
 	blocks, err := svc.chunkDecoder.Run(data, chunkX, chunkZ)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	filtered := blocks[:0]
@@ -112,7 +128,7 @@ func (svc *RegionReader) processChunk(r *region.Region, lx, lz, chunkX, chunkZ i
 			filtered = append(filtered, b)
 		}
 	}
-	return filtered
+	return filtered, nil
 }
 
 func (svc *RegionReader) parseRegionCoord(name string) (int, int) {

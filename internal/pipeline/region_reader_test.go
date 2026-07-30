@@ -203,7 +203,7 @@ func TestRegionReader_Run(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "region in bounds but file invalid returns empty blocks",
+			name: "region in bounds but file invalid returns partial result with error",
 			setup: func(m *runtime.FSMock) {
 				m.AddFile("/input/r.0.0.mca", []byte("not a real mca file"), 0644)
 			},
@@ -212,6 +212,7 @@ func TestRegionReader_Run(t *testing.T) {
 				YMin: -1000, YMax: 1000,
 				ZMin: -1000, ZMax: 1000,
 			},
+			wantErr: true,
 		},
 	}
 
