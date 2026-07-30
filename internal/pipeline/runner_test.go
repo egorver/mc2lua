@@ -82,6 +82,17 @@ func (m *mockMerger) Run(grid *index.VoxelIndex) []model.Cuboid {
 	return nil
 }
 
+type mockLuaGenerator struct {
+	runFn func(blocks []model.RawBlock, cuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
+}
+
+func (m *mockLuaGenerator) Run(blocks []model.RawBlock, cuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error) {
+	if m.runFn != nil {
+		return m.runFn(blocks, cuboids, styleIndex, scale, outputPath)
+	}
+	return 0, nil
+}
+
 func TestRunner_New(t *testing.T) {
 	t.Parallel()
 
@@ -92,7 +103,8 @@ func TestRunner_New(t *testing.T) {
 	mockIdx := &mockIndexer{}
 	mockVI := &mockVoxelIndexer{}
 	mockRM := &mockMerger{}
-	r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockVI, mockRM, io.Discard)
+	mockLG := &mockLuaGenerator{}
+	r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockVI, mockRM, mockLG, io.Discard)
 	require.NotNil(t, r)
 }
 
@@ -176,7 +188,8 @@ func TestRunner_Run(t *testing.T) {
 			mockIdx := &mockIndexer{}
 			mockVI := &mockVoxelIndexer{}
 			mockRM := &mockMerger{}
-			r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockVI, mockRM, io.Discard)
+			mockLG := &mockLuaGenerator{}
+			r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockVI, mockRM, mockLG, io.Discard)
 
 			err := r.Run(RunConfig{
 				Input:     "/test",

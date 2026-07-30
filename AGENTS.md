@@ -15,4 +15,4 @@
 ## Testing
 
 - Test the program with `go run ./cmd/mc2lua` (no arguments) or with specific bounds:
-  `go run ./cmd/mc2lua -xmin -2201 -xmax -2125 -ymin 60 -ymax 110 -zmin 2669 -zmax 2722`
+  `go run ./cmd/mc2lua -xmin -2201 -xmax -2125 -ymin 60 -ymax 110 -zmin 2669 -zmax 2722 -output output/output.lua`

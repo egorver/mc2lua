@@ -30,6 +30,8 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 				To:       el.To,
 				Rotation: el.Rotation,
 				Shade:    el.Shade,
+				Color:    model.DefaultColor,
+				Material: model.DefaultMaterial,
 			}
 		}
 

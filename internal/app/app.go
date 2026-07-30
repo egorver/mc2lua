@@ -54,7 +54,8 @@ func buildDeps() *pipeline.Runner {
 	styleIndexer := pipeline.NewStyleIndexer(modelAnalyzer)
 	voxelIndexer := pipeline.NewVoxelIndexer(propsKeyBuilder)
 	regionMerger := pipeline.NewRegionMerger()
+	luaGenerator := pipeline.NewLuaGenerator(propsKeyBuilder)
 
 	return pipeline.NewRunner(
-		regionReader, coordNormalizer, assetScanner, blockCollector, styleIndexer, voxelIndexer, regionMerger, os.Stdout)
+		regionReader, coordNormalizer, assetScanner, blockCollector, styleIndexer, voxelIndexer, regionMerger, luaGenerator, os.Stdout)
 }

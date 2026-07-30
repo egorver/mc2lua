@@ -38,6 +38,10 @@ type regionMerger interface {
 	Run(grid *index.VoxelIndex) []model.Cuboid
 }
 
+type luaGenerator interface {
+	Run(blocks []model.RawBlock, cuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
+}
+
 type Runner struct {
 	regionReader    regionReader
 	coordNormalizer coordNormalizer
@@ -46,6 +50,7 @@ type Runner struct {
 	styleIndexer    styleIndexer
 	voxelIndexer    voxelIndexer
 	regionMerger    regionMerger
+	luaGenerator    luaGenerator
 	logOutput       io.Writer
 }
 
@@ -57,6 +62,7 @@ func NewRunner(
 	si styleIndexer,
 	vi voxelIndexer,
 	rm regionMerger,
+	lg luaGenerator,
 	logOutput io.Writer,
 ) *Runner {
 	return &Runner{
@@ -67,6 +73,7 @@ func NewRunner(
 		styleIndexer:    si,
 		voxelIndexer:    vi,
 		regionMerger:    rm,
+		luaGenerator:    lg,
 		logOutput:       logOutput,
 	}
 }
@@ -111,6 +118,12 @@ func (svc *Runner) Run(cfg RunConfig) error {
 
 	regions := svc.regionMerger.Run(voxelIdx)
 	svc.logMergeStats(len(voxelIdx.Blocks()), len(regions))
+
+	totalParts, err := svc.luaGenerator.Run(blocks, regions, *styledIdx, float64(cfg.Scale), cfg.Output)
+	if err != nil {
+		return fmt.Errorf("generate lua: %w", err)
+	}
+	svc.log("Generated %d part(s)\n", totalParts)
 
 	return nil
 }

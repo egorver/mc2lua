@@ -2,6 +2,10 @@ package model
 
 type Color [3]uint8
 
+var DefaultColor = Color{191, 191, 191}
+
+const DefaultMaterial = "Plastic"
+
 type StyledElement struct {
 	From     Vector3
 	To       Vector3
