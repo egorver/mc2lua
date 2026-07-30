@@ -50,12 +50,12 @@ func (m *mockCollector) Run(blocks []model.RawBlock, namespaces map[string][]str
 }
 
 type mockIndexer struct {
-	runFn func(blocks []model.ResolvedBlock) *index.StyleIndex
+	runFn func(blocks []model.ResolvedBlock, namespaces map[string][]string) *index.StyleIndex
 }
 
-func (m *mockIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
+func (m *mockIndexer) Run(blocks []model.ResolvedBlock, namespaces map[string][]string) *index.StyleIndex {
 	if m.runFn != nil {
-		return m.runFn(blocks)
+		return m.runFn(blocks, namespaces)
 	}
 	return index.NewStyleIndex()
 }

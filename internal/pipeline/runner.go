@@ -27,7 +27,7 @@ type blockCollector interface {
 }
 
 type styleIndexer interface {
-	Run(blocks []model.ResolvedBlock) *index.StyleIndex
+	Run(blocks []model.ResolvedBlock, namespaces map[string][]string) *index.StyleIndex
 }
 
 type blockVoxelIndexer interface {
@@ -115,7 +115,7 @@ func (svc *Runner) Run(cfg RunConfig) error {
 	svc.logUnresolved(unresolved)
 	svc.log("Collected %d unique block variant(s)\n", len(resolved))
 
-	styledIdx := svc.styleIndexer.Run(resolved)
+	styledIdx := svc.styleIndexer.Run(resolved, namespaces)
 	svc.log("Built style index: %d entries\n", styledIdx.Len())
 
 	blockIdx := svc.blockVoxelIndexer.Run(blocks, *styledIdx)

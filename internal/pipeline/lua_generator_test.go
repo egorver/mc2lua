@@ -93,11 +93,8 @@ func TestWriteHeader(t *testing.T) {
 		"local folder = Instance.new(\"Folder\")",
 		"folder.Name = \"Imported\"",
 		"folder.Parent = workspace",
-		"local function createPart(size, pos, r, g, b, material, name, blockId, properties, origX, origY, origZ, parent)",
+		"local function createPart(size, pos, r, g, b, material, name, blockId, properties, parent)",
 		"p:SetAttribute(\"original_block_id\", blockId)",
-		"p:SetAttribute(\"original_x\", origX)",
-		"p:SetAttribute(\"original_y\", origY)",
-		"p:SetAttribute(\"original_z\", origZ)",
 	}
 
 	for _, c := range checks {

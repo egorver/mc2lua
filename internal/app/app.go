@@ -58,6 +58,7 @@ func buildDeps(materialsPath string) (*pipeline.Runner, error) {
 	textureResolver := minecraft.NewTextureResolver()
 	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelParser, textureResolver)
 	elementRotator := minecraft.NewElementRotator()
+	colorExtractor := minecraft.NewColorExtractor(fs)
 
 	matcher, err := pipeline.NewMaterialMatcher(fs, materialsPath)
 	if err != nil {
@@ -67,7 +68,7 @@ func buildDeps(materialsPath string) (*pipeline.Runner, error) {
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
 	coordNormalizer := pipeline.NewCoordNormalizer()
 	blockCollector := pipeline.NewBlockCollector(blockResolver, propsKeyBuilder)
-	styleIndexer := pipeline.NewStyleIndexer(gridAnalyzer, elementRotator, matcher)
+	styleIndexer := pipeline.NewStyleIndexer(gridAnalyzer, elementRotator, matcher, colorExtractor)
 	blockVoxelIndexer := pipeline.NewBlockVoxelIndexer(propsKeyBuilder)
 	microVoxelIndexer := pipeline.NewMicroVoxelIndexer(propsKeyBuilder)
 	regionMerger := pipeline.NewRegionMerger()

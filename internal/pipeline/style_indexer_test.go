@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"mc2lua/internal/index"
+	"mc2lua/internal/minecraft"
 	"mc2lua/internal/model"
 
 	"github.com/stretchr/testify/require"
@@ -42,10 +43,21 @@ func (m *mockElementRotator) Run(elements []model.StyledElement, rotX, rotY floa
 	return elements
 }
 
+type mockColorExtractor struct {
+	runFn func(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error)
+}
+
+func (m *mockColorExtractor) Run(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
+	if m.runFn != nil {
+		return m.runFn(samples, nsRoots, blockID)
+	}
+	return model.DefaultColor, nil
+}
+
 func TestStyleIndexer_New(t *testing.T) {
 	t.Parallel()
 
-	si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{})
+	si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockColorExtractor{})
 	require.NotNil(t, si)
 }
 
@@ -175,9 +187,9 @@ func TestStyleIndexer_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ga := &mockGridAnalyzer{runFn: tt.analyzer}
 			mm := &mockMaterialMatcher{runFn: tt.matcher}
-			si := NewStyleIndexer(ga, &mockElementRotator{}, mm)
+			si := NewStyleIndexer(ga, &mockElementRotator{}, mm, &mockColorExtractor{})
 
-			idx := si.Run(tt.blocks)
+			idx := si.Run(tt.blocks, nil)
 			require.Equal(t, tt.wantLen, idx.Len())
 			if tt.wantCheck != nil {
 				tt.wantCheck(t, idx)
