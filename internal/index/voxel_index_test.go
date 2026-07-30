@@ -22,6 +22,25 @@ func TestVoxelIndexBlocks(t *testing.T) {
 	require.Equal(t, "a", blocks[0].ID)
 }
 
+func TestVoxelIndex_DuplicateAddBlock(t *testing.T) {
+	g := NewVoxelIndex()
+
+	b1 := &model.MergedBlock{ID: "stone", X: 1, Y: 2, Z: 3}
+	b2 := &model.MergedBlock{ID: "dirt", X: 1, Y: 2, Z: 3}
+
+	g.AddBlock(b1)
+	g.AddBlock(b2)
+
+	got := g.GetBlock(1, 2, 3)
+	require.NotNil(t, got)
+	require.Equal(t, "dirt", got.ID)
+
+	blocks := g.Blocks()
+	require.Len(t, blocks, 2)
+	require.Equal(t, "stone", blocks[0].ID)
+	require.Equal(t, "dirt", blocks[1].ID)
+}
+
 func TestAddBlockAndGetBlock(t *testing.T) {
 	g := NewVoxelIndex()
 	b := &model.MergedBlock{ID: "test", X: 1, Y: 2, Z: 3}

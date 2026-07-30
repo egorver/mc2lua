@@ -146,6 +146,103 @@ func TestBlockResolver_Run(t *testing.T) {
 	}
 }
 
+func TestBlockResolver_Run_WithRotation(t *testing.T) {
+	t.Parallel()
+
+	t.Run("rotation from match sets RotY", func(t *testing.T) {
+		mockBSP := &mockBlockstateParser{
+			runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
+				return []blockstateMatch{{Model: "minecraft:block/furnace", RotY: 180}}, nil
+			},
+		}
+		mockMP := &mockModelParser{
+			runFn: func(_ string, _ map[string][]string) (*flattenedModel, error) {
+				return &flattenedModel{Elements: []model.ModelElement{{Shade: true}}}, nil
+			},
+		}
+		mockTR := &mockTextureResolver{
+			runFn: func(textures map[string]string) map[string]string { return textures },
+		}
+		svc := NewBlockResolver(mockBSP, mockMP, mockTR)
+		resolved, err := svc.Run("minecraft:furnace", "", nil, nil)
+		require.NoError(t, err)
+		require.Equal(t, 0.0, resolved.RotX)
+		require.Equal(t, 180.0, resolved.RotY)
+	})
+
+	t.Run("rotation from first match when multiple have rotation", func(t *testing.T) {
+		mockBSP := &mockBlockstateParser{
+			runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
+				return []blockstateMatch{
+					{Model: "minecraft:block/stone", RotY: 90},
+					{Model: "minecraft:block/stone_alt", RotY: 180},
+				}, nil
+			},
+		}
+		mockMP := &mockModelParser{
+			runFn: func(name string, _ map[string][]string) (*flattenedModel, error) {
+				return &flattenedModel{Elements: []model.ModelElement{{Shade: true}}}, nil
+			},
+		}
+		mockTR := &mockTextureResolver{
+			runFn: func(textures map[string]string) map[string]string { return textures },
+		}
+		svc := NewBlockResolver(mockBSP, mockMP, mockTR)
+		resolved, err := svc.Run("minecraft:stone", "", nil, nil)
+		require.NoError(t, err)
+		require.Equal(t, 90.0, resolved.RotY)
+	})
+
+	t.Run("nil props does not panic", func(t *testing.T) {
+		mockBSP := &mockBlockstateParser{
+			runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
+				return []blockstateMatch{{Model: "minecraft:block/stone"}}, nil
+			},
+		}
+		mockMP := &mockModelParser{
+			runFn: func(_ string, _ map[string][]string) (*flattenedModel, error) {
+				return &flattenedModel{Elements: []model.ModelElement{{Shade: true}}}, nil
+			},
+		}
+		mockTR := &mockTextureResolver{
+			runFn: func(textures map[string]string) map[string]string { return textures },
+		}
+		svc := NewBlockResolver(mockBSP, mockMP, mockTR)
+		resolved, err := svc.Run("minecraft:stone", "key", nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, resolved)
+	})
+
+	t.Run("textures passed through to result", func(t *testing.T) {
+		mockBSP := &mockBlockstateParser{
+			runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
+				return []blockstateMatch{{Model: "minecraft:block/cube"}}, nil
+			},
+		}
+		mockMP := &mockModelParser{
+			runFn: func(_ string, _ map[string][]string) (*flattenedModel, error) {
+				return &flattenedModel{
+					Elements: []model.ModelElement{{Shade: true}},
+					Textures: map[string]string{"particle": "block/particle"},
+				}, nil
+			},
+		}
+		mockTR := &mockTextureResolver{
+			runFn: func(textures map[string]string) map[string]string {
+				result := make(map[string]string, len(textures))
+				for k, v := range textures {
+					result[k] = "resolved:" + v
+				}
+				return result
+			},
+		}
+		svc := NewBlockResolver(mockBSP, mockMP, mockTR)
+		resolved, err := svc.Run("minecraft:cube", "", nil, nil)
+		require.NoError(t, err)
+		require.Equal(t, "resolved:block/particle", resolved.Textures["particle"])
+	})
+}
+
 func TestBlockResolver_ResolveElements(t *testing.T) {
 	t.Parallel()
 

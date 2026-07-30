@@ -183,6 +183,45 @@ func TestModelParser_ParseElements(t *testing.T) {
 			},
 		},
 		{
+			name: "broken JSON element produces zero value",
+			raws: []json.RawMessage{
+				json.RawMessage(`{bad json}`),
+			},
+			want: []model.ModelElement{
+				{From: model.Vector3{0, 0, 0}, To: model.Vector3{0, 0, 0}, Shade: true},
+			},
+		},
+		{
+			name: "element with faces",
+			raws: []json.RawMessage{
+				json.RawMessage(`{"from":[0,0,0],"to":[16,16,16],"faces":{"north":{"uv":[0,0,16,16],"texture":"#all"}}}`),
+			},
+			want: []model.ModelElement{
+				{
+					From:  model.Vector3{0, 0, 0},
+					To:    model.Vector3{16, 16, 16},
+					Shade: true,
+					Faces: map[string]model.ElementFace{
+						"north": {UV: [4]float64{0, 0, 16, 16}, Texture: "#all"},
+					},
+				},
+			},
+		},
+		{
+			name: "element with rotation",
+			raws: []json.RawMessage{
+				json.RawMessage(`{"from":[0,0,0],"to":[16,16,16],"rotation":{"origin":[8,8,8],"axis":"y","angle":45}}`),
+			},
+			want: []model.ModelElement{
+				{
+					From:     model.Vector3{0, 0, 0},
+					To:       model.Vector3{16, 16, 16},
+					Shade:    true,
+					Rotation: &model.ElementRotation{Origin: model.Vector3{8, 8, 8}, Axis: "y", Angle: 45},
+				},
+			},
+		},
+		{
 			name: "multiple elements with mixed shade",
 			raws: []json.RawMessage{
 				json.RawMessage(`{"from":[0,0,0],"to":[8,16,16],"shade":true}`),

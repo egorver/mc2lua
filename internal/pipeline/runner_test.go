@@ -120,6 +120,7 @@ func TestRunner_Run(t *testing.T) {
 		mockNormalize func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error)
 		mockScan      func(root string) (map[string][]string, error)
 		mockCollect   func(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string)
+		mockLG        func(blocks []model.RawBlock, cuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
 		wantErr       bool
 		wantErrMsg    string
 	}{
@@ -151,6 +152,29 @@ func TestRunner_Run(t *testing.T) {
 			},
 			wantErr:    true,
 			wantErrMsg: "normalize coords: normalize error",
+		},
+		{
+			name: "lua generator error",
+			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
+				return []model.RawBlock{{}}, nil
+			},
+			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
+				return blocks, nil
+			},
+			mockLG: func(blocks []model.RawBlock, cuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error) {
+				return 0, errors.New("write failed")
+			},
+			wantErr:    true,
+			wantErrMsg: "generate lua: write failed",
+		},
+		{
+			name: "log output written on success",
+			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
+				return []model.RawBlock{{ID: "minecraft:stone", X: 0, Y: 0, Z: 0}}, nil
+			},
+			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
+				return blocks, nil
+			},
 		},
 		{
 			name: "asset scanner error",
@@ -187,6 +211,9 @@ func TestRunner_Run(t *testing.T) {
 			mockVI := &mockVoxelIndexer{}
 			mockRM := &mockMerger{}
 			mockLG := &mockLuaGenerator{}
+			if tt.mockLG != nil {
+				mockLG.runFn = tt.mockLG
+			}
 			r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockVI, mockRM, mockLG, io.Discard)
 
 			err := r.Run(RunConfig{

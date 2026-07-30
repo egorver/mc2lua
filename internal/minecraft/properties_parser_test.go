@@ -20,6 +20,9 @@ func TestParseProperties(t *testing.T) {
 		{name: "invalid json", json: `{bad`, want: map[string]string{}},
 		{name: "nested object", json: `{"obj":{"k":"v"}}`, want: map[string]string{"obj": "map[k:v]"}},
 		{name: "array value", json: `{"arr":[1,2]}`, want: map[string]string{"arr": "[1 2]"}},
+		{name: "null value", json: `{"a":null}`, want: map[string]string{"a": "<nil>"}},
+		{name: "float value", json: `{"x":1.5}`, want: map[string]string{"x": "1.5"}},
+		{name: "negative number", json: `{"x":-42}`, want: map[string]string{"x": "-42"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

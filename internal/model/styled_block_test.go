@@ -6,6 +6,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDefaultColor(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, Color{191, 191, 191}, DefaultColor)
+}
+
+func TestDefaultMaterial(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "Plastic", DefaultMaterial)
+}
+
 func TestColor(t *testing.T) {
 	t.Parallel()
 

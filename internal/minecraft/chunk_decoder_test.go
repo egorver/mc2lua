@@ -181,6 +181,78 @@ func encodeChunkNBT(chunk map[string]interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func TestChunkDecoder_NewBitStorage_WithData(t *testing.T) {
+	t.Parallel()
+
+	svc := &ChunkDecoder{}
+	data := make([]uint64, 256)
+	for i := range data {
+		data[i] = 0x0123456789ABCDEF
+	}
+	bs := svc.newBitStorage(16, data)
+	require.NotNil(t, bs)
+	require.Equal(t, 4096, bs.Len())
+	require.EqualValues(t, 0xF, bs.Get(0))
+	require.EqualValues(t, 0xE, bs.Get(1))
+}
+
+func TestChunkDecoder_Run_MinecraftFullStatus(t *testing.T) {
+	t.Parallel()
+
+	chunk := map[string]interface{}{
+		"Status": "minecraft:full",
+		"sections": []interface{}{
+			map[string]interface{}{
+				"Y": int8(0),
+				"block_states": map[string]interface{}{
+					"palette": []interface{}{map[string]interface{}{"Name": "minecraft:stone"}},
+					"data":    []int64{},
+				},
+			},
+		},
+	}
+	data, err := encodeChunkNBT(chunk)
+	require.NoError(t, err)
+
+	svc := NewChunkDecoder()
+	blocks, err := svc.Run(data, 0, 0)
+	require.NoError(t, err)
+	require.NotNil(t, blocks)
+	require.Len(t, blocks, 4096)
+}
+
+func TestChunkDecoder_Run_MultipleSections(t *testing.T) {
+	t.Parallel()
+
+	chunk := map[string]interface{}{
+		"Status": "full",
+		"sections": []interface{}{
+			map[string]interface{}{
+				"Y": int8(0),
+				"block_states": map[string]interface{}{
+					"palette": []interface{}{map[string]interface{}{"Name": "minecraft:stone"}},
+					"data":    []int64{},
+				},
+			},
+			map[string]interface{}{
+				"Y": int8(1),
+				"block_states": map[string]interface{}{
+					"palette": []interface{}{map[string]interface{}{"Name": "minecraft:dirt"}},
+					"data":    []int64{},
+				},
+			},
+		},
+	}
+	data, err := encodeChunkNBT(chunk)
+	require.NoError(t, err)
+
+	svc := NewChunkDecoder()
+	blocks, err := svc.Run(data, 0, 0)
+	require.NoError(t, err)
+	require.NotNil(t, blocks)
+	require.Len(t, blocks, 8192)
+}
+
 func TestChunkDecoder_Run(t *testing.T) {
 	t.Parallel()
 
@@ -264,6 +336,43 @@ func TestChunkDecoder_Run(t *testing.T) {
 			require.Equal(t, tt.wantY, blocks[0].Y)
 		})
 	}
+}
+
+func TestChunkDecoder_DecodeSection_MultiPalette(t *testing.T) {
+	t.Parallel()
+
+	svc := &ChunkDecoder{}
+	data := make([]uint64, 256)
+	for i := 0; i < 128; i++ {
+		data[i] = 0x1111111111111111
+	}
+	for i := 128; i < 256; i++ {
+		data[i] = 0x2222222222222222
+	}
+	section := save.Section{
+		Y: 0,
+		BlockStates: save.PaletteContainer[save.BlockState]{
+			Palette: []save.BlockState{
+				{Name: "minecraft:air"},
+				{Name: "minecraft:stone"},
+				{Name: "minecraft:dirt"},
+			},
+			Data: data,
+		},
+	}
+	blocks := svc.decodeSection(section, 0, 0)
+	require.NotNil(t, blocks)
+	stoneCount, dirtCount := 0, 0
+	for _, b := range blocks {
+		switch b.ID {
+		case "minecraft:stone":
+			stoneCount++
+		case "minecraft:dirt":
+			dirtCount++
+		}
+	}
+	require.Equal(t, 2048, stoneCount)
+	require.Equal(t, 2048, dirtCount)
 }
 
 func TestChunkDecoder_DecodeBlock(t *testing.T) {
