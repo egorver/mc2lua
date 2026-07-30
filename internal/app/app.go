@@ -52,7 +52,9 @@ func buildDeps() *pipeline.Runner {
 	coordNormalizer := pipeline.NewCoordNormalizer()
 	blockCollector := pipeline.NewBlockCollector(blockResolver, propsKeyBuilder)
 	styleIndexer := pipeline.NewStyleIndexer(modelAnalyzer)
+	voxelIndexer := pipeline.NewVoxelIndexer(propsKeyBuilder)
+	regionMerger := pipeline.NewRegionMerger()
 
 	return pipeline.NewRunner(
-		regionReader, coordNormalizer, assetScanner, blockCollector, styleIndexer, os.Stdout)
+		regionReader, coordNormalizer, assetScanner, blockCollector, styleIndexer, voxelIndexer, regionMerger, os.Stdout)
 }

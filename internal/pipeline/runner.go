@@ -30,12 +30,22 @@ type styleIndexer interface {
 	Run(blocks []model.ResolvedBlock) *index.StyleIndex
 }
 
+type voxelIndexer interface {
+	Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
+}
+
+type regionMerger interface {
+	Run(grid *index.VoxelIndex) []model.Cuboid
+}
+
 type Runner struct {
 	regionReader    regionReader
 	coordNormalizer coordNormalizer
 	assetScanner    assetScanner
 	blockCollector  blockCollector
 	styleIndexer    styleIndexer
+	voxelIndexer    voxelIndexer
+	regionMerger    regionMerger
 	logOutput       io.Writer
 }
 
@@ -45,6 +55,8 @@ func NewRunner(
 	as assetScanner,
 	bc blockCollector,
 	si styleIndexer,
+	vi voxelIndexer,
+	rm regionMerger,
 	logOutput io.Writer,
 ) *Runner {
 	return &Runner{
@@ -53,6 +65,8 @@ func NewRunner(
 		assetScanner:    as,
 		blockCollector:  bc,
 		styleIndexer:    si,
+		voxelIndexer:    vi,
+		regionMerger:    rm,
 		logOutput:       logOutput,
 	}
 }
@@ -92,6 +106,12 @@ func (svc *Runner) Run(cfg RunConfig) error {
 	styledIdx := svc.styleIndexer.Run(resolved)
 	svc.log("Built style index: %d entries\n", styledIdx.Len())
 
+	voxelIdx := svc.voxelIndexer.Run(blocks, *styledIdx)
+	svc.log("Built voxel index: %d blocks\n", len(voxelIdx.Blocks()))
+
+	regions := svc.regionMerger.Run(voxelIdx)
+	svc.logMergeStats(len(voxelIdx.Blocks()), len(regions))
+
 	return nil
 }
 
@@ -116,5 +136,14 @@ func (svc *Runner) logUnresolved(unresolved map[string]string) {
 	sort.Strings(ids)
 	for _, id := range ids {
 		svc.log("Warning: skipping %s: %s\n", id, unresolved[id])
+	}
+}
+
+func (svc *Runner) logMergeStats(voxelCount, regionCount int) {
+	svc.log("Merged into %d region(s)", regionCount)
+	if voxelCount > 0 {
+		svc.log(" (%.1f%% of original blocks)\n", float64(regionCount)/float64(voxelCount)*100)
+	} else {
+		svc.log("\n")
 	}
 }

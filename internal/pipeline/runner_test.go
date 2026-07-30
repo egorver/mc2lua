@@ -60,6 +60,28 @@ func (m *mockIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 	return index.NewStyleIndex()
 }
 
+type mockVoxelIndexer struct {
+	runFn func(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
+}
+
+func (m *mockVoxelIndexer) Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex {
+	if m.runFn != nil {
+		return m.runFn(blocks, styles)
+	}
+	return index.NewVoxelIndex()
+}
+
+type mockMerger struct {
+	runFn func(grid *index.VoxelIndex) []model.Cuboid
+}
+
+func (m *mockMerger) Run(grid *index.VoxelIndex) []model.Cuboid {
+	if m.runFn != nil {
+		return m.runFn(grid)
+	}
+	return nil
+}
+
 func TestRunner_New(t *testing.T) {
 	t.Parallel()
 
@@ -68,7 +90,9 @@ func TestRunner_New(t *testing.T) {
 	mockAS := &mockAssetScanner{}
 	mockCol := &mockCollector{}
 	mockIdx := &mockIndexer{}
-	r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, io.Discard)
+	mockVI := &mockVoxelIndexer{}
+	mockRM := &mockMerger{}
+	r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockVI, mockRM, io.Discard)
 	require.NotNil(t, r)
 }
 
@@ -150,7 +174,9 @@ func TestRunner_Run(t *testing.T) {
 				mockCol.runFn = tt.mockCollect
 			}
 			mockIdx := &mockIndexer{}
-			r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, io.Discard)
+			mockVI := &mockVoxelIndexer{}
+			mockRM := &mockMerger{}
+			r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockVI, mockRM, io.Discard)
 
 			err := r.Run(RunConfig{
 				Input:     "/test",

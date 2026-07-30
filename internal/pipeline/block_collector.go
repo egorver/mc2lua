@@ -8,16 +8,16 @@ type blockResolver interface {
 	Run(id string, propsKey string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error)
 }
 
-type propsKeyBuilder interface {
+type collectorPropsKeyBuilder interface {
 	Run(props map[string]string) string
 }
 
 type BlockCollector struct {
 	blockResolver   blockResolver
-	propsKeyBuilder propsKeyBuilder
+	propsKeyBuilder collectorPropsKeyBuilder
 }
 
-func NewBlockCollector(br blockResolver, pkb propsKeyBuilder) *BlockCollector {
+func NewBlockCollector(br blockResolver, pkb collectorPropsKeyBuilder) *BlockCollector {
 	return &BlockCollector{blockResolver: br, propsKeyBuilder: pkb}
 }
 
