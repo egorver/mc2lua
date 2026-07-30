@@ -14,6 +14,7 @@ func main() {
 	assetsDir := flag.String("assets", "assets", "path to Minecraft assets directory")
 	outputPath := flag.String("output", "output.lua", "output Lua file")
 	scale := flag.Int("scale", 4, "block scale factor")
+	materialsPath := flag.String("materials", "config/materials.yaml", "path to materials config")
 	noOffset := flag.Bool("no-offset", false, "disable auto-offset to y=0")
 	xmin := flag.Int("xmin", math.MinInt32, "minimum X")
 	xmax := flag.Int("xmax", math.MaxInt32, "maximum X")
@@ -32,17 +33,18 @@ func main() {
 	}
 
 	cfg := app.AppConfig{
-		Input:     *inputPath,
-		AssetsDir: *assetsDir,
-		Output:    *outputPath,
-		Scale:    *scale,
-		NoOffset: *noOffset,
-		XMin:     *xmin,
-		XMax:     *xmax,
-		YMin:     *ymin,
-		YMax:     *ymax,
-		ZMin:     *zmin,
-		ZMax:     *zmax,
+		Input:         *inputPath,
+		AssetsDir:     *assetsDir,
+		Output:        *outputPath,
+		Scale:         *scale,
+		NoOffset:      *noOffset,
+		MaterialsPath: *materialsPath,
+		XMin:          *xmin,
+		XMax:          *xmax,
+		YMin:          *ymin,
+		YMax:          *ymax,
+		ZMin:          *zmin,
+		ZMax:          *zmax,
 	}
 
 	if err := app.New().Run(cfg); err != nil {

@@ -20,6 +20,17 @@ func (m *mockModelAnalyzer) Run(elements []model.ModelElement) bool {
 	return false
 }
 
+type mockMaterialMatcher struct {
+	runFn func(blockID string) string
+}
+
+func (m *mockMaterialMatcher) Run(blockID string) string {
+	if m.runFn != nil {
+		return m.runFn(blockID)
+	}
+	return model.DefaultMaterial
+}
+
 type mockElementRotator struct {
 	runFn func(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement
 }
@@ -34,7 +45,7 @@ func (m *mockElementRotator) Run(elements []model.StyledElement, rotX, rotY floa
 func TestStyleIndexer_New(t *testing.T) {
 	t.Parallel()
 
-	si := NewStyleIndexer(&mockModelAnalyzer{}, &mockElementRotator{})
+	si := NewStyleIndexer(&mockModelAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{})
 	require.NotNil(t, si)
 }
 
@@ -48,6 +59,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 		name      string
 		blocks    []model.ResolvedBlock
 		analyzer  func([]model.ModelElement) bool
+		matcher   func(blockID string) string
 		wantLen   int
 		wantCheck func(t *testing.T, idx *index.StyleIndex)
 	}{
@@ -55,6 +67,30 @@ func TestStyleIndexer_Run(t *testing.T) {
 			name:    "empty input",
 			blocks:  nil,
 			wantLen: 0,
+		},
+		{
+			name: "material resolved from matcher",
+			blocks: []model.ResolvedBlock{
+				{ID: "minecraft:stone", Elements: []model.ModelElement{fullBlock}},
+				{ID: "minecraft:oak_planks", Elements: []model.ModelElement{fullBlock}},
+			},
+			analyzer: func(elements []model.ModelElement) bool { return true },
+			matcher: func(blockID string) string {
+				if blockID == "minecraft:stone" {
+					return "Slate"
+				}
+				return "Wood"
+			},
+			wantLen: 2,
+			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
+				stone, ok := idx.Get("minecraft:stone", "")
+				require.True(t, ok)
+				require.Equal(t, "Slate", stone.Elements[0].Material)
+
+				planks, ok := idx.Get("minecraft:oak_planks", "")
+				require.True(t, ok)
+				require.Equal(t, "Wood", planks.Elements[0].Material)
+			},
 		},
 		{
 			name: "single full block",
@@ -124,7 +160,8 @@ func TestStyleIndexer_Run(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ma := &mockModelAnalyzer{runFn: tt.analyzer}
-			si := NewStyleIndexer(ma, &mockElementRotator{})
+			mm := &mockMaterialMatcher{runFn: tt.matcher}
+			si := NewStyleIndexer(ma, &mockElementRotator{}, mm)
 
 			idx := si.Run(tt.blocks)
 			require.Equal(t, tt.wantLen, idx.Len())

@@ -13,13 +13,18 @@ type elementRotator interface {
 	Run(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement
 }
 
-type StyleIndexer struct {
-	modelAnalyzer  modelAnalyzer
-	elementRotator elementRotator
+type materialMatcher interface {
+	Run(blockID string) string
 }
 
-func NewStyleIndexer(ma modelAnalyzer, er elementRotator) *StyleIndexer {
-	return &StyleIndexer{modelAnalyzer: ma, elementRotator: er}
+type StyleIndexer struct {
+	modelAnalyzer   modelAnalyzer
+	elementRotator  elementRotator
+	materialMatcher materialMatcher
+}
+
+func NewStyleIndexer(ma modelAnalyzer, er elementRotator, mm materialMatcher) *StyleIndexer {
+	return &StyleIndexer{modelAnalyzer: ma, elementRotator: er, materialMatcher: mm}
 }
 
 func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
@@ -27,6 +32,7 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 
 	for _, b := range blocks {
 		isFullBlock := svc.modelAnalyzer.Run(b.Elements)
+		material := svc.materialMatcher.Run(b.ID)
 
 		elements := make([]model.StyledElement, len(b.Elements))
 		for i, el := range b.Elements {
@@ -36,7 +42,7 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 				Rotation: el.Rotation,
 				Shade:    el.Shade,
 				Color:    model.DefaultColor,
-				Material: model.DefaultMaterial,
+				Material: material,
 			}
 		}
 

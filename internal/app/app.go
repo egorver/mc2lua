@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"os"
 
 	"mc2lua/internal/minecraft"
@@ -17,7 +18,10 @@ func New() *App {
 
 func (svc *App) Run(cfg AppConfig) error {
 	runCfg := buildConfig(cfg)
-	runner := buildDeps()
+	runner, err := buildDeps(cfg.MaterialsPath)
+	if err != nil {
+		return err
+	}
 	return runner.Run(runCfg)
 }
 
@@ -36,7 +40,7 @@ func buildConfig(cfg AppConfig) pipeline.RunConfig {
 	}
 }
 
-func buildDeps() *pipeline.Runner {
+func buildDeps(materialsPath string) (*pipeline.Runner, error) {
 	fs := runtime.NewFS()
 
 	chunkDecoder := minecraft.NewChunkDecoder()
@@ -49,14 +53,19 @@ func buildDeps() *pipeline.Runner {
 	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelParser, textureResolver)
 	elementRotator := minecraft.NewElementRotator()
 
+	matcher, err := pipeline.NewMaterialMatcher(fs, materialsPath)
+	if err != nil {
+		return nil, fmt.Errorf("create material matcher: %w", err)
+	}
+
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
 	coordNormalizer := pipeline.NewCoordNormalizer()
 	blockCollector := pipeline.NewBlockCollector(blockResolver, propsKeyBuilder)
-	styleIndexer := pipeline.NewStyleIndexer(modelAnalyzer, elementRotator)
+	styleIndexer := pipeline.NewStyleIndexer(modelAnalyzer, elementRotator, matcher)
 	voxelIndexer := pipeline.NewVoxelIndexer(propsKeyBuilder)
 	regionMerger := pipeline.NewRegionMerger()
 	luaGenerator := pipeline.NewLuaGenerator(propsKeyBuilder)
 
 	return pipeline.NewRunner(
-		regionReader, coordNormalizer, assetScanner, blockCollector, styleIndexer, voxelIndexer, regionMerger, luaGenerator, os.Stdout)
+		regionReader, coordNormalizer, assetScanner, blockCollector, styleIndexer, voxelIndexer, regionMerger, luaGenerator, os.Stdout), nil
 }

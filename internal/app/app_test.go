@@ -20,8 +20,16 @@ func TestNew(t *testing.T) {
 func TestBuildDeps(t *testing.T) {
 	t.Parallel()
 
-	r := buildDeps()
-	require.NotNil(t, r)
+	t.Run("with valid config path", func(t *testing.T) {
+		r, err := buildDeps("../../config/materials.yaml")
+		require.NoError(t, err)
+		require.NotNil(t, r)
+	})
+
+	t.Run("with invalid config path", func(t *testing.T) {
+		_, err := buildDeps("nonexistent.yaml")
+		require.Error(t, err)
+	})
 }
 
 func TestApp_Run_WithNonExistentInput_ReturnsError(t *testing.T) {
