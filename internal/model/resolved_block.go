@@ -27,4 +27,6 @@ type ResolvedBlock struct {
 	PropsKey string
 	Elements []ModelElement
 	Textures map[string]string
+	RotX     float64
+	RotY     float64
 }

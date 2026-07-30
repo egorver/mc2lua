@@ -47,11 +47,12 @@ func buildDeps() *pipeline.Runner {
 	modelParser := minecraft.NewModelParser(fs)
 	textureResolver := minecraft.NewTextureResolver()
 	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelParser, textureResolver)
+	elementRotator := minecraft.NewElementRotator()
 
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
 	coordNormalizer := pipeline.NewCoordNormalizer()
 	blockCollector := pipeline.NewBlockCollector(blockResolver, propsKeyBuilder)
-	styleIndexer := pipeline.NewStyleIndexer(modelAnalyzer)
+	styleIndexer := pipeline.NewStyleIndexer(modelAnalyzer, elementRotator)
 	voxelIndexer := pipeline.NewVoxelIndexer(propsKeyBuilder)
 	regionMerger := pipeline.NewRegionMerger()
 	luaGenerator := pipeline.NewLuaGenerator(propsKeyBuilder)

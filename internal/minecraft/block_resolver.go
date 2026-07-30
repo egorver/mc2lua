@@ -54,11 +54,21 @@ func (svc *BlockResolver) Run(id string, propsKey string, props map[string]strin
 
 	textures := svc.textureResolver.Run(fm.Textures)
 
+	var rotX, rotY float64
+	for _, m := range matches {
+		if m.RotX != 0 || m.RotY != 0 {
+			rotX, rotY = m.RotX, m.RotY
+			break
+		}
+	}
+
 	return &model.ResolvedBlock{
 		ID:       id,
 		PropsKey: propsKey,
 		Elements: fm.Elements,
 		Textures: textures,
+		RotX:     rotX,
+		RotY:     rotY,
 	}, nil
 }
 

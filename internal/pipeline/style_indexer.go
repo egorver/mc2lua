@@ -5,16 +5,21 @@ import (
 	"mc2lua/internal/model"
 )
 
-type indexerModelAnalyzer interface {
+type modelAnalyzer interface {
 	Run(elements []model.ModelElement) bool
 }
 
-type StyleIndexer struct {
-	modelAnalyzer indexerModelAnalyzer
+type elementRotator interface {
+	Run(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement
 }
 
-func NewStyleIndexer(ma indexerModelAnalyzer) *StyleIndexer {
-	return &StyleIndexer{modelAnalyzer: ma}
+type StyleIndexer struct {
+	modelAnalyzer  modelAnalyzer
+	elementRotator elementRotator
+}
+
+func NewStyleIndexer(ma modelAnalyzer, er elementRotator) *StyleIndexer {
+	return &StyleIndexer{modelAnalyzer: ma, elementRotator: er}
 }
 
 func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
@@ -34,6 +39,8 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 				Material: model.DefaultMaterial,
 			}
 		}
+
+		elements = svc.elementRotator.Run(elements, b.RotX, b.RotY)
 
 		styled := model.StyledBlock{
 			ID:          b.ID,

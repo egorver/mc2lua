@@ -44,6 +44,8 @@ func (svc *LuaGenerator) Run(blocks []model.RawBlock, cuboids []model.Cuboid, st
 		}
 	}
 
+	sb.WriteString("print(string.format(\"Building... %d/%d (100%%)\", _total, _total))\n")
+
 	result := sb.String()
 	result = strings.Replace(result, "-- Total parts: XXX",
 		fmt.Sprintf("-- Total parts: %d\nlocal _total = %d", totalParts, totalParts), 1)

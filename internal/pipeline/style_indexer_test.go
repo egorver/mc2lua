@@ -20,10 +20,21 @@ func (m *mockModelAnalyzer) Run(elements []model.ModelElement) bool {
 	return false
 }
 
+type mockElementRotator struct {
+	runFn func(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement
+}
+
+func (m *mockElementRotator) Run(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement {
+	if m.runFn != nil {
+		return m.runFn(elements, rotX, rotY)
+	}
+	return elements
+}
+
 func TestStyleIndexer_New(t *testing.T) {
 	t.Parallel()
 
-	si := NewStyleIndexer(&mockModelAnalyzer{})
+	si := NewStyleIndexer(&mockModelAnalyzer{}, &mockElementRotator{})
 	require.NotNil(t, si)
 }
 
@@ -113,7 +124,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ma := &mockModelAnalyzer{runFn: tt.analyzer}
-			si := NewStyleIndexer(ma)
+			si := NewStyleIndexer(ma, &mockElementRotator{})
 
 			idx := si.Run(tt.blocks)
 			require.Equal(t, tt.wantLen, idx.Len())
