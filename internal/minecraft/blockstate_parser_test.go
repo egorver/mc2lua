@@ -447,6 +447,7 @@ func TestBlockstateParserMatchWhen(t *testing.T) {
 		{name: "AND when all match", when: json.RawMessage(`{"AND":[{"age":"0"},{"rooted":"false"}]}`), props: map[string]string{"age": "0", "rooted": "false"}, want: true},
 		{name: "AND when one mismatches", when: json.RawMessage(`{"AND":[{"age":"0"},{"rooted":"false"}]}`), props: map[string]string{"age": "0", "rooted": "true"}, want: false},
 		{name: "extra props ignored in when", when: json.RawMessage(`{"north":"true"}`), props: map[string]string{"north": "true", "waterlogged": "false"}, want: true},
+		{name: "array when returns false", when: json.RawMessage(`[]`), props: nil, want: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

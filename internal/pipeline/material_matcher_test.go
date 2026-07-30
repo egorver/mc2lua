@@ -115,28 +115,53 @@ overrides:
 	}
 }
 
-func TestMaterialMatcher_SuffixAndPlanks(t *testing.T) {
+func TestMaterialMatcher_SuffixPath(t *testing.T) {
 	t.Parallel()
 
 	mock := &mockFS{data: []byte(`
 mappings:
-  planks: Wood
-  stone: Slate
+  nether_brick: NetherBrick
 
 suffixes:
-  - _slab
+  - _frame
+
+overrides: {}
 `)}
 
 	m, err := NewMaterialMatcher(mock, "test.yaml")
 	require.NoError(t, err)
 
-	t.Run("suffix stripped to plank base", func(t *testing.T) {
-		got := m.Run("minecraft:birch_planks")
-		require.Equal(t, "Wood", got)
-	})
+	tests := []struct {
+		name    string
+		blockID string
+		want    string
+	}{
+		{
+			name:    "suffix stripped then planks fallback",
+			blockID: "minecraft:dirt_planks_frame",
+			want:    "Wood",
+		},
+		{
+			name:    "suffix stripped no planks fallback",
+			blockID: "minecraft:stone_frame",
+			want:    "SmoothPlastic",
+		},
+		{
+			name:    "keyword match still works via suffix base",
+			blockID: "minecraft:nether_brick_frame",
+			want:    "NetherBrick",
+		},
+		{
+			name:    "no suffix no keyword fallback",
+			blockID: "minecraft:unknown_stuff",
+			want:    "SmoothPlastic",
+		},
+	}
 
-	t.Run("suffix stripped then keyword match", func(t *testing.T) {
-		got := m.Run("minecraft:stone_slab")
-		require.Equal(t, "Slate", got)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := m.Run(tt.blockID)
+			require.Equal(t, tt.want, got)
+		})
+	}
 }

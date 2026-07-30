@@ -2,6 +2,8 @@ package pipeline
 
 import (
 	"io/fs"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"mc2lua/internal/model"
@@ -165,6 +167,27 @@ func TestRegionReader_ListRegionFiles(t *testing.T) {
 			require.ElementsMatch(t, tt.want, got)
 		})
 	}
+}
+
+func TestRegionReader_ProcessRegion_EmptyMCA(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	name := "r.0.0.mca"
+
+	data := make([]byte, 8192)
+	err := os.WriteFile(filepath.Join(dir, name), data, 0644)
+	require.NoError(t, err)
+
+	svc := NewRegionReader(runtime.NewFS(), &mockChunkDecoder{})
+
+	blocks, err := svc.Run(dir, model.Bounds{
+		XMin: -1000, XMax: 1000,
+		YMin: -1000, YMax: 1000,
+		ZMin: -1000, ZMax: 1000,
+	})
+	require.NoError(t, err)
+	require.Empty(t, blocks)
 }
 
 func TestRegionReader_Run(t *testing.T) {

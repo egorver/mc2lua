@@ -132,6 +132,8 @@ func TestRunner_Run(t *testing.T) {
 		mockNormalize func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error)
 		mockScan      func(root string) (map[string][]string, error)
 		mockCollect   func(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string)
+		mockBVI       func(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
+		mockRM        func(grid *index.VoxelIndex) []model.Cuboid
 		mockLG        func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
 		wantErr       bool
 		wantErrMsg    string
@@ -202,6 +204,29 @@ func TestRunner_Run(t *testing.T) {
 			wantErr:    true,
 			wantErrMsg: "scan assets: scan failed",
 		},
+		{
+			name: "with non-empty namespaces, unresolved, and merge stats",
+			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
+				return []model.RawBlock{{ID: "minecraft:stone"}}, nil
+			},
+			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
+				return blocks, nil
+			},
+			mockScan: func(root string) (map[string][]string, error) {
+				return map[string][]string{"minecraft": {"assets/minecraft"}, "cobblemon": {"assets/cobblemon"}}, nil
+			},
+			mockCollect: func(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string) {
+				return []model.ResolvedBlock{{ID: "minecraft:stone"}}, map[string]string{"minecraft:dirt": "not found"}
+			},
+			mockBVI: func(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex {
+				grid := index.NewVoxelIndex()
+				grid.AddBlock(&model.MergedBlock{ID: "minecraft:stone", X: 0, Y: 0, Z: 0})
+				return grid
+			},
+			mockRM: func(grid *index.VoxelIndex) []model.Cuboid {
+				return []model.Cuboid{{ID: "minecraft:stone", Width: 1, Depth: 1, Height: 1}}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -221,8 +246,14 @@ func TestRunner_Run(t *testing.T) {
 			}
 			mockIdx := &mockIndexer{}
 			mockBVI := &mockBlockVoxelIndexer{}
+			if tt.mockBVI != nil {
+				mockBVI.runFn = tt.mockBVI
+			}
 			mockMVI := &mockMicroVoxelIndexer{}
 			mockRM := &mockMerger{}
+			if tt.mockRM != nil {
+				mockRM.runFn = tt.mockRM
+			}
 			mockLG := &mockLuaGenerator{}
 			if tt.mockLG != nil {
 				mockLG.runFn = tt.mockLG

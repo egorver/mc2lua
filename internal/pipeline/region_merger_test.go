@@ -469,6 +469,24 @@ func TestRegionMerger_findLargestRect(t *testing.T) {
 		wantRows, wantCols int
 	}{
 		{
+			name:    "nil grid",
+			grid:    nil,
+			wantRow: 0, wantCol: 0,
+			wantRows: 0, wantCols: 0,
+		},
+		{
+			name:    "empty grid",
+			grid:    [][]bool{},
+			wantRow: 0, wantCol: 0,
+			wantRows: 0, wantCols: 0,
+		},
+		{
+			name:    "empty row",
+			grid:    [][]bool{{}},
+			wantRow: 0, wantCol: 0,
+			wantRows: 0, wantCols: 0,
+		},
+		{
 			name:    "single cell",
 			grid:    [][]bool{{true}},
 			wantRow: 0, wantCol: 0,

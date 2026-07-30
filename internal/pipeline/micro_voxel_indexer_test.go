@@ -45,6 +45,7 @@ func TestMicroVoxelIndexer_Run(t *testing.T) {
 	tests := []struct {
 		name      string
 		blocks    []model.RawBlock
+		styles    *index.StyleIndex
 		wantLen   int
 		wantCoord func(t *testing.T, blocks []*model.MergedBlock)
 	}{
@@ -80,12 +81,35 @@ func TestMicroVoxelIndexer_Run(t *testing.T) {
 			},
 			wantLen: 0,
 		},
+		{
+			name: "overlapping elements deduplicated",
+			blocks: []model.RawBlock{
+				{ID: "minecraft:stone_slab", X: 0, Y: 0, Z: 0},
+			},
+			styles: func() *index.StyleIndex {
+				idx := index.NewStyleIndex()
+				idx.Add("minecraft:stone_slab", "", model.StyledBlock{
+					ID: "minecraft:stone_slab", PropsKey: "",
+					GridAlignment: model.GridSubBlock,
+					Elements: []model.StyledElement{
+						{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 8, 16}, Shade: true},
+						{From: model.Vector3{0, 0, 0}, To: model.Vector3{8, 8, 8}, Shade: true},
+					},
+				})
+				return idx
+			}(),
+			wantLen: 32,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := NewMicroVoxelIndexer(pkb)
-			grid := svc.Run(tt.blocks, *styles)
+			idx := styles
+			if tt.styles != nil {
+				idx = tt.styles
+			}
+			grid := svc.Run(tt.blocks, *idx)
 			require.Equal(t, tt.wantLen, len(grid.Blocks()))
 			if tt.wantCoord != nil {
 				tt.wantCoord(t, grid.Blocks())

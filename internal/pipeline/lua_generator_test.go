@@ -360,6 +360,44 @@ func TestRun(t *testing.T) {
 			wantCount: 2,
 		},
 		{
+			name: "skips cuboids with missing style or not-aligned style",
+			blockCuboids: []model.Cuboid{
+				{ID: "minecraft:oak_stairs", PropsKey: "facing=north", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
+				{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
+				{ID: "minecraft:unknown", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
+			},
+			styleIdx: func() *index.StyleIndex {
+				idx := index.NewStyleIndex()
+				idx.Add("minecraft:oak_stairs", "facing=north", makeStyledBlock(
+					"minecraft:oak_stairs", "facing=north", model.GridNotAligned,
+				))
+				idx.Add("minecraft:stone", "", makeStyledBlock(
+					"minecraft:stone", "", model.GridFullBlock,
+					makeStyledElement(0, 0, 0, 16, 16, 16, model.Color{128, 128, 128}, "Slate"),
+				))
+				return idx
+			}(),
+			scale:     4,
+			wantCount: 1,
+		},
+		{
+			name: "skips raw block with full block style",
+			blocks: []model.RawBlock{
+				{ID: "minecraft:stone", Props: map[string]string{}, X: 0, Y: 0, Z: 0},
+				{ID: "minecraft:unknown", Props: map[string]string{}, X: 0, Y: 0, Z: 0},
+			},
+			styleIdx: func() *index.StyleIndex {
+				idx := index.NewStyleIndex()
+				idx.Add("minecraft:stone", "", makeStyledBlock(
+					"minecraft:stone", "", model.GridFullBlock,
+				))
+				return idx
+			}(),
+			pkbFn:     func(props map[string]string) string { return "" },
+			scale:     4,
+			wantCount: 0,
+		},
+		{
 			name: "full and complex blocks",
 			blocks: []model.RawBlock{
 				{ID: "minecraft:oak_stairs", Props: map[string]string{"half": "bottom", "facing": "north"}, X: 0, Y: 0, Z: 0},

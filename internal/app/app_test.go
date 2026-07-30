@@ -32,12 +32,23 @@ func TestBuildDeps(t *testing.T) {
 	})
 }
 
-func TestApp_Run_WithNonExistentInput_ReturnsError(t *testing.T) {
+func TestApp_Run_WithInvalidInput_ReturnsError(t *testing.T) {
 	t.Parallel()
 
 	a := New()
 	err := a.Run(AppConfig{
 		Input: t.TempDir() + "nonexistent",
+	})
+	require.Error(t, err)
+}
+
+func TestApp_Run_WithValidMaterials_ReturnsRunnerError(t *testing.T) {
+	t.Parallel()
+
+	a := New()
+	err := a.Run(AppConfig{
+		Input:         t.TempDir() + "nonexistent",
+		MaterialsPath: "../../config/materials.yaml",
 	})
 	require.Error(t, err)
 }
