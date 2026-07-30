@@ -6,6 +6,14 @@ var DefaultColor = Color{191, 191, 191}
 
 const DefaultMaterial = "Plastic"
 
+type GridAlignment int
+
+const (
+	GridNotAligned GridAlignment = iota
+	GridFullBlock
+	GridSubBlock
+)
+
 type StyledElement struct {
 	From     Vector3
 	To       Vector3
@@ -18,6 +26,6 @@ type StyledElement struct {
 type StyledBlock struct {
 	ID            string
 	PropsKey      string
-	IsGridAligned bool
+	GridAlignment GridAlignment
 	Elements      []StyledElement
 }

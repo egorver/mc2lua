@@ -20,15 +20,21 @@ func NewLuaGenerator(pkb generatorPropsKeyBuilder) *LuaGenerator {
 	return &LuaGenerator{propsKeyBuilder: pkb}
 }
 
-func (svc *LuaGenerator) Run(blocks []model.RawBlock, cuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error) {
+func (svc *LuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error) {
 	var sb strings.Builder
 	svc.writeHeader(&sb, scale)
 
 	totalParts := 0
 
-	for _, c := range cuboids {
-		style, ok := styleIndex.Get(c.ID, c.PropsKey)
-		if ok && style.IsGridAligned {
+	for _, cuboids := range [][]model.Cuboid{blockCuboids, microCuboids} {
+		for _, c := range cuboids {
+			style, ok := styleIndex.Get(c.ID, c.PropsKey)
+			if !ok {
+				continue
+			}
+			if style.GridAlignment == model.GridNotAligned {
+				continue
+			}
 			if err := svc.writeSimplePart(&sb, c, style, scale); err != nil {
 				return 0, fmt.Errorf("failed to write simple part for block ID %s with properties %s: %w", c.ID, c.PropsKey, err)
 			}
@@ -39,7 +45,7 @@ func (svc *LuaGenerator) Run(blocks []model.RawBlock, cuboids []model.Cuboid, st
 	for _, r := range blocks {
 		propsKey := svc.propsKeyBuilder.Run(r.Props)
 		style, ok := styleIndex.Get(r.ID, propsKey)
-		if ok && !style.IsGridAligned {
+		if ok && style.GridAlignment == model.GridNotAligned {
 			totalParts += svc.writeComplexParts(&sb, r, style, scale)
 		}
 	}
@@ -102,12 +108,18 @@ func (svc *LuaGenerator) writeSimplePart(sb *strings.Builder, cuboid model.Cuboi
 	}
 
 	elem := style.Elements[0]
-	x := float64(cuboid.X) * scale
-	y := float64(cuboid.Y) * scale
-	z := float64(cuboid.Z) * scale
-	width := float64(cuboid.Width) * scale
-	height := float64(cuboid.Height) * scale
-	depth := float64(cuboid.Depth) * scale
+
+	gs := 1.0
+	if style.GridAlignment == model.GridSubBlock {
+		gs = 4.0
+	}
+
+	x := (float64(cuboid.X) - (gs-1)/2) * scale / gs
+	y := (float64(cuboid.Y) - (gs-1)/2) * scale / gs
+	z := (float64(cuboid.Z) - (gs-1)/2) * scale / gs
+	width := float64(cuboid.Width) * scale / gs
+	height := float64(cuboid.Height) * scale / gs
+	depth := float64(cuboid.Depth) * scale / gs
 	name := svc.makePartName(cuboid.ID)
 
 	svc.writeCreatePart(sb, width, height, depth, x, y, z, elem.Color, elem.Material, name, cuboid.ID, cuboid.PropsKey, "folder")

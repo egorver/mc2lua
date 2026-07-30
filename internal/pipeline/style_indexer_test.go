@@ -9,15 +9,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockModelAnalyzer struct {
-	runFn func(elements []model.ModelElement) bool
+type mockGridAnalyzer struct {
+	runFn func(elements []model.StyledElement) model.GridAlignment
 }
 
-func (m *mockModelAnalyzer) Run(elements []model.ModelElement) bool {
+func (m *mockGridAnalyzer) Run(elements []model.StyledElement) model.GridAlignment {
 	if m.runFn != nil {
 		return m.runFn(elements)
 	}
-	return false
+	return model.GridNotAligned
 }
 
 type mockMaterialMatcher struct {
@@ -45,7 +45,7 @@ func (m *mockElementRotator) Run(elements []model.StyledElement, rotX, rotY floa
 func TestStyleIndexer_New(t *testing.T) {
 	t.Parallel()
 
-	si := NewStyleIndexer(&mockModelAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{})
+	si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{})
 	require.NotNil(t, si)
 }
 
@@ -58,7 +58,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 	tests := []struct {
 		name      string
 		blocks    []model.ResolvedBlock
-		analyzer  func([]model.ModelElement) bool
+		analyzer  func([]model.StyledElement) model.GridAlignment
 		matcher   func(blockID string) string
 		wantLen   int
 		wantCheck func(t *testing.T, idx *index.StyleIndex)
@@ -74,7 +74,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 				{ID: "minecraft:stone", Elements: []model.ModelElement{fullBlock}},
 				{ID: "minecraft:oak_planks", Elements: []model.ModelElement{fullBlock}},
 			},
-			analyzer: func(elements []model.ModelElement) bool { return true },
+			analyzer: func(elements []model.StyledElement) model.GridAlignment { return model.GridFullBlock },
 			matcher: func(blockID string) string {
 				if blockID == "minecraft:stone" {
 					return "Slate"
@@ -97,26 +97,40 @@ func TestStyleIndexer_Run(t *testing.T) {
 			blocks: []model.ResolvedBlock{
 				{ID: "minecraft:stone", Elements: []model.ModelElement{fullBlock}},
 			},
-			analyzer: func(elements []model.ModelElement) bool { return true },
+			analyzer: func(elements []model.StyledElement) model.GridAlignment { return model.GridFullBlock },
 			wantLen:  1,
 			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
 				b, ok := idx.Get("minecraft:stone", "")
 				require.True(t, ok)
-				require.True(t, b.IsGridAligned)
+				require.Equal(t, model.GridFullBlock, b.GridAlignment)
 				require.Len(t, b.Elements, 1)
 			},
 		},
 		{
-			name: "non-full block with analyzer false",
+			name: "sub-block returns GridSubBlock",
+			blocks: []model.ResolvedBlock{
+				{ID: "minecraft:stone_slab", PropsKey: "type=bottom", Elements: []model.ModelElement{halfBlock}},
+			},
+			analyzer: func(elements []model.StyledElement) model.GridAlignment { return model.GridSubBlock },
+			wantLen:  1,
+			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
+				b, ok := idx.Get("minecraft:stone_slab", "type=bottom")
+				require.True(t, ok)
+				require.Equal(t, model.GridSubBlock, b.GridAlignment)
+				require.Len(t, b.Elements, 1)
+			},
+		},
+		{
+			name: "non-aligned block",
 			blocks: []model.ResolvedBlock{
 				{ID: "minecraft:oak_fence", PropsKey: "water=true", Elements: []model.ModelElement{halfBlock}},
 			},
-			analyzer: func(elements []model.ModelElement) bool { return false },
+			analyzer: func(elements []model.StyledElement) model.GridAlignment { return model.GridNotAligned },
 			wantLen:  1,
 			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
 				b, ok := idx.Get("minecraft:oak_fence", "water=true")
 				require.True(t, ok)
-				require.False(t, b.IsGridAligned)
+				require.Equal(t, model.GridNotAligned, b.GridAlignment)
 				require.Len(t, b.Elements, 1)
 			},
 		},
@@ -126,7 +140,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 				{ID: "minecraft:stone", Elements: []model.ModelElement{fullBlock}},
 				{ID: "minecraft:dirt", Elements: []model.ModelElement{fullBlock}},
 			},
-			analyzer: func(elements []model.ModelElement) bool { return true },
+			analyzer: func(elements []model.StyledElement) model.GridAlignment { return model.GridFullBlock },
 			wantLen:  2,
 		},
 		{
@@ -144,7 +158,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 					},
 				},
 			},
-			analyzer: func(elements []model.ModelElement) bool { return true },
+			analyzer: func(elements []model.StyledElement) model.GridAlignment { return model.GridFullBlock },
 			wantLen:  1,
 			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
 				b, ok := idx.Get("minecraft:stone", "")
@@ -159,9 +173,9 @@ func TestStyleIndexer_Run(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ma := &mockModelAnalyzer{runFn: tt.analyzer}
+			ga := &mockGridAnalyzer{runFn: tt.analyzer}
 			mm := &mockMaterialMatcher{runFn: tt.matcher}
-			si := NewStyleIndexer(ma, &mockElementRotator{}, mm)
+			si := NewStyleIndexer(ga, &mockElementRotator{}, mm)
 
 			idx := si.Run(tt.blocks)
 			require.Equal(t, tt.wantLen, idx.Len())

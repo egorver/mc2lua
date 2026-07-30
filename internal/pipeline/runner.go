@@ -30,7 +30,11 @@ type styleIndexer interface {
 	Run(blocks []model.ResolvedBlock) *index.StyleIndex
 }
 
-type voxelIndexer interface {
+type blockVoxelIndexer interface {
+	Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
+}
+
+type microVoxelIndexer interface {
 	Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
 }
 
@@ -39,19 +43,20 @@ type regionMerger interface {
 }
 
 type luaGenerator interface {
-	Run(blocks []model.RawBlock, cuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
+	Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
 }
 
 type Runner struct {
-	regionReader    regionReader
-	coordNormalizer coordNormalizer
-	assetScanner    assetScanner
-	blockCollector  blockCollector
-	styleIndexer    styleIndexer
-	voxelIndexer    voxelIndexer
-	regionMerger    regionMerger
-	luaGenerator    luaGenerator
-	logOutput       io.Writer
+	regionReader      regionReader
+	coordNormalizer   coordNormalizer
+	assetScanner      assetScanner
+	blockCollector    blockCollector
+	styleIndexer      styleIndexer
+	blockVoxelIndexer blockVoxelIndexer
+	microVoxelIndexer microVoxelIndexer
+	regionMerger      regionMerger
+	luaGenerator      luaGenerator
+	logOutput         io.Writer
 }
 
 func NewRunner(
@@ -60,21 +65,23 @@ func NewRunner(
 	as assetScanner,
 	bc blockCollector,
 	si styleIndexer,
-	vi voxelIndexer,
+	bvi blockVoxelIndexer,
+	mvi microVoxelIndexer,
 	rm regionMerger,
 	lg luaGenerator,
 	logOutput io.Writer,
 ) *Runner {
 	return &Runner{
-		regionReader:    rr,
-		coordNormalizer: cn,
-		assetScanner:    as,
-		blockCollector:  bc,
-		styleIndexer:    si,
-		voxelIndexer:    vi,
-		regionMerger:    rm,
-		luaGenerator:    lg,
-		logOutput:       logOutput,
+		regionReader:      rr,
+		coordNormalizer:   cn,
+		assetScanner:      as,
+		blockCollector:    bc,
+		styleIndexer:      si,
+		blockVoxelIndexer: bvi,
+		microVoxelIndexer: mvi,
+		regionMerger:      rm,
+		luaGenerator:      lg,
+		logOutput:         logOutput,
 	}
 }
 
@@ -111,13 +118,19 @@ func (svc *Runner) Run(cfg RunConfig) error {
 	styledIdx := svc.styleIndexer.Run(resolved)
 	svc.log("Built style index: %d entries\n", styledIdx.Len())
 
-	voxelIdx := svc.voxelIndexer.Run(blocks, *styledIdx)
-	svc.log("Built voxel index: %d blocks\n", len(voxelIdx.Blocks()))
+	blockIdx := svc.blockVoxelIndexer.Run(blocks, *styledIdx)
+	svc.log("Built block voxel index: %d blocks\n", len(blockIdx.Blocks()))
 
-	regions := svc.regionMerger.Run(voxelIdx)
-	svc.logMergeStats(len(voxelIdx.Blocks()), len(regions))
+	blockRegions := svc.regionMerger.Run(blockIdx)
+	svc.logMergeStats(len(blockIdx.Blocks()), len(blockRegions))
 
-	totalParts, err := svc.luaGenerator.Run(blocks, regions, *styledIdx, float64(cfg.Scale), cfg.Output)
+	microIdx := svc.microVoxelIndexer.Run(blocks, *styledIdx)
+	svc.log("Built micro voxel index: %d blocks\n", len(microIdx.Blocks()))
+
+	microRegions := svc.regionMerger.Run(microIdx)
+	svc.logMergeStats(len(microIdx.Blocks()), len(microRegions))
+
+	totalParts, err := svc.luaGenerator.Run(blocks, blockRegions, microRegions, *styledIdx, float64(cfg.Scale), cfg.Output)
 	if err != nil {
 		return fmt.Errorf("generate lua: %w", err)
 	}

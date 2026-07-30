@@ -16,7 +16,7 @@ func TestStyleIndexAddAndGet(t *testing.T) {
 	idx := NewStyleIndex()
 
 	idx.Add("minecraft:stone", "", model.StyledBlock{})
-	idx.Add("minecraft:oak_fence", "water=true", model.StyledBlock{IsGridAligned: false})
+	idx.Add("minecraft:oak_fence", "water=true", model.StyledBlock{GridAlignment: model.GridNotAligned})
 
 	tests := []struct {
 		name   string
@@ -26,7 +26,7 @@ func TestStyleIndexAddAndGet(t *testing.T) {
 		wantOk bool
 	}{
 		{name: "existing key no props", id: "minecraft:stone", props: "", want: model.StyledBlock{}, wantOk: true},
-		{name: "existing key with props", id: "minecraft:oak_fence", props: "water=true", want: model.StyledBlock{IsGridAligned: false}, wantOk: true},
+		{name: "existing key with props", id: "minecraft:oak_fence", props: "water=true", want: model.StyledBlock{GridAlignment: model.GridNotAligned}, wantOk: true},
 		{name: "non-existing key", id: "minecraft:air", props: "", wantOk: false},
 		{name: "non-existing props", id: "minecraft:stone", props: "variant=andesite", wantOk: false},
 		{name: "wrong ID", id: "stone", props: "", wantOk: false},

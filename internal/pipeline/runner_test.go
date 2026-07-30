@@ -60,11 +60,22 @@ func (m *mockIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 	return index.NewStyleIndex()
 }
 
-type mockVoxelIndexer struct {
+type mockBlockVoxelIndexer struct {
 	runFn func(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
 }
 
-func (m *mockVoxelIndexer) Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex {
+func (m *mockBlockVoxelIndexer) Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex {
+	if m.runFn != nil {
+		return m.runFn(blocks, styles)
+	}
+	return index.NewVoxelIndex()
+}
+
+type mockMicroVoxelIndexer struct {
+	runFn func(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
+}
+
+func (m *mockMicroVoxelIndexer) Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex {
 	if m.runFn != nil {
 		return m.runFn(blocks, styles)
 	}
@@ -83,12 +94,12 @@ func (m *mockMerger) Run(grid *index.VoxelIndex) []model.Cuboid {
 }
 
 type mockLuaGenerator struct {
-	runFn func(blocks []model.RawBlock, cuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
+	runFn func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
 }
 
-func (m *mockLuaGenerator) Run(blocks []model.RawBlock, cuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error) {
+func (m *mockLuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error) {
 	if m.runFn != nil {
-		return m.runFn(blocks, cuboids, styleIndex, scale, outputPath)
+		return m.runFn(blocks, blockCuboids, microCuboids, styleIndex, scale, outputPath)
 	}
 	return 0, nil
 }
@@ -101,10 +112,11 @@ func TestRunner_New(t *testing.T) {
 	mockAS := &mockAssetScanner{}
 	mockCol := &mockCollector{}
 	mockIdx := &mockIndexer{}
-	mockVI := &mockVoxelIndexer{}
+	mockBVI := &mockBlockVoxelIndexer{}
+	mockMVI := &mockMicroVoxelIndexer{}
 	mockRM := &mockMerger{}
 	mockLG := &mockLuaGenerator{}
-	r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockVI, mockRM, mockLG, io.Discard)
+	r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockLG, io.Discard)
 	require.NotNil(t, r)
 }
 
@@ -120,7 +132,7 @@ func TestRunner_Run(t *testing.T) {
 		mockNormalize func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error)
 		mockScan      func(root string) (map[string][]string, error)
 		mockCollect   func(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string)
-		mockLG        func(blocks []model.RawBlock, cuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
+		mockLG        func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
 		wantErr       bool
 		wantErrMsg    string
 	}{
@@ -161,7 +173,7 @@ func TestRunner_Run(t *testing.T) {
 			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 				return blocks, nil
 			},
-			mockLG: func(blocks []model.RawBlock, cuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error) {
+			mockLG: func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error) {
 				return 0, errors.New("write failed")
 			},
 			wantErr:    true,
@@ -208,13 +220,14 @@ func TestRunner_Run(t *testing.T) {
 				mockCol.runFn = tt.mockCollect
 			}
 			mockIdx := &mockIndexer{}
-			mockVI := &mockVoxelIndexer{}
+			mockBVI := &mockBlockVoxelIndexer{}
+			mockMVI := &mockMicroVoxelIndexer{}
 			mockRM := &mockMerger{}
 			mockLG := &mockLuaGenerator{}
 			if tt.mockLG != nil {
 				mockLG.runFn = tt.mockLG
 			}
-			r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockVI, mockRM, mockLG, io.Discard)
+			r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockLG, io.Discard)
 
 			err := r.Run(RunConfig{
 				Input:     "/test",

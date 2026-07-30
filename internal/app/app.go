@@ -53,7 +53,7 @@ func buildDeps(materialsPath string) (*pipeline.Runner, error) {
 	assetScanner := minecraft.NewAssetScanner(fs)
 	propsKeyBuilder := minecraft.NewPropsKeyBuilder()
 	blockstateParser := minecraft.NewBlockstateParser(fs, propsKeyBuilder)
-	modelAnalyzer := minecraft.NewModelAnalyzer()
+	gridAnalyzer := minecraft.NewGridAnalyzer()
 	modelParser := minecraft.NewModelParser(fs)
 	textureResolver := minecraft.NewTextureResolver()
 	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelParser, textureResolver)
@@ -67,11 +67,21 @@ func buildDeps(materialsPath string) (*pipeline.Runner, error) {
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
 	coordNormalizer := pipeline.NewCoordNormalizer()
 	blockCollector := pipeline.NewBlockCollector(blockResolver, propsKeyBuilder)
-	styleIndexer := pipeline.NewStyleIndexer(modelAnalyzer, elementRotator, matcher)
-	voxelIndexer := pipeline.NewVoxelIndexer(propsKeyBuilder)
+	styleIndexer := pipeline.NewStyleIndexer(gridAnalyzer, elementRotator, matcher)
+	blockVoxelIndexer := pipeline.NewBlockVoxelIndexer(propsKeyBuilder)
+	microVoxelIndexer := pipeline.NewMicroVoxelIndexer(propsKeyBuilder)
 	regionMerger := pipeline.NewRegionMerger()
 	luaGenerator := pipeline.NewLuaGenerator(propsKeyBuilder)
 
 	return pipeline.NewRunner(
-		regionReader, coordNormalizer, assetScanner, blockCollector, styleIndexer, voxelIndexer, regionMerger, luaGenerator, os.Stdout), nil
+		regionReader,
+		coordNormalizer,
+		assetScanner,
+		blockCollector,
+		styleIndexer,
+		blockVoxelIndexer,
+		microVoxelIndexer,
+		regionMerger,
+		luaGenerator,
+		os.Stdout), nil
 }

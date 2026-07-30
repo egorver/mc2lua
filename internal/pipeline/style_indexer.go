@@ -5,8 +5,8 @@ import (
 	"mc2lua/internal/model"
 )
 
-type modelAnalyzer interface {
-	Run(elements []model.ModelElement) bool
+type gridAnalyzer interface {
+	Run(elements []model.StyledElement) model.GridAlignment
 }
 
 type elementRotator interface {
@@ -18,20 +18,19 @@ type materialMatcher interface {
 }
 
 type StyleIndexer struct {
-	modelAnalyzer   modelAnalyzer
+	gridAnalyzer    gridAnalyzer
 	elementRotator  elementRotator
 	materialMatcher materialMatcher
 }
 
-func NewStyleIndexer(ma modelAnalyzer, er elementRotator, mm materialMatcher) *StyleIndexer {
-	return &StyleIndexer{modelAnalyzer: ma, elementRotator: er, materialMatcher: mm}
+func NewStyleIndexer(ga gridAnalyzer, er elementRotator, mm materialMatcher) *StyleIndexer {
+	return &StyleIndexer{gridAnalyzer: ga, elementRotator: er, materialMatcher: mm}
 }
 
 func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 	idx := index.NewStyleIndex()
 
 	for _, b := range blocks {
-		isGridAligned := svc.modelAnalyzer.Run(b.Elements)
 		material := svc.materialMatcher.Run(b.ID)
 
 		elements := make([]model.StyledElement, len(b.Elements))
@@ -47,11 +46,12 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 		}
 
 		rotated := svc.elementRotator.Run(elements, b.RotX, b.RotY)
+		gridAlignment := svc.gridAnalyzer.Run(rotated)
 
 		styled := model.StyledBlock{
 			ID:            b.ID,
 			PropsKey:      b.PropsKey,
-			IsGridAligned: isGridAligned,
+			GridAlignment: gridAlignment,
 			Elements:      rotated,
 		}
 

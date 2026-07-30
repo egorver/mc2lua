@@ -106,41 +106,41 @@ func TestStyledBlock(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		block     StyledBlock
-		wantID    string
-		wantProps string
-		wantFull  bool
-		wantElems int
+		name             string
+		block            StyledBlock
+		wantID           string
+		wantProps        string
+		wantGridAligned  GridAlignment
+		wantElems        int
 	}{
 		{name: "zero value"},
 		{
 			name: "full block single element",
 			block: StyledBlock{
-				ID: "minecraft:stone", PropsKey: "", IsGridAligned: true,
+				ID: "minecraft:stone", PropsKey: "", GridAlignment: GridFullBlock,
 				Elements: []StyledElement{
 					{From: Vector3{0, 0, 0}, To: Vector3{16, 16, 16}, Shade: true},
 				},
 			},
-			wantID: "minecraft:stone", wantProps: "", wantFull: true, wantElems: 1,
+			wantID: "minecraft:stone", wantProps: "", wantGridAligned: GridFullBlock, wantElems: 1,
 		},
 		{
 			name: "non-full block with props",
 			block: StyledBlock{
 				ID: "minecraft:oak_stairs", PropsKey: "facing=north,half=bottom",
-				IsGridAligned: false,
+				GridAlignment: GridNotAligned,
 				Elements: []StyledElement{
 					{From: Vector3{0, 0, 0}, To: Vector3{16, 8, 16}, Shade: true},
 					{From: Vector3{0, 8, 0}, To: Vector3{8, 16, 16}, Shade: true},
 				},
 			},
 			wantID: "minecraft:oak_stairs", wantProps: "facing=north,half=bottom",
-			wantFull: false, wantElems: 2,
+			wantGridAligned: GridNotAligned, wantElems: 2,
 		},
 		{
 			name: "block with color and material in elements",
 			block: StyledBlock{
-				ID: "minecraft:grass_block", IsGridAligned: true,
+				ID: "minecraft:grass_block", GridAlignment: GridFullBlock,
 				Elements: []StyledElement{
 					{
 						From: Vector3{0, 0, 0}, To: Vector3{16, 16, 16}, Shade: true,
@@ -148,7 +148,7 @@ func TestStyledBlock(t *testing.T) {
 					},
 				},
 			},
-			wantID: "minecraft:grass_block", wantFull: true, wantElems: 1,
+			wantID: "minecraft:grass_block", wantGridAligned: GridFullBlock, wantElems: 1,
 		},
 	}
 	for _, tt := range tests {
@@ -156,7 +156,7 @@ func TestStyledBlock(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tt.wantID, tt.block.ID)
 			require.Equal(t, tt.wantProps, tt.block.PropsKey)
-			require.Equal(t, tt.wantFull, tt.block.IsGridAligned)
+			require.Equal(t, tt.wantGridAligned, tt.block.GridAlignment)
 			require.Len(t, tt.block.Elements, tt.wantElems)
 		})
 	}

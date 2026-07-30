@@ -21,16 +21,16 @@ func (m *mockMergerPropsKeyBuilder) Run(props map[string]string) string {
 }
 
 func styleIndex(entries ...struct {
-	id   string
-	prop string
-	full bool
+	id        string
+	prop      string
+	alignment model.GridAlignment
 }) index.StyleIndex {
 	idx := index.NewStyleIndex()
 	for _, e := range entries {
 		idx.Add(e.id, e.prop, model.StyledBlock{
 			ID:            e.id,
 			PropsKey:      e.prop,
-			IsGridAligned: e.full,
+			GridAlignment: e.alignment,
 		})
 	}
 	return *idx
@@ -130,8 +130,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", false}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridNotAligned}),
 			wantCount:  0,
 			wantVolume: 0,
 		},
@@ -141,8 +141,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", true}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
 			wantCount:  1,
 			wantVolume: 1,
 			wantCheck: func(t *testing.T, cuboids []model.Cuboid) {
@@ -167,8 +167,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", true}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
 			wantCount:  1,
 			wantVolume: 3,
 			wantCheck: func(t *testing.T, cuboids []model.Cuboid) {
@@ -190,8 +190,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", true}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
 			wantCount:  1,
 			wantVolume: 3,
 			wantCheck: func(t *testing.T, cuboids []model.Cuboid) {
@@ -212,8 +212,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", true}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
 			wantCount:  1,
 			wantVolume: 3,
 			wantCheck: func(t *testing.T, cuboids []model.Cuboid) {
@@ -235,8 +235,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", true}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
 			wantCount:  1,
 			wantVolume: 4,
 			wantCheck: func(t *testing.T, cuboids []model.Cuboid) {
@@ -262,8 +262,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", true}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
 			wantCount:  1,
 			wantVolume: 27,
 			wantCheck: func(t *testing.T, cuboids []model.Cuboid) {
@@ -284,8 +284,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", true}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
 			wantCount:  2,
 			wantVolume: 4,
 			wantNoOver: true,
@@ -300,13 +300,13 @@ func TestRegionMerger_Run(t *testing.T) {
 				struct {
 					id   string
 					prop string
-					full bool
-				}{"minecraft:stone", "", true},
+					alignment model.GridAlignment
+				}{"minecraft:stone", "", model.GridFullBlock},
 				struct {
 					id   string
 					prop string
-					full bool
-				}{"minecraft:dirt", "", true},
+					alignment model.GridAlignment
+				}{"minecraft:dirt", "", model.GridFullBlock},
 			),
 			wantCount:  2,
 			wantVolume: 2,
@@ -321,13 +321,13 @@ func TestRegionMerger_Run(t *testing.T) {
 				struct {
 					id   string
 					prop string
-					full bool
-				}{"minecraft:stone", "axis=x", true},
+					alignment model.GridAlignment
+				}{"minecraft:stone", "axis=x", model.GridFullBlock},
 				struct {
 					id   string
 					prop string
-					full bool
-				}{"minecraft:stone", "axis=y", true},
+					alignment model.GridAlignment
+				}{"minecraft:stone", "axis=y", model.GridFullBlock},
 			),
 			pkb: &mockMergerPropsKeyBuilder{
 				runFn: func(props map[string]string) string {
@@ -360,8 +360,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", true}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
 			wantCount:  2,
 			wantVolume: 5,
 			wantNoOver: true,
@@ -377,8 +377,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", true}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
 			wantCount:  2,
 			wantVolume: 4,
 			wantNoOver: true,
@@ -398,8 +398,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", true}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
 			wantVolume: 8,
 			wantNoOver: true,
 		},
@@ -415,8 +415,8 @@ func TestRegionMerger_Run(t *testing.T) {
 			styles: styleIndex(struct {
 				id   string
 				prop string
-				full bool
-			}{"minecraft:stone", "", true}),
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
 			wantVolume: 5,
 			wantNoOver: true,
 		},
@@ -432,7 +432,7 @@ func TestRegionMerger_Run(t *testing.T) {
 				pkb = defaultPKB
 			}
 
-			indexer := NewVoxelIndexer(pkb)
+			indexer := NewBlockVoxelIndexer(pkb)
 			grid := indexer.Run(tt.blocks, tt.styles)
 			svc := NewRegionMerger()
 			cuboids := svc.Run(grid)
@@ -954,3 +954,5 @@ func TestRegionMerger_connectedComponents(t *testing.T) {
 		})
 	}
 }
+
+
