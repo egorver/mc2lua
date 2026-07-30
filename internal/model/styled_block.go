@@ -16,8 +16,8 @@ type StyledElement struct {
 }
 
 type StyledBlock struct {
-	ID          string
-	PropsKey    string
-	IsFullBlock bool
-	Elements    []StyledElement
+	ID            string
+	PropsKey      string
+	IsGridAligned bool
+	Elements      []StyledElement
 }

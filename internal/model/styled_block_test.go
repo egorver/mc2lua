@@ -22,11 +22,11 @@ func TestColor(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		color   Color
-		wantR   uint8
-		wantG   uint8
-		wantB   uint8
+		name  string
+		color Color
+		wantR uint8
+		wantG uint8
+		wantB uint8
 	}{
 		{name: "zero value"},
 		{name: "red", color: Color{255, 0, 0}, wantR: 255, wantG: 0, wantB: 0},
@@ -49,13 +49,13 @@ func TestStyledElement(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		element    StyledElement
-		wantFrom   Vector3
-		wantTo     Vector3
-		wantShade  bool
-		wantColor  Color
-		wantMat    string
+		name      string
+		element   StyledElement
+		wantFrom  Vector3
+		wantTo    Vector3
+		wantShade bool
+		wantColor Color
+		wantMat   string
 	}{
 		{name: "zero value"},
 		{
@@ -106,18 +106,18 @@ func TestStyledBlock(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		block      StyledBlock
-		wantID     string
-		wantProps  string
-		wantFull   bool
-		wantElems  int
+		name      string
+		block     StyledBlock
+		wantID    string
+		wantProps string
+		wantFull  bool
+		wantElems int
 	}{
 		{name: "zero value"},
 		{
 			name: "full block single element",
 			block: StyledBlock{
-				ID: "minecraft:stone", PropsKey: "", IsFullBlock: true,
+				ID: "minecraft:stone", PropsKey: "", IsGridAligned: true,
 				Elements: []StyledElement{
 					{From: Vector3{0, 0, 0}, To: Vector3{16, 16, 16}, Shade: true},
 				},
@@ -128,7 +128,7 @@ func TestStyledBlock(t *testing.T) {
 			name: "non-full block with props",
 			block: StyledBlock{
 				ID: "minecraft:oak_stairs", PropsKey: "facing=north,half=bottom",
-				IsFullBlock: false,
+				IsGridAligned: false,
 				Elements: []StyledElement{
 					{From: Vector3{0, 0, 0}, To: Vector3{16, 8, 16}, Shade: true},
 					{From: Vector3{0, 8, 0}, To: Vector3{8, 16, 16}, Shade: true},
@@ -140,7 +140,7 @@ func TestStyledBlock(t *testing.T) {
 		{
 			name: "block with color and material in elements",
 			block: StyledBlock{
-				ID: "minecraft:grass_block", IsFullBlock: true,
+				ID: "minecraft:grass_block", IsGridAligned: true,
 				Elements: []StyledElement{
 					{
 						From: Vector3{0, 0, 0}, To: Vector3{16, 16, 16}, Shade: true,
@@ -156,7 +156,7 @@ func TestStyledBlock(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tt.wantID, tt.block.ID)
 			require.Equal(t, tt.wantProps, tt.block.PropsKey)
-			require.Equal(t, tt.wantFull, tt.block.IsFullBlock)
+			require.Equal(t, tt.wantFull, tt.block.IsGridAligned)
 			require.Len(t, tt.block.Elements, tt.wantElems)
 		})
 	}

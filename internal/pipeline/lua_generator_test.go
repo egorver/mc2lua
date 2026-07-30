@@ -33,7 +33,7 @@ func testLuaGenerator(t *testing.T, pkb *mockGeneratorPropsKeyBuilder) *LuaGener
 }
 
 func makeStyledBlock(id, propsKey string, full bool, elems ...model.StyledElement) model.StyledBlock {
-	return model.StyledBlock{ID: id, PropsKey: propsKey, IsFullBlock: full, Elements: elems}
+	return model.StyledBlock{ID: id, PropsKey: propsKey, IsGridAligned: full, Elements: elems}
 }
 
 func makeStyledElement(fromX, fromY, fromZ, toX, toY, toZ float64, color model.Color, material string) model.StyledElement {
@@ -307,8 +307,8 @@ func TestRun(t *testing.T) {
 			},
 		},
 		{
-			name:    "only full blocks",
-			blocks:  nil,
+			name:   "only full blocks",
+			blocks: nil,
 			cuboids: []model.Cuboid{
 				{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
 			},

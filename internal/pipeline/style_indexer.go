@@ -31,7 +31,7 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 	idx := index.NewStyleIndex()
 
 	for _, b := range blocks {
-		isFullBlock := svc.modelAnalyzer.Run(b.Elements)
+		isGridAligned := svc.modelAnalyzer.Run(b.Elements)
 		material := svc.materialMatcher.Run(b.ID)
 
 		elements := make([]model.StyledElement, len(b.Elements))
@@ -49,10 +49,10 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 		rotated := svc.elementRotator.Run(elements, b.RotX, b.RotY)
 
 		styled := model.StyledBlock{
-			ID:          b.ID,
-			PropsKey:    b.PropsKey,
-			IsFullBlock: isFullBlock,
-			Elements:    rotated,
+			ID:            b.ID,
+			PropsKey:      b.PropsKey,
+			IsGridAligned: isGridAligned,
+			Elements:      rotated,
 		}
 
 		idx.Add(b.ID, b.PropsKey, styled)

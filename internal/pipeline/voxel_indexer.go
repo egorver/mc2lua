@@ -22,7 +22,7 @@ func (svc *VoxelIndexer) Run(blocks []model.RawBlock, styles index.StyleIndex) *
 	for _, b := range blocks {
 		propsKey := svc.propsKeyBuilder.Run(b.Props)
 		resolved, ok := styles.Get(b.ID, propsKey)
-		if !ok || !resolved.IsFullBlock {
+		if !ok || !resolved.IsGridAligned {
 			continue
 		}
 		grid.AddBlock(&model.MergedBlock{

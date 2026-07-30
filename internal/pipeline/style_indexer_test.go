@@ -102,7 +102,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
 				b, ok := idx.Get("minecraft:stone", "")
 				require.True(t, ok)
-				require.True(t, b.IsFullBlock)
+				require.True(t, b.IsGridAligned)
 				require.Len(t, b.Elements, 1)
 			},
 		},
@@ -116,7 +116,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
 				b, ok := idx.Get("minecraft:oak_fence", "water=true")
 				require.True(t, ok)
-				require.False(t, b.IsFullBlock)
+				require.False(t, b.IsGridAligned)
 				require.Len(t, b.Elements, 1)
 			},
 		},

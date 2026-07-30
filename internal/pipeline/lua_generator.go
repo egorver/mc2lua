@@ -28,7 +28,7 @@ func (svc *LuaGenerator) Run(blocks []model.RawBlock, cuboids []model.Cuboid, st
 
 	for _, c := range cuboids {
 		style, ok := styleIndex.Get(c.ID, c.PropsKey)
-		if ok && style.IsFullBlock {
+		if ok && style.IsGridAligned {
 			if err := svc.writeSimplePart(&sb, c, style, scale); err != nil {
 				return 0, fmt.Errorf("failed to write simple part for block ID %s with properties %s: %w", c.ID, c.PropsKey, err)
 			}
@@ -39,7 +39,7 @@ func (svc *LuaGenerator) Run(blocks []model.RawBlock, cuboids []model.Cuboid, st
 	for _, r := range blocks {
 		propsKey := svc.propsKeyBuilder.Run(r.Props)
 		style, ok := styleIndex.Get(r.ID, propsKey)
-		if ok && !style.IsFullBlock {
+		if ok && !style.IsGridAligned {
 			totalParts += svc.writeComplexParts(&sb, r, style, scale)
 		}
 	}

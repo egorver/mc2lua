@@ -28,9 +28,9 @@ func styleIndex(entries ...struct {
 	idx := index.NewStyleIndex()
 	for _, e := range entries {
 		idx.Add(e.id, e.prop, model.StyledBlock{
-			ID:          e.id,
-			PropsKey:    e.prop,
-			IsFullBlock: e.full,
+			ID:            e.id,
+			PropsKey:      e.prop,
+			IsGridAligned: e.full,
 		})
 	}
 	return *idx
@@ -101,14 +101,14 @@ func TestRegionMerger_Run(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		blocks       []model.RawBlock
-		styles       index.StyleIndex
-		pkb          *mockMergerPropsKeyBuilder
-		wantCount    int
-		wantVolume   int
-		wantNoOver   bool
-		wantCheck    func(t *testing.T, cuboids []model.Cuboid)
+		name       string
+		blocks     []model.RawBlock
+		styles     index.StyleIndex
+		pkb        *mockMergerPropsKeyBuilder
+		wantCount  int
+		wantVolume int
+		wantNoOver bool
+		wantCheck  func(t *testing.T, cuboids []model.Cuboid)
 	}{
 		{
 			name:       "empty blocks",
@@ -158,7 +158,7 @@ func TestRegionMerger_Run(t *testing.T) {
 			},
 		},
 		{
-			name:   "single row along X",
+			name: "single row along X",
 			blocks: []model.RawBlock{
 				fullBlockAt("minecraft:stone", "", 0, 0, 0),
 				fullBlockAt("minecraft:stone", "", 1, 0, 0),
@@ -181,7 +181,7 @@ func TestRegionMerger_Run(t *testing.T) {
 			},
 		},
 		{
-			name:   "single column along Z",
+			name: "single column along Z",
 			blocks: []model.RawBlock{
 				fullBlockAt("minecraft:stone", "", 0, 0, 0),
 				fullBlockAt("minecraft:stone", "", 0, 0, 1),
@@ -203,7 +203,7 @@ func TestRegionMerger_Run(t *testing.T) {
 			},
 		},
 		{
-			name:   "vertical stack merges into one cuboid",
+			name: "vertical stack merges into one cuboid",
 			blocks: []model.RawBlock{
 				fullBlockAt("minecraft:stone", "", 0, 0, 0),
 				fullBlockAt("minecraft:stone", "", 0, 1, 0),
@@ -225,7 +225,7 @@ func TestRegionMerger_Run(t *testing.T) {
 			},
 		},
 		{
-			name:   "2x2 layer on same Y",
+			name: "2x2 layer on same Y",
 			blocks: []model.RawBlock{
 				fullBlockAt("minecraft:stone", "", 0, 0, 0),
 				fullBlockAt("minecraft:stone", "", 1, 0, 0),
@@ -247,7 +247,7 @@ func TestRegionMerger_Run(t *testing.T) {
 			},
 		},
 		{
-			name:   "3x3x3 cube",
+			name: "3x3x3 cube",
 			blocks: func() []model.RawBlock {
 				var bb []model.RawBlock
 				for x := 0; x < 3; x++ {
@@ -463,20 +463,20 @@ func TestRegionMerger_findLargestRect(t *testing.T) {
 	svc := NewRegionMerger()
 
 	tests := []struct {
-		name                  string
-		grid                  [][]bool
-		wantRow, wantCol      int
-		wantRows, wantCols    int
+		name               string
+		grid               [][]bool
+		wantRow, wantCol   int
+		wantRows, wantCols int
 	}{
 		{
-			name:  "single cell",
-			grid:  [][]bool{{true}},
+			name:    "single cell",
+			grid:    [][]bool{{true}},
 			wantRow: 0, wantCol: 0,
 			wantRows: 1, wantCols: 1,
 		},
 		{
-			name:  "empty grid",
-			grid:  [][]bool{{false}},
+			name:    "empty grid",
+			grid:    [][]bool{{false}},
 			wantRow: 0, wantCol: 0,
 			wantRows: 0, wantCols: 0,
 		},
@@ -538,58 +538,58 @@ func TestRegionMerger_maxRectInHistogram(t *testing.T) {
 	svc := NewRegionMerger()
 
 	tests := []struct {
-		name                      string
-		heights                   []int
-		row                       int
-		wantArea                  int
+		name                       string
+		heights                    []int
+		row                        int
+		wantArea                   int
 		wantRowStart, wantColStart int
 		wantCols, wantRows         int
 	}{
 		{
-			name:     "single bar height 1",
-			heights:  []int{1},
-			row:      0,
-			wantArea: 1,
+			name:         "single bar height 1",
+			heights:      []int{1},
+			row:          0,
+			wantArea:     1,
 			wantRowStart: 0, wantColStart: 0,
 			wantCols: 1, wantRows: 1,
 		},
 		{
-			name:     "single bar height 3 at row 2",
-			heights:  []int{3},
-			row:      2,
-			wantArea: 3,
+			name:         "single bar height 3 at row 2",
+			heights:      []int{3},
+			row:          2,
+			wantArea:     3,
 			wantRowStart: 0, wantColStart: 0,
 			wantCols: 1, wantRows: 3,
 		},
 		{
-			name:     "two bars same height",
-			heights:  []int{2, 2},
-			row:      1,
-			wantArea: 4,
+			name:         "two bars same height",
+			heights:      []int{2, 2},
+			row:          1,
+			wantArea:     4,
 			wantRowStart: 0, wantColStart: 0,
 			wantCols: 2, wantRows: 2,
 		},
 		{
-			name:     "descending heights picks tallest",
-			heights:  []int{3, 2, 1},
-			row:      2,
-			wantArea: 4,
+			name:         "descending heights picks tallest",
+			heights:      []int{3, 2, 1},
+			row:          2,
+			wantArea:     4,
 			wantRowStart: 1, wantColStart: 0,
 			wantCols: 2, wantRows: 2,
 		},
 		{
-			name:     "all zeros",
-			heights:  []int{0, 0, 0},
-			row:      0,
-			wantArea: 0,
+			name:         "all zeros",
+			heights:      []int{0, 0, 0},
+			row:          0,
+			wantArea:     0,
 			wantRowStart: 0, wantColStart: 0,
 			wantCols: 0, wantRows: 0,
 		},
 		{
-			name:     "valley picks largest area",
-			heights:  []int{2, 1, 2},
-			row:      2,
-			wantArea: 3,
+			name:         "valley picks largest area",
+			heights:      []int{2, 1, 2},
+			row:          2,
+			wantArea:     3,
 			wantRowStart: 2, wantColStart: 0,
 			wantCols: 3, wantRows: 1,
 		},
@@ -697,9 +697,9 @@ func TestRegionMerger_expandRegion(t *testing.T) {
 	svc := NewRegionMerger()
 
 	tests := []struct {
-		name     string
-		setup    func() (*index.VoxelIndex, model.Rect2D, int, string, string)
-		want     model.Cuboid
+		name       string
+		setup      func() (*index.VoxelIndex, model.Rect2D, int, string, string)
+		want       model.Cuboid
 		wantMerged []string
 	}{
 		{
