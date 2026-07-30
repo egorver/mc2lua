@@ -46,13 +46,13 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock) *index.StyleIndex {
 			}
 		}
 
-		elements = svc.elementRotator.Run(elements, b.RotX, b.RotY)
+		rotated := svc.elementRotator.Run(elements, b.RotX, b.RotY)
 
 		styled := model.StyledBlock{
 			ID:          b.ID,
 			PropsKey:    b.PropsKey,
 			IsFullBlock: isFullBlock,
-			Elements:    elements,
+			Elements:    rotated,
 		}
 
 		idx.Add(b.ID, b.PropsKey, styled)
