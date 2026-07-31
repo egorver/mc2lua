@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"mc2lua/internal/minecraft"
 	"mc2lua/internal/model"
 
 	"github.com/Tnze/go-mc/save/region"
@@ -34,8 +35,8 @@ func (svc *RegionReader) Run(input string, bounds model.Bounds) ([]model.RawBloc
 	for _, name := range files {
 		rx, rz := svc.parseRegionCoord(name)
 
-		if !svc.rangeOverlap(rx*512, rx*512+511, bounds.XMin, bounds.XMax) ||
-			!svc.rangeOverlap(rz*512, rz*512+511, bounds.ZMin, bounds.ZMax) {
+		if !svc.rangeOverlap(rx*minecraft.RegionSize, rx*minecraft.RegionSize+minecraft.RegionSize-1, bounds.XMin, bounds.XMax) ||
+			!svc.rangeOverlap(rz*minecraft.RegionSize, rz*minecraft.RegionSize+minecraft.RegionSize-1, bounds.ZMin, bounds.ZMax) {
 			continue
 		}
 
@@ -64,7 +65,7 @@ func (svc *RegionReader) listRegionFiles(input string) ([]string, error) {
 			continue
 		}
 		name := e.Name()
-		ok, _ := filepath.Match("r.*.*.mca", name)
+		ok, _ := filepath.Match(minecraft.RegionFilePattern, name)
 		if ok {
 			files = append(files, name)
 		}
@@ -81,17 +82,17 @@ func (svc *RegionReader) processRegion(input, name string, rx, rz int, bounds mo
 
 	var blocks []model.RawBlock
 	var errs []error
-	for lx := 0; lx < 32; lx++ {
-		for lz := 0; lz < 32; lz++ {
+	for lx := 0; lx < minecraft.ChunksPerRegion; lx++ {
+		for lz := 0; lz < minecraft.ChunksPerRegion; lz++ {
 			if !r.ExistSector(lx, lz) {
 				continue
 			}
 
-			chunkX := rx*32 + lx
-			chunkZ := rz*32 + lz
+			chunkX := rx*minecraft.ChunksPerRegion + lx
+			chunkZ := rz*minecraft.ChunksPerRegion + lz
 
-			if !svc.rangeOverlap(chunkX*16, chunkX*16+15, bounds.XMin, bounds.XMax) ||
-				!svc.rangeOverlap(chunkZ*16, chunkZ*16+15, bounds.ZMin, bounds.ZMax) {
+			if !svc.rangeOverlap(chunkX*minecraft.BlocksPerChunkSection, chunkX*minecraft.BlocksPerChunkSection+minecraft.BlocksPerChunkSection-1, bounds.XMin, bounds.XMax) ||
+				!svc.rangeOverlap(chunkZ*minecraft.BlocksPerChunkSection, chunkZ*minecraft.BlocksPerChunkSection+minecraft.BlocksPerChunkSection-1, bounds.ZMin, bounds.ZMax) {
 				continue
 			}
 
@@ -133,7 +134,7 @@ func (svc *RegionReader) processChunk(r *region.Region, lx, lz, chunkX, chunkZ i
 
 func (svc *RegionReader) parseRegionCoord(name string) (int, int) {
 	var rx, rz int
-	_, _ = fmt.Sscanf(name, "r.%d.%d.mca", &rx, &rz)
+	_, _ = fmt.Sscanf(name, minecraft.RegionFileFormat, &rx, &rz)
 	return rx, rz
 }
 

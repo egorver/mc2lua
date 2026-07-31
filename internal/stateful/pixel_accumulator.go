@@ -7,7 +7,12 @@ import (
 	"mc2lua/internal/model"
 )
 
-const maxTextureLift = 1.25
+const (
+	maxTextureLift = 1.25
+	luminanceR     = 0.2126
+	luminanceG     = 0.7152
+	luminanceB     = 0.0722
+)
 
 type PixelAccumulator struct {
 	rSum, gSum, bSum int64
@@ -88,7 +93,7 @@ func (a *PixelAccumulator) clampLift(lift float64) float64 {
 }
 
 func (a *PixelAccumulator) luminance(r, g, b uint8) float64 {
-	return 0.2126*float64(r) + 0.7152*float64(g) + 0.0722*float64(b)
+	return luminanceR*float64(r) + luminanceG*float64(g) + luminanceB*float64(b)
 }
 
 func (a *PixelAccumulator) clampByte(v int) uint8 {

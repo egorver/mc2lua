@@ -10,6 +10,8 @@ import (
 	"mc2lua/internal/model"
 )
 
+const percentMultiplier = 100.0
+
 type regionReader interface {
 	Run(input string, bounds model.Bounds) ([]model.RawBlock, error)
 }
@@ -176,7 +178,7 @@ func (svc *Runner) logUnresolved(unresolved map[string]string) {
 func (svc *Runner) logMergeStats(voxelCount, regionCount int) {
 	svc.log("Merged into %d region(s)", regionCount)
 	if voxelCount > 0 {
-		svc.log(" (%.1f%% of original blocks)\n", float64(regionCount)/float64(voxelCount)*100)
+		svc.log(" (%.1f%% of original blocks)\n", float64(regionCount)/float64(voxelCount)*percentMultiplier)
 	} else {
 		svc.log("\n")
 	}

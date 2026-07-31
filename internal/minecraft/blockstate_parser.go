@@ -51,7 +51,7 @@ func (svc *BlockstateParser) readBlockstateFile(ns, blockID string, namespaces m
 		return nil, "", fmt.Errorf("unknown namespace %s", ns)
 	}
 	for _, root := range roots {
-		candidate := root + "/blockstates/" + blockID + ".json"
+		candidate := root + BlockstatesDirPath + blockID + JSONExtension
 		data, err := svc.fs.ReadFile(candidate)
 		if err != nil {
 			continue

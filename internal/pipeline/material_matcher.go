@@ -4,7 +4,17 @@ import (
 	"fmt"
 	"strings"
 
+	"mc2lua/internal/minecraft"
+
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	planksSuffix = "_planks"
+	// defaultWoodMaterial must match a material name in config/materials.yaml.
+	defaultWoodMaterial = "Wood"
+	// defaultFallbackMaterial must match a material name in config/materials.yaml.
+	defaultFallbackMaterial = "SmoothPlastic"
 )
 
 type MaterialMatcher struct {
@@ -45,7 +55,7 @@ func (svc *MaterialMatcher) Run(blockID string) string {
 		return m
 	}
 
-	block := strings.TrimPrefix(blockID, "minecraft:")
+	block := strings.TrimPrefix(blockID, minecraft.MinecraftNamespacePrefix)
 
 	if m, ok := matchKeywords(block, svc.sortedKeys, svc.mappings); ok {
 		return m
@@ -55,12 +65,12 @@ func (svc *MaterialMatcher) Run(blockID string) string {
 		if m, ok := matchKeywords(base, svc.sortedKeys, svc.mappings); ok {
 			return m
 		}
-		if strings.HasSuffix(base, "_planks") {
-			return "Wood"
+		if strings.HasSuffix(base, planksSuffix) {
+			return defaultWoodMaterial
 		}
 	}
 
-	return "SmoothPlastic"
+	return defaultFallbackMaterial
 }
 
 func (svc *MaterialMatcher) findSuffix(block string) (string, bool) {

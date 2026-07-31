@@ -57,7 +57,7 @@ func (svc *ModelParser) flatten(modelName string, namespaces map[string][]string
 
 	if len(result.Elements) == 0 && len(result.Textures) > 0 {
 		result.Elements = []model.ModelElement{
-			{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true},
+			{From: model.Vector3{0, 0, 0}, To: model.Vector3{model.FullBlockSize, model.FullBlockSize, model.FullBlockSize}, Shade: true},
 		}
 	}
 
@@ -87,7 +87,7 @@ func (svc *ModelParser) readRaw(modelName string, nsToRoots map[string][]string)
 	}
 	var paths []string
 	for _, root := range roots {
-		paths = append(paths, root+"/models/"+path+".json")
+		paths = append(paths, root+ModelsDirPath+path+JSONExtension)
 	}
 	lastErr := fmt.Errorf("namespace %s: no files found in %v", ns, paths)
 	for _, filePath := range paths {
@@ -109,11 +109,11 @@ func (svc *ModelParser) readRaw(modelName string, nsToRoots map[string][]string)
 }
 
 func (svc *ModelParser) splitModelName(name string) (namespace, path string) {
-	if strings.Contains(name, ":") {
-		parts := strings.SplitN(name, ":", 2)
+	if strings.Contains(name, NamespaceSeparator) {
+		parts := strings.SplitN(name, NamespaceSeparator, 2)
 		return parts[0], parts[1]
 	}
-	return "minecraft", name
+	return DefaultNamespace, name
 }
 
 type rawElement struct {

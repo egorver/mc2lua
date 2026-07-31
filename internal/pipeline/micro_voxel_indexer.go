@@ -29,12 +29,12 @@ func (svc *MicroVoxelIndexer) Run(blocks []model.RawBlock, styles stateful.Style
 func (svc *MicroVoxelIndexer) addMicroBlocks(grid *stateful.VoxelIndex, b model.RawBlock, style model.StyledBlock) {
 	seen := make(map[[3]int]bool)
 	for _, elem := range style.Elements {
-		gxFrom := int(elem.From[0]) / 4
-		gxTo := int(elem.To[0]) / 4
-		gyFrom := int(elem.From[1]) / 4
-		gyTo := int(elem.To[1]) / 4
-		gzFrom := int(elem.From[2]) / 4
-		gzTo := int(elem.To[2]) / 4
+		gxFrom := int(elem.From[0]) / model.SubGridSize
+		gxTo := int(elem.To[0]) / model.SubGridSize
+		gyFrom := int(elem.From[1]) / model.SubGridSize
+		gyTo := int(elem.To[1]) / model.SubGridSize
+		gzFrom := int(elem.From[2]) / model.SubGridSize
+		gzTo := int(elem.To[2]) / model.SubGridSize
 
 		for gx := gxFrom; gx < gxTo; gx++ {
 			for gy := gyFrom; gy < gyTo; gy++ {
@@ -47,9 +47,9 @@ func (svc *MicroVoxelIndexer) addMicroBlocks(grid *stateful.VoxelIndex, b model.
 					grid.AddBlock(&model.MergedBlock{
 						ID:       b.ID,
 						PropsKey: style.PropsKey,
-						X:        b.X*4 + gx,
-						Y:        b.Y*4 + gy,
-						Z:        b.Z*4 + gz,
+						X:        b.X*model.SubGridSize + gx,
+						Y:        b.Y*model.SubGridSize + gy,
+						Z:        b.Z*model.SubGridSize + gz,
 						Merged:   false,
 					})
 				}

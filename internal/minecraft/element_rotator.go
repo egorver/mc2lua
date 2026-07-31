@@ -6,6 +6,11 @@ import (
 	"mc2lua/internal/model"
 )
 
+const (
+	rotationPrecision = 64.0
+	degreesToRadians  = math.Pi / 180
+)
+
 type ElementRotator struct{}
 
 func NewElementRotator() *ElementRotator {
@@ -54,7 +59,7 @@ func (svc *ElementRotator) rotateElement(from, to model.Vector3, rotation *model
 func (svc *ElementRotator) rotateBounds(from, to model.Vector3, rotX, rotY float64) (model.Vector3, model.Vector3) {
 	from = svc.rotatePoint(from, rotX, rotY)
 	to = svc.rotatePoint(to, rotX, rotY)
-	for a := 0; a < 3; a++ {
+		for a := 0; a < model.BlockDimensions; a++ {
 		if from[a] > to[a] {
 			from[a], to[a] = to[a], from[a]
 		}
@@ -65,20 +70,20 @@ func (svc *ElementRotator) rotateBounds(from, to model.Vector3, rotX, rotY float
 func (svc *ElementRotator) rotatePoint(p model.Vector3, rotX, rotY float64) model.Vector3 {
 	x, y, z := p[0], p[1], p[2]
 	if rotY != 0 {
-		rad := rotY * math.Pi / 180
+		rad := rotY * degreesToRadians
 		c, s := math.Cos(rad), math.Sin(rad)
-		dx, dz := x-8, z-8
-		x, z = 8+dx*c-dz*s, 8+dx*s+dz*c
+		dx, dz := x-model.BlockCenter, z-model.BlockCenter
+		x, z = model.BlockCenter+dx*c-dz*s, model.BlockCenter+dx*s+dz*c
 	}
 	if rotX != 0 {
-		rad := rotX * math.Pi / 180
+		rad := rotX * degreesToRadians
 		c, s := math.Cos(rad), math.Sin(rad)
-		dy, dz := y-8, z-8
-		y, z = 8+dy*c-dz*s, 8+dy*s+dz*c
+		dy, dz := y-model.BlockCenter, z-model.BlockCenter
+		y, z = model.BlockCenter+dy*c-dz*s, model.BlockCenter+dy*s+dz*c
 	}
 	return model.Vector3{svc.roundCoord(x), svc.roundCoord(y), svc.roundCoord(z)}
 }
 
 func (svc *ElementRotator) roundCoord(v float64) float64 {
-	return math.Round(v*64) / 64
+	return math.Round(v*rotationPrecision) / rotationPrecision
 }

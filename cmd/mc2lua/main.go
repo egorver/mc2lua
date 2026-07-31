@@ -9,12 +9,20 @@ import (
 	"mc2lua/internal/app"
 )
 
+const (
+	defaultInputDir   = "region"
+	defaultAssetsDir  = "assets"
+	defaultOutputFile = "output.lua"
+	defaultScale      = 4
+	defaultConfigDir  = "config"
+)
+
 func main() {
-	inputPath := flag.String("input", "region", "path to region files directory")
-	assetsDir := flag.String("assets", "assets", "path to Minecraft assets directory")
-	outputPath := flag.String("output", "output.lua", "output Lua file")
-	scale := flag.Int("scale", 4, "block scale factor")
-	configDir := flag.String("config", "config", "path to configs directory")
+	inputPath := flag.String("input", defaultInputDir, "path to region files directory")
+	assetsDir := flag.String("assets", defaultAssetsDir, "path to Minecraft assets directory")
+	outputPath := flag.String("output", defaultOutputFile, "output Lua file")
+	scale := flag.Int("scale", defaultScale, "block scale factor")
+	configDir := flag.String("config", defaultConfigDir, "path to configs directory")
 	noOffset := flag.Bool("no-offset", false, "disable auto-offset to y=0")
 	xmin := flag.Int("xmin", math.MinInt32, "minimum X")
 	xmax := flag.Int("xmax", math.MaxInt32, "maximum X")

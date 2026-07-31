@@ -24,7 +24,7 @@ func (svc *GridAnalyzer) Run(elements []model.StyledElement) model.GridAlignment
 
 	if len(elements) == 1 {
 		elem := elements[0]
-		if svc.isZero(elem.From[:], 0, 0, 0) && svc.isZero(elem.To[:], 16, 16, 16) {
+		if svc.isZero(elem.From[:], 0, 0, 0) && svc.isZero(elem.To[:], model.FullBlockSize, model.FullBlockSize, model.FullBlockSize) {
 			return model.GridFullBlock
 		}
 	}
@@ -33,7 +33,7 @@ func (svc *GridAnalyzer) Run(elements []model.StyledElement) model.GridAlignment
 }
 
 func (svc *GridAnalyzer) isGridAligned(v []float64) bool {
-	return int(v[0])%4 == 0 && int(v[1])%4 == 0 && int(v[2])%4 == 0
+	return int(v[0])%model.SubGridSize == 0 && int(v[1])%model.SubGridSize == 0 && int(v[2])%model.SubGridSize == 0
 }
 
 func (svc *GridAnalyzer) isZero(v []float64, x, y, z float64) bool {

@@ -70,8 +70,8 @@ func (svc *ColorExtractor) accumulateRegion(img image.Image, uv [4]float64, acc 
 
 func (svc *ColorExtractor) buildTexturePath(textureVar string, nsRoots map[string][]string, blockID string) string {
 	var ns, relPath string
-	if strings.Contains(textureVar, ":") {
-		parts := strings.SplitN(textureVar, ":", 2)
+	if strings.Contains(textureVar, NamespaceSeparator) {
+		parts := strings.SplitN(textureVar, NamespaceSeparator, 2)
 		ns, relPath = parts[0], parts[1]
 	} else {
 		ns, _ = svc.splitBlockID(blockID)
@@ -84,7 +84,7 @@ func (svc *ColorExtractor) buildTexturePath(textureVar string, nsRoots map[strin
 	}
 
 	for _, root := range roots {
-		candidate := root + "/textures/" + relPath + ".png"
+		candidate := root + TextureDirPath + relPath + PNGExtension
 		if _, err := svc.fs.ReadFile(candidate); err == nil {
 			return candidate
 		}
@@ -94,10 +94,10 @@ func (svc *ColorExtractor) buildTexturePath(textureVar string, nsRoots map[strin
 }
 
 func (svc *ColorExtractor) splitBlockID(id string) (namespace, blockID string) {
-	if parts := strings.SplitN(id, ":", 2); len(parts) == 2 {
+	if parts := strings.SplitN(id, NamespaceSeparator, 2); len(parts) == 2 {
 		return parts[0], parts[1]
 	}
-	return "minecraft", id
+	return DefaultNamespace, id
 }
 
 func (svc *ColorExtractor) clamp(v, low, high int) int {

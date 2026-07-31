@@ -6,6 +6,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const defaultBrightness = 1.0
+
 type BrightnessMatcher struct {
 	factors map[string]float64
 }
@@ -31,5 +33,5 @@ func (svc *BrightnessMatcher) Run(material string) float64 {
 	if f, ok := svc.factors[material]; ok {
 		return f
 	}
-	return 1.0
+	return defaultBrightness
 }

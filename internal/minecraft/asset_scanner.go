@@ -54,7 +54,7 @@ func (svc *AssetScanner) hasAssets(nsPath string) bool {
 		return false
 	}
 	for _, e := range entries {
-		if e.IsDir() && (e.Name() == "blockstates" || e.Name() == "models") {
+		if e.IsDir() && (e.Name() == BlockstatesDir || e.Name() == ModelsDir) {
 			return true
 		}
 	}

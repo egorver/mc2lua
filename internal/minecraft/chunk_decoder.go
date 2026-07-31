@@ -10,6 +10,18 @@ import (
 	"github.com/Tnze/go-mc/save"
 )
 
+const (
+	minBitsPerEntry            = 4
+	chunkStatusFull            = "full"
+	chunkStatusFullNamespaced  = "minecraft:full"
+)
+
+var airBlockIDs = map[string]bool{
+	"minecraft:air":      true,
+	"minecraft:cave_air": true,
+	"minecraft:void_air": true,
+}
+
 type ChunkDecoder struct{}
 
 func NewChunkDecoder() *ChunkDecoder {
@@ -22,7 +34,7 @@ func (svc *ChunkDecoder) Run(data []byte, chunkX, chunkZ int) ([]model.RawBlock,
 		return nil, fmt.Errorf("decode chunk (%d, %d): %w", chunkX, chunkZ, err)
 	}
 
-	if sc.Status != "full" && sc.Status != "minecraft:full" {
+	if sc.Status != chunkStatusFull && sc.Status != chunkStatusFullNamespaced {
 		return nil, nil
 	}
 
@@ -39,12 +51,12 @@ func (svc *ChunkDecoder) decodeSection(ssec save.Section, chunkX, chunkZ int) []
 		return nil
 	}
 
-	baseY := int(ssec.Y) * 16
+	baseY := int(ssec.Y) * BlocksPerChunkSection
 	bs := svc.newBitStorage(len(ssec.BlockStates.Palette), ssec.BlockStates.Data)
 	palette := ssec.BlockStates.Palette
 
 	var blocks []model.RawBlock
-	for j := 0; j < 4096; j++ {
+	for j := 0; j < BlocksPerSection; j++ {
 		block := svc.decodeBlock(bs, j, palette, chunkX, chunkZ, baseY)
 		if block != nil {
 			blocks = append(blocks, *block)
@@ -55,13 +67,13 @@ func (svc *ChunkDecoder) decodeSection(ssec save.Section, chunkX, chunkZ int) []
 
 func (svc *ChunkDecoder) newBitStorage(palSize int, data []uint64) *level.BitStorage {
 	if palSize <= 1 {
-		return level.NewBitStorage(0, 4096, nil)
+		return level.NewBitStorage(0, BlocksPerSection, nil)
 	}
 	bitsPerEntry := bits.Len(uint(palSize - 1)) //nolint:gosec
-	if bitsPerEntry < 4 {
-		bitsPerEntry = 4
+	if bitsPerEntry < minBitsPerEntry {
+		bitsPerEntry = minBitsPerEntry
 	}
-	return level.NewBitStorage(bitsPerEntry, 4096, data)
+	return level.NewBitStorage(bitsPerEntry, BlocksPerSection, data)
 }
 
 func (svc *ChunkDecoder) decodeBlock(bs *level.BitStorage, j int, palette []save.BlockState, chunkX, chunkZ, baseY int) *model.RawBlock {
@@ -71,7 +83,7 @@ func (svc *ChunkDecoder) decodeBlock(bs *level.BitStorage, j int, palette []save
 	}
 
 	blockName := palette[idx].Name
-	if blockName == "minecraft:air" || blockName == "minecraft:cave_air" || blockName == "minecraft:void_air" {
+	if airBlockIDs[blockName] {
 		return nil
 	}
 
@@ -83,15 +95,15 @@ func (svc *ChunkDecoder) decodeBlock(bs *level.BitStorage, j int, palette []save
 		}
 	}
 
-	x := j & 15
-	z := (j >> 4) & 15
-	y := j >> 8
+	x := j & ChunkSectionXMask
+	z := (j >> ChunkSectionZShift) & ChunkSectionXMask
+	y := j >> ChunkSectionYShift
 
 	return &model.RawBlock{
 		ID:    blockName,
 		Props: props,
-		X:     chunkX*16 + x,
+		X:     chunkX*BlocksPerChunkSection + x,
 		Y:     baseY + y,
-		Z:     chunkZ*16 + z,
+		Z:     chunkZ*BlocksPerChunkSection + z,
 	}
 }

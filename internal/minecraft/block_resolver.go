@@ -70,10 +70,10 @@ func (svc *BlockResolver) Run(id string, propsKey string, props map[string]strin
 }
 
 func (svc *BlockResolver) splitBlockID(id string) (namespace, blockID string) {
-	if parts := strings.SplitN(id, ":", 2); len(parts) == 2 {
+	if parts := strings.SplitN(id, NamespaceSeparator, 2); len(parts) == 2 {
 		return parts[0], parts[1]
 	}
-	return "minecraft", id
+	return DefaultNamespace, id
 }
 
 func (svc *BlockResolver) resolveFlattened(matches []blockstateMatch, namespaces map[string][]string) (*flattenedModel, float64, float64) {
