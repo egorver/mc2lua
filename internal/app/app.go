@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"mc2lua/internal/minecraft"
 	"mc2lua/internal/model"
@@ -19,7 +20,7 @@ func New() *App {
 func (svc *App) Run(cfg AppConfig) error {
 	runCfg := buildConfig(cfg)
 
-	runner, err := buildDeps(cfg.MaterialsPath, cfg.ColorsPath)
+	runner, err := buildDeps(cfg.ConfigDir)
 	if err != nil {
 		return fmt.Errorf("build runner: %w", err)
 	}
@@ -46,7 +47,7 @@ func buildConfig(cfg AppConfig) pipeline.RunConfig {
 	}
 }
 
-func buildDeps(materialsPath, colorsPath string) (*pipeline.Runner, error) {
+func buildDeps(configDir string) (*pipeline.Runner, error) {
 	fs := runtime.NewFS()
 
 	chunkDecoder := minecraft.NewChunkDecoder()
@@ -60,17 +61,17 @@ func buildDeps(materialsPath, colorsPath string) (*pipeline.Runner, error) {
 	elementRotator := minecraft.NewElementRotator()
 	colorExtractor := minecraft.NewColorExtractor(fs)
 
-	materialMatcher, err := pipeline.NewMaterialMatcher(fs, materialsPath)
+	materialMatcher, err := pipeline.NewMaterialMatcher(fs, filepath.Join(configDir, "materials.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("create material matcher: %w", err)
 	}
 
-	brightnessMatcher, err := pipeline.NewBrightnessMatcher(fs, materialsPath)
+	brightnessMatcher, err := pipeline.NewBrightnessMatcher(fs, filepath.Join(configDir, "materials.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("create brightness matcher: %w", err)
 	}
 
-	colorMatcher, err := pipeline.NewColorMatcher(fs, colorsPath)
+	colorMatcher, err := pipeline.NewColorMatcher(fs, filepath.Join(configDir, "colors.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("create color matcher: %w", err)
 	}

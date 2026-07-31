@@ -6,8 +6,7 @@ type AppConfig struct {
 	Output        string
 	Scale         int
 	NoOffset      bool
-	MaterialsPath string
-	ColorsPath    string
+	ConfigDir     string
 	XMin, XMax    int
 	YMin, YMax    int
 	ZMin, ZMax    int
