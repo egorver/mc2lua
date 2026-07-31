@@ -1,7 +1,7 @@
 package pipeline
 
 import (
-	"mc2lua/internal/index"
+	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
 )
 
@@ -17,8 +17,8 @@ func NewBlockVoxelIndexer(pkb indexerPropsKeyBuilder) *BlockVoxelIndexer {
 	return &BlockVoxelIndexer{propsKeyBuilder: pkb}
 }
 
-func (svc *BlockVoxelIndexer) Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex {
-	grid := index.NewVoxelIndex()
+func (svc *BlockVoxelIndexer) Run(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex {
+	grid := stateful.NewVoxelIndex()
 	for _, b := range blocks {
 		propsKey := svc.propsKeyBuilder.Run(b.Props)
 		resolved, ok := styles.Get(b.ID, propsKey)

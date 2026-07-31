@@ -1,4 +1,4 @@
-package index
+package stateful
 
 import "mc2lua/internal/model"
 

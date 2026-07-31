@@ -5,7 +5,7 @@ import (
 	"io"
 	"testing"
 
-	"mc2lua/internal/index"
+	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
 
 	"github.com/stretchr/testify/require"
@@ -50,43 +50,43 @@ func (m *mockCollector) Run(blocks []model.RawBlock, namespaces map[string][]str
 }
 
 type mockIndexer struct {
-	runFn func(blocks []model.ResolvedBlock, namespaces map[string][]string) *index.StyleIndex
+	runFn func(blocks []model.ResolvedBlock, namespaces map[string][]string) *stateful.StyleIndex
 }
 
-func (m *mockIndexer) Run(blocks []model.ResolvedBlock, namespaces map[string][]string) *index.StyleIndex {
+func (m *mockIndexer) Run(blocks []model.ResolvedBlock, namespaces map[string][]string) *stateful.StyleIndex {
 	if m.runFn != nil {
 		return m.runFn(blocks, namespaces)
 	}
-	return index.NewStyleIndex()
+	return stateful.NewStyleIndex()
 }
 
 type mockBlockVoxelIndexer struct {
-	runFn func(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
+	runFn func(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex
 }
 
-func (m *mockBlockVoxelIndexer) Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex {
+func (m *mockBlockVoxelIndexer) Run(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex {
 	if m.runFn != nil {
 		return m.runFn(blocks, styles)
 	}
-	return index.NewVoxelIndex()
+	return stateful.NewVoxelIndex()
 }
 
 type mockMicroVoxelIndexer struct {
-	runFn func(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
+	runFn func(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex
 }
 
-func (m *mockMicroVoxelIndexer) Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex {
+func (m *mockMicroVoxelIndexer) Run(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex {
 	if m.runFn != nil {
 		return m.runFn(blocks, styles)
 	}
-	return index.NewVoxelIndex()
+	return stateful.NewVoxelIndex()
 }
 
 type mockMerger struct {
-	runFn func(grid *index.VoxelIndex) []model.Cuboid
+	runFn func(grid *stateful.VoxelIndex) []model.Cuboid
 }
 
-func (m *mockMerger) Run(grid *index.VoxelIndex) []model.Cuboid {
+func (m *mockMerger) Run(grid *stateful.VoxelIndex) []model.Cuboid {
 	if m.runFn != nil {
 		return m.runFn(grid)
 	}
@@ -94,10 +94,10 @@ func (m *mockMerger) Run(grid *index.VoxelIndex) []model.Cuboid {
 }
 
 type mockLuaGenerator struct {
-	runFn func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
+	runFn func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
 }
 
-func (m *mockLuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error) {
+func (m *mockLuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
 	if m.runFn != nil {
 		return m.runFn(blocks, blockCuboids, microCuboids, styleIndex, scale, outputPath)
 	}
@@ -132,9 +132,9 @@ func TestRunner_Run(t *testing.T) {
 		mockNormalize func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error)
 		mockScan      func(root string) (map[string][]string, error)
 		mockCollect   func(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string)
-		mockBVI       func(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
-		mockRM        func(grid *index.VoxelIndex) []model.Cuboid
-		mockLG        func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
+		mockBVI       func(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex
+		mockRM        func(grid *stateful.VoxelIndex) []model.Cuboid
+		mockLG        func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
 		wantErr       bool
 		wantErrMsg    string
 	}{
@@ -175,7 +175,7 @@ func TestRunner_Run(t *testing.T) {
 			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 				return blocks, nil
 			},
-			mockLG: func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error) {
+			mockLG: func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
 				return 0, errors.New("write failed")
 			},
 			wantErr:    true,
@@ -218,12 +218,12 @@ func TestRunner_Run(t *testing.T) {
 			mockCollect: func(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string) {
 				return []model.ResolvedBlock{{ID: "minecraft:stone"}}, map[string]string{"minecraft:dirt": "not found"}
 			},
-			mockBVI: func(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex {
-				grid := index.NewVoxelIndex()
+			mockBVI: func(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "minecraft:stone", X: 0, Y: 0, Z: 0})
 				return grid
 			},
-			mockRM: func(grid *index.VoxelIndex) []model.Cuboid {
+			mockRM: func(grid *stateful.VoxelIndex) []model.Cuboid {
 				return []model.Cuboid{{ID: "minecraft:stone", Width: 1, Depth: 1, Height: 1}}
 			},
 		},

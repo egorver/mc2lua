@@ -1,7 +1,7 @@
 package pipeline
 
 import (
-	"mc2lua/internal/index"
+	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
 )
 
@@ -13,8 +13,8 @@ func NewMicroVoxelIndexer(pkb indexerPropsKeyBuilder) *MicroVoxelIndexer {
 	return &MicroVoxelIndexer{propsKeyBuilder: pkb}
 }
 
-func (svc *MicroVoxelIndexer) Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex {
-	grid := index.NewVoxelIndex()
+func (svc *MicroVoxelIndexer) Run(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex {
+	grid := stateful.NewVoxelIndex()
 	for _, b := range blocks {
 		propsKey := svc.propsKeyBuilder.Run(b.Props)
 		resolved, ok := styles.Get(b.ID, propsKey)
@@ -26,7 +26,7 @@ func (svc *MicroVoxelIndexer) Run(blocks []model.RawBlock, styles index.StyleInd
 	return grid
 }
 
-func (svc *MicroVoxelIndexer) addMicroBlocks(grid *index.VoxelIndex, b model.RawBlock, style model.StyledBlock) {
+func (svc *MicroVoxelIndexer) addMicroBlocks(grid *stateful.VoxelIndex, b model.RawBlock, style model.StyledBlock) {
 	seen := make(map[[3]int]bool)
 	for _, elem := range style.Elements {
 		gxFrom := int(elem.From[0]) / 4

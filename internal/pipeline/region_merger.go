@@ -3,7 +3,7 @@ package pipeline
 import (
 	"sort"
 
-	"mc2lua/internal/index"
+	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
 )
 
@@ -13,7 +13,7 @@ func NewRegionMerger() *RegionMerger {
 	return &RegionMerger{}
 }
 
-func (svc *RegionMerger) Run(grid *index.VoxelIndex) []model.Cuboid {
+func (svc *RegionMerger) Run(grid *stateful.VoxelIndex) []model.Cuboid {
 	var regions []model.Cuboid
 	for _, comp := range svc.connectedComponents(grid) {
 		regions = append(regions, svc.processComponent(grid, comp)...)
@@ -21,7 +21,7 @@ func (svc *RegionMerger) Run(grid *index.VoxelIndex) []model.Cuboid {
 	return regions
 }
 
-func (svc *RegionMerger) connectedComponents(grid *index.VoxelIndex) [][]*model.MergedBlock {
+func (svc *RegionMerger) connectedComponents(grid *stateful.VoxelIndex) [][]*model.MergedBlock {
 	visited := make(map[*model.MergedBlock]bool)
 	var components [][]*model.MergedBlock
 
@@ -36,7 +36,7 @@ func (svc *RegionMerger) connectedComponents(grid *index.VoxelIndex) [][]*model.
 	return components
 }
 
-func (svc *RegionMerger) bfsComponent(grid *index.VoxelIndex, seed *model.MergedBlock, visited map[*model.MergedBlock]bool) []*model.MergedBlock {
+func (svc *RegionMerger) bfsComponent(grid *stateful.VoxelIndex, seed *model.MergedBlock, visited map[*model.MergedBlock]bool) []*model.MergedBlock {
 	var neighborDirs = [][3]int{
 		{-1, 0, 0}, {1, 0, 0},
 		{0, -1, 0}, {0, 1, 0},
@@ -65,7 +65,7 @@ func (svc *RegionMerger) bfsComponent(grid *index.VoxelIndex, seed *model.Merged
 	return comp
 }
 
-func (svc *RegionMerger) processComponent(grid *index.VoxelIndex, blocks []*model.MergedBlock) []model.Cuboid {
+func (svc *RegionMerger) processComponent(grid *stateful.VoxelIndex, blocks []*model.MergedBlock) []model.Cuboid {
 	compID := blocks[0].ID
 	compProps := blocks[0].PropsKey
 
@@ -90,7 +90,7 @@ func (svc *RegionMerger) processComponent(grid *index.VoxelIndex, blocks []*mode
 	return regions
 }
 
-func (svc *RegionMerger) processLayer(grid *index.VoxelIndex, blocks []*model.MergedBlock, y int, id, props string) []model.Cuboid {
+func (svc *RegionMerger) processLayer(grid *stateful.VoxelIndex, blocks []*model.MergedBlock, y int, id, props string) []model.Cuboid {
 	var unmerged []*model.MergedBlock
 	for _, b := range blocks {
 		if !b.Merged {
@@ -237,7 +237,7 @@ func (svc *RegionMerger) maxRectInHistogram(heights []int, row int) (area, rowSt
 	return
 }
 
-func (svc *RegionMerger) expandRegion(grid *index.VoxelIndex, rect model.Rect2D, y int, id, props string) model.Cuboid {
+func (svc *RegionMerger) expandRegion(grid *stateful.VoxelIndex, rect model.Rect2D, y int, id, props string) model.Cuboid {
 	yMax := svc.expandUp(grid, y, rect, id, props)
 	yMin := svc.expandDown(grid, y, rect, id, props)
 	height := yMax - yMin + 1
@@ -255,7 +255,7 @@ func (svc *RegionMerger) expandRegion(grid *index.VoxelIndex, rect model.Rect2D,
 	}
 }
 
-func (svc *RegionMerger) expandUp(grid *index.VoxelIndex, yStart int, rect model.Rect2D, id, props string) int {
+func (svc *RegionMerger) expandUp(grid *stateful.VoxelIndex, yStart int, rect model.Rect2D, id, props string) int {
 	yMax := yStart
 	for {
 		nextY := yMax + 1
@@ -267,7 +267,7 @@ func (svc *RegionMerger) expandUp(grid *index.VoxelIndex, yStart int, rect model
 	return yMax
 }
 
-func (svc *RegionMerger) expandDown(grid *index.VoxelIndex, yStart int, rect model.Rect2D, id, props string) int {
+func (svc *RegionMerger) expandDown(grid *stateful.VoxelIndex, yStart int, rect model.Rect2D, id, props string) int {
 	yMin := yStart
 	for {
 		nextY := yMin - 1
@@ -279,7 +279,7 @@ func (svc *RegionMerger) expandDown(grid *index.VoxelIndex, yStart int, rect mod
 	return yMin
 }
 
-func (svc *RegionMerger) canMergeColumn(grid *index.VoxelIndex, y int, rect model.Rect2D, id, props string) bool {
+func (svc *RegionMerger) canMergeColumn(grid *stateful.VoxelIndex, y int, rect model.Rect2D, id, props string) bool {
 	for x := rect.X; x < rect.X+rect.Width; x++ {
 		for z := rect.Z; z < rect.Z+rect.Depth; z++ {
 			if b := grid.GetBlock(x, y, z); b == nil || b.Merged || b.ID != id || b.PropsKey != props {
@@ -290,7 +290,7 @@ func (svc *RegionMerger) canMergeColumn(grid *index.VoxelIndex, y int, rect mode
 	return true
 }
 
-func (svc *RegionMerger) markMerged(grid *index.VoxelIndex, yMin, yMax int, rect model.Rect2D) {
+func (svc *RegionMerger) markMerged(grid *stateful.VoxelIndex, yMin, yMax int, rect model.Rect2D) {
 	for yb := yMin; yb <= yMax; yb++ {
 		for x := rect.X; x < rect.X+rect.Width; x++ {
 			for z := rect.Z; z < rect.Z+rect.Depth; z++ {

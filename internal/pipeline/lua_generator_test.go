@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"mc2lua/internal/index"
+	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
 
 	"github.com/stretchr/testify/require"
@@ -286,7 +286,7 @@ func TestRun(t *testing.T) {
 		blocks        []model.RawBlock
 		blockCuboids  []model.Cuboid
 		microCuboids  []model.Cuboid
-		styleIdx      *index.StyleIndex
+		styleIdx      *stateful.StyleIndex
 		pkbFn         func(props map[string]string) string
 		scale         float64
 		wantCount     int
@@ -295,7 +295,7 @@ func TestRun(t *testing.T) {
 		{
 			name:     "empty input",
 			blocks:   nil,
-			styleIdx: index.NewStyleIndex(),
+			styleIdx: stateful.NewStyleIndex(),
 			scale:    4,
 			wantCount: 0,
 			wantCheck: func(t *testing.T, data string) {
@@ -308,8 +308,8 @@ func TestRun(t *testing.T) {
 			blockCuboids: []model.Cuboid{
 				{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
 			},
-			styleIdx: func() *index.StyleIndex {
-				idx := index.NewStyleIndex()
+			styleIdx: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
 				idx.Add("minecraft:stone", "", makeStyledBlock("minecraft:stone", "", model.GridFullBlock,
 					makeStyledElement(0, 0, 0, 16, 16, 16, model.Color{128, 128, 128}, "Slate"),
 				))
@@ -323,8 +323,8 @@ func TestRun(t *testing.T) {
 			microCuboids: []model.Cuboid{
 				{ID: "minecraft:stone_slab", PropsKey: "", X: 1.5, Y: 0.5, Z: 1.5, Width: 4, Height: 2, Depth: 4},
 			},
-			styleIdx: func() *index.StyleIndex {
-				idx := index.NewStyleIndex()
+			styleIdx: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
 				idx.Add("minecraft:stone_slab", "", makeStyledBlock("minecraft:stone_slab", "", model.GridSubBlock,
 					makeStyledElement(0, 0, 0, 16, 8, 16, model.Color{128, 128, 128}, "Stone"),
 				))
@@ -342,8 +342,8 @@ func TestRun(t *testing.T) {
 			blocks: []model.RawBlock{
 				{ID: "minecraft:oak_stairs", Props: map[string]string{"half": "bottom", "facing": "north"}, X: 0, Y: 0, Z: 0},
 			},
-			styleIdx: func() *index.StyleIndex {
-				idx := index.NewStyleIndex()
+			styleIdx: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
 				idx.Add("minecraft:oak_stairs", "facing=north,half=bottom", makeStyledBlock("minecraft:oak_stairs", "facing=north,half=bottom", model.GridNotAligned,
 					makeStyledElement(0, 0, 0, 16, 8, 16, model.Color{131, 84, 50}, "Wood"),
 					makeStyledElement(0, 8, 0, 16, 16, 8, model.Color{131, 84, 50}, "Wood"),
@@ -363,8 +363,8 @@ func TestRun(t *testing.T) {
 				{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
 				{ID: "minecraft:unknown", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
 			},
-			styleIdx: func() *index.StyleIndex {
-				idx := index.NewStyleIndex()
+			styleIdx: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
 				idx.Add("minecraft:oak_stairs", "facing=north", makeStyledBlock(
 					"minecraft:oak_stairs", "facing=north", model.GridNotAligned,
 				))
@@ -383,8 +383,8 @@ func TestRun(t *testing.T) {
 				{ID: "minecraft:stone", Props: map[string]string{}, X: 0, Y: 0, Z: 0},
 				{ID: "minecraft:unknown", Props: map[string]string{}, X: 0, Y: 0, Z: 0},
 			},
-			styleIdx: func() *index.StyleIndex {
-				idx := index.NewStyleIndex()
+			styleIdx: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
 				idx.Add("minecraft:stone", "", makeStyledBlock(
 					"minecraft:stone", "", model.GridFullBlock,
 				))
@@ -402,8 +402,8 @@ func TestRun(t *testing.T) {
 			blockCuboids: []model.Cuboid{
 				{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
 			},
-			styleIdx: func() *index.StyleIndex {
-				idx := index.NewStyleIndex()
+			styleIdx: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
 				idx.Add("minecraft:stone", "", makeStyledBlock("minecraft:stone", "", model.GridFullBlock,
 					makeStyledElement(0, 0, 0, 16, 16, 16, model.Color{128, 128, 128}, "Slate"),
 				))
@@ -452,7 +452,7 @@ func TestRun_WriteError(t *testing.T) {
 
 	svc := testLuaGenerator(t, nil)
 	outPath := filepath.Join(t.TempDir(), "nested", "out.lua")
-	_, err := svc.Run(nil, nil, nil, *index.NewStyleIndex(), 4, outPath)
+	_, err := svc.Run(nil, nil, nil, *stateful.NewStyleIndex(), 4, outPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to write output file")
 }

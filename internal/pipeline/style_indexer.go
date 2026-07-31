@@ -3,7 +3,7 @@ package pipeline
 import (
 	"strings"
 
-	"mc2lua/internal/index"
+	"mc2lua/internal/stateful"
 	"mc2lua/internal/minecraft"
 	"mc2lua/internal/model"
 )
@@ -46,8 +46,8 @@ func NewStyleIndexer(ga gridAnalyzer, er elementRotator, mm materialMatcher, bm 
 	}
 }
 
-func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock, nsRoots map[string][]string) *index.StyleIndex {
-	idx := index.NewStyleIndex()
+func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock, nsRoots map[string][]string) *stateful.StyleIndex {
+	idx := stateful.NewStyleIndex()
 
 	for _, b := range blocks {
 		material := svc.materialMatcher.Run(b.ID)

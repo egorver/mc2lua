@@ -3,7 +3,7 @@ package pipeline
 import (
 	"testing"
 
-	"mc2lua/internal/index"
+	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
 
 	"github.com/stretchr/testify/require"
@@ -24,8 +24,8 @@ func styleIndex(entries ...struct {
 	id        string
 	prop      string
 	alignment model.GridAlignment
-}) index.StyleIndex {
-	idx := index.NewStyleIndex()
+}) stateful.StyleIndex {
+	idx := stateful.NewStyleIndex()
 	for _, e := range entries {
 		idx.Add(e.id, e.prop, model.StyledBlock{
 			ID:            e.id,
@@ -103,7 +103,7 @@ func TestRegionMerger_Run(t *testing.T) {
 	tests := []struct {
 		name       string
 		blocks     []model.RawBlock
-		styles     index.StyleIndex
+		styles     stateful.StyleIndex
 		pkb        *mockMergerPropsKeyBuilder
 		wantCount  int
 		wantVolume int
@@ -716,14 +716,14 @@ func TestRegionMerger_expandRegion(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		setup      func() (*index.VoxelIndex, model.Rect2D, int, string, string)
+		setup      func() (*stateful.VoxelIndex, model.Rect2D, int, string, string)
 		want       model.Cuboid
 		wantMerged []string
 	}{
 		{
 			name: "single block at origin expands nowhere",
-			setup: func() (*index.VoxelIndex, model.Rect2D, int, string, string) {
-				grid := index.NewVoxelIndex()
+			setup: func() (*stateful.VoxelIndex, model.Rect2D, int, string, string) {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 5, Z: 0})
 				rect := model.Rect2D{X: 0, Z: 0, Width: 1, Depth: 1}
 				return grid, rect, 5, "stone", ""
@@ -736,8 +736,8 @@ func TestRegionMerger_expandRegion(t *testing.T) {
 		},
 		{
 			name: "expands up through contiguous blocks",
-			setup: func() (*index.VoxelIndex, model.Rect2D, int, string, string) {
-				grid := index.NewVoxelIndex()
+			setup: func() (*stateful.VoxelIndex, model.Rect2D, int, string, string) {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 5, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 6, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 7, Z: 0})
@@ -752,8 +752,8 @@ func TestRegionMerger_expandRegion(t *testing.T) {
 		},
 		{
 			name: "does not expand past gap",
-			setup: func() (*index.VoxelIndex, model.Rect2D, int, string, string) {
-				grid := index.NewVoxelIndex()
+			setup: func() (*stateful.VoxelIndex, model.Rect2D, int, string, string) {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 5, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 7, Z: 0})
 				rect := model.Rect2D{X: 0, Z: 0, Width: 1, Depth: 1}
@@ -767,8 +767,8 @@ func TestRegionMerger_expandRegion(t *testing.T) {
 		},
 		{
 			name: "expands down through contiguous blocks",
-			setup: func() (*index.VoxelIndex, model.Rect2D, int, string, string) {
-				grid := index.NewVoxelIndex()
+			setup: func() (*stateful.VoxelIndex, model.Rect2D, int, string, string) {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 5, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 4, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 3, Z: 0})
@@ -783,8 +783,8 @@ func TestRegionMerger_expandRegion(t *testing.T) {
 		},
 		{
 			name: "stops at already merged blocks",
-			setup: func() (*index.VoxelIndex, model.Rect2D, int, string, string) {
-				grid := index.NewVoxelIndex()
+			setup: func() (*stateful.VoxelIndex, model.Rect2D, int, string, string) {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 5, Z: 0})
 				merged := &model.MergedBlock{ID: "stone", X: 0, Y: 6, Z: 0, Merged: true}
 				grid.AddBlock(merged)
@@ -799,8 +799,8 @@ func TestRegionMerger_expandRegion(t *testing.T) {
 		},
 		{
 			name: "expands in 2x2 column",
-			setup: func() (*index.VoxelIndex, model.Rect2D, int, string, string) {
-				grid := index.NewVoxelIndex()
+			setup: func() (*stateful.VoxelIndex, model.Rect2D, int, string, string) {
+				grid := stateful.NewVoxelIndex()
 				for x := 0; x < 2; x++ {
 					for z := 0; z < 2; z++ {
 						for y := 5; y <= 7; y++ {
@@ -874,20 +874,20 @@ func TestRegionMerger_connectedComponents(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		setup func() *index.VoxelIndex
+		setup func() *stateful.VoxelIndex
 		want  int
 	}{
 		{
 			name: "empty grid",
-			setup: func() *index.VoxelIndex {
-				return index.NewVoxelIndex()
+			setup: func() *stateful.VoxelIndex {
+				return stateful.NewVoxelIndex()
 			},
 			want: 0,
 		},
 		{
 			name: "single block",
-			setup: func() *index.VoxelIndex {
-				grid := index.NewVoxelIndex()
+			setup: func() *stateful.VoxelIndex {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 0, Z: 0})
 				return grid
 			},
@@ -895,8 +895,8 @@ func TestRegionMerger_connectedComponents(t *testing.T) {
 		},
 		{
 			name: "two disconnected blocks",
-			setup: func() *index.VoxelIndex {
-				grid := index.NewVoxelIndex()
+			setup: func() *stateful.VoxelIndex {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 0, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 10, Y: 0, Z: 10})
 				return grid
@@ -905,8 +905,8 @@ func TestRegionMerger_connectedComponents(t *testing.T) {
 		},
 		{
 			name: "two adjacent blocks are one component",
-			setup: func() *index.VoxelIndex {
-				grid := index.NewVoxelIndex()
+			setup: func() *stateful.VoxelIndex {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 0, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 1, Y: 0, Z: 0})
 				return grid
@@ -915,8 +915,8 @@ func TestRegionMerger_connectedComponents(t *testing.T) {
 		},
 		{
 			name: "different IDs are separate components",
-			setup: func() *index.VoxelIndex {
-				grid := index.NewVoxelIndex()
+			setup: func() *stateful.VoxelIndex {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 0, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "dirt", X: 1, Y: 0, Z: 0})
 				return grid
@@ -925,8 +925,8 @@ func TestRegionMerger_connectedComponents(t *testing.T) {
 		},
 		{
 			name: "different props are separate components",
-			setup: func() *index.VoxelIndex {
-				grid := index.NewVoxelIndex()
+			setup: func() *stateful.VoxelIndex {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", PropsKey: "axis=x", X: 0, Y: 0, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "stone", PropsKey: "axis=y", X: 1, Y: 0, Z: 0})
 				return grid
@@ -935,8 +935,8 @@ func TestRegionMerger_connectedComponents(t *testing.T) {
 		},
 		{
 			name: "vertical neighbors are one component",
-			setup: func() *index.VoxelIndex {
-				grid := index.NewVoxelIndex()
+			setup: func() *stateful.VoxelIndex {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 0, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 1, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 2, Z: 0})
@@ -946,8 +946,8 @@ func TestRegionMerger_connectedComponents(t *testing.T) {
 		},
 		{
 			name: "diagonal is not adjacent",
-			setup: func() *index.VoxelIndex {
-				grid := index.NewVoxelIndex()
+			setup: func() *stateful.VoxelIndex {
+				grid := stateful.NewVoxelIndex()
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 0, Y: 0, Z: 0})
 				grid.AddBlock(&model.MergedBlock{ID: "stone", X: 1, Y: 0, Z: 1})
 				return grid

@@ -3,7 +3,7 @@ package pipeline
 import (
 	"testing"
 
-	"mc2lua/internal/index"
+	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
 
 	"github.com/stretchr/testify/require"
@@ -26,7 +26,7 @@ func TestMicroVoxelIndexer_Run(t *testing.T) {
 		},
 	}
 
-	styles := index.NewStyleIndex()
+	styles := stateful.NewStyleIndex()
 	styles.Add("minecraft:stone_slab", "", model.StyledBlock{
 		ID: "minecraft:stone_slab", PropsKey: "",
 		GridAlignment: model.GridSubBlock,
@@ -45,7 +45,7 @@ func TestMicroVoxelIndexer_Run(t *testing.T) {
 	tests := []struct {
 		name      string
 		blocks    []model.RawBlock
-		styles    *index.StyleIndex
+		styles    *stateful.StyleIndex
 		wantLen   int
 		wantCoord func(t *testing.T, blocks []*model.MergedBlock)
 	}{
@@ -86,8 +86,8 @@ func TestMicroVoxelIndexer_Run(t *testing.T) {
 			blocks: []model.RawBlock{
 				{ID: "minecraft:stone_slab", X: 0, Y: 0, Z: 0},
 			},
-			styles: func() *index.StyleIndex {
-				idx := index.NewStyleIndex()
+			styles: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
 				idx.Add("minecraft:stone_slab", "", model.StyledBlock{
 					ID: "minecraft:stone_slab", PropsKey: "",
 					GridAlignment: model.GridSubBlock,

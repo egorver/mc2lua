@@ -1,4 +1,4 @@
-package minecraft
+package stateful
 
 import (
 	"fmt"
@@ -9,13 +9,17 @@ import (
 
 const maxTextureLift = 1.25
 
-type pixelAccumulator struct {
+type PixelAccumulator struct {
 	rSum, gSum, bSum int64
 	count            int
 	lums             []float64
 }
 
-func (a *pixelAccumulator) add(r, g, b, alpha uint32) {
+func NewPixelAccumulator() *PixelAccumulator {
+	return &PixelAccumulator{}
+}
+
+func (a *PixelAccumulator) Add(r, g, b, alpha uint32) {
 	if alpha == 0 {
 		return
 	}
@@ -27,7 +31,7 @@ func (a *pixelAccumulator) add(r, g, b, alpha uint32) {
 	a.count++
 }
 
-func (a *pixelAccumulator) result() (model.Color, error) {
+func (a *PixelAccumulator) Result() (model.Color, error) {
 	if a.count == 0 {
 		return model.DefaultColor, fmt.Errorf("no valid pixels found")
 	}
@@ -39,7 +43,7 @@ func (a *pixelAccumulator) result() (model.Color, error) {
 	}, nil
 }
 
-func (a *pixelAccumulator) liftFactor() float64 {
+func (a *PixelAccumulator) liftFactor() float64 {
 	if len(a.lums) < 2 {
 		return 1.0
 	}
@@ -52,7 +56,7 @@ func (a *pixelAccumulator) liftFactor() float64 {
 	return a.clampLift(a.upperHalfAverage() / avgLum)
 }
 
-func (a *pixelAccumulator) averageLuminance() float64 {
+func (a *PixelAccumulator) averageLuminance() float64 {
 	var total float64
 	for _, l := range a.lums {
 		total += l
@@ -60,7 +64,7 @@ func (a *pixelAccumulator) averageLuminance() float64 {
 	return total / float64(len(a.lums))
 }
 
-func (a *pixelAccumulator) upperHalfAverage() float64 {
+func (a *PixelAccumulator) upperHalfAverage() float64 {
 	sorted := make([]float64, len(a.lums))
 	copy(sorted, a.lums)
 	sort.Float64s(sorted)
@@ -73,7 +77,7 @@ func (a *pixelAccumulator) upperHalfAverage() float64 {
 	return total / float64(len(sorted)-mid)
 }
 
-func (a *pixelAccumulator) clampLift(lift float64) float64 {
+func (a *PixelAccumulator) clampLift(lift float64) float64 {
 	if lift < 1.0 {
 		return 1.0
 	}
@@ -83,11 +87,11 @@ func (a *pixelAccumulator) clampLift(lift float64) float64 {
 	return lift
 }
 
-func (a *pixelAccumulator) luminance(r, g, b uint8) float64 {
+func (a *PixelAccumulator) luminance(r, g, b uint8) float64 {
 	return 0.2126*float64(r) + 0.7152*float64(g) + 0.0722*float64(b)
 }
 
-func (a *pixelAccumulator) clampByte(v int) uint8 {
+func (a *PixelAccumulator) clampByte(v int) uint8 {
 	if v < 0 {
 		return 0
 	}

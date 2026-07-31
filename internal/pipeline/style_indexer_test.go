@@ -3,7 +3,7 @@ package pipeline
 import (
 	"testing"
 
-	"mc2lua/internal/index"
+	"mc2lua/internal/stateful"
 	"mc2lua/internal/minecraft"
 	"mc2lua/internal/model"
 
@@ -85,7 +85,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 		matcher    func(blockID string) string
 		brightness func(material string) float64
 		wantLen    int
-		wantCheck  func(t *testing.T, idx *index.StyleIndex)
+		wantCheck  func(t *testing.T, idx *stateful.StyleIndex)
 	}{
 		{
 			name:    "empty input",
@@ -106,7 +106,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 				return "Wood"
 			},
 			wantLen: 2,
-			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
+			wantCheck: func(t *testing.T, idx *stateful.StyleIndex) {
 				stone, ok := idx.Get("minecraft:stone", "")
 				require.True(t, ok)
 				require.Equal(t, "Slate", stone.Elements[0].Material)
@@ -123,7 +123,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 			},
 			analyzer: func(elements []model.StyledElement) model.GridAlignment { return model.GridFullBlock },
 			wantLen:  1,
-			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
+			wantCheck: func(t *testing.T, idx *stateful.StyleIndex) {
 				b, ok := idx.Get("minecraft:stone", "")
 				require.True(t, ok)
 				require.Equal(t, model.GridFullBlock, b.GridAlignment)
@@ -137,7 +137,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 			},
 			analyzer: func(elements []model.StyledElement) model.GridAlignment { return model.GridSubBlock },
 			wantLen:  1,
-			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
+			wantCheck: func(t *testing.T, idx *stateful.StyleIndex) {
 				b, ok := idx.Get("minecraft:stone_slab", "type=bottom")
 				require.True(t, ok)
 				require.Equal(t, model.GridSubBlock, b.GridAlignment)
@@ -151,7 +151,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 			},
 			analyzer: func(elements []model.StyledElement) model.GridAlignment { return model.GridNotAligned },
 			wantLen:  1,
-			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
+			wantCheck: func(t *testing.T, idx *stateful.StyleIndex) {
 				b, ok := idx.Get("minecraft:oak_fence", "water=true")
 				require.True(t, ok)
 				require.Equal(t, model.GridNotAligned, b.GridAlignment)
@@ -184,7 +184,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 			},
 			analyzer: func(elements []model.StyledElement) model.GridAlignment { return model.GridFullBlock },
 			wantLen:  1,
-			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
+			wantCheck: func(t *testing.T, idx *stateful.StyleIndex) {
 				b, ok := idx.Get("minecraft:stone", "")
 				require.True(t, ok)
 				require.Len(t, b.Elements, 1)
@@ -213,7 +213,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 			matcher:    func(blockID string) string { return "Slate" },
 			brightness: func(material string) float64 { return 1.2 },
 			wantLen:    1,
-			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
+			wantCheck: func(t *testing.T, idx *stateful.StyleIndex) {
 				b, ok := idx.Get("minecraft:stone", "")
 				require.True(t, ok)
 				require.Equal(t, model.Color{229, 229, 229}, b.Elements[0].Color)

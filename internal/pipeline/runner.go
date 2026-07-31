@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"mc2lua/internal/index"
+	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
 )
 
@@ -27,23 +27,23 @@ type blockCollector interface {
 }
 
 type styleIndexer interface {
-	Run(blocks []model.ResolvedBlock, namespaces map[string][]string) *index.StyleIndex
+	Run(blocks []model.ResolvedBlock, namespaces map[string][]string) *stateful.StyleIndex
 }
 
 type blockVoxelIndexer interface {
-	Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
+	Run(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex
 }
 
 type microVoxelIndexer interface {
-	Run(blocks []model.RawBlock, styles index.StyleIndex) *index.VoxelIndex
+	Run(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex
 }
 
 type regionMerger interface {
-	Run(grid *index.VoxelIndex) []model.Cuboid
+	Run(grid *stateful.VoxelIndex) []model.Cuboid
 }
 
 type luaGenerator interface {
-	Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error)
+	Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
 }
 
 type Runner struct {

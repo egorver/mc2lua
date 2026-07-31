@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"mc2lua/internal/index"
+	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
 )
 
@@ -20,7 +20,7 @@ func NewLuaGenerator(pkb generatorPropsKeyBuilder) *LuaGenerator {
 	return &LuaGenerator{propsKeyBuilder: pkb}
 }
 
-func (svc *LuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex index.StyleIndex, scale float64, outputPath string) (int, error) {
+func (svc *LuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
 	var sb strings.Builder
 	svc.writeHeader(&sb, scale)
 

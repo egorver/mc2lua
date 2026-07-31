@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"mc2lua/internal/model"
+	"mc2lua/internal/stateful"
 )
 
 type ColorExtractor struct {
@@ -23,7 +24,7 @@ type TextureSample struct {
 }
 
 func (svc *ColorExtractor) Run(samples []TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
-	var acc pixelAccumulator
+	acc := stateful.NewPixelAccumulator()
 
 	for _, sample := range samples {
 		filePath := svc.buildTexturePath(sample.TextureVar, nsRoots, blockID)
@@ -36,10 +37,10 @@ func (svc *ColorExtractor) Run(samples []TextureSample, nsRoots map[string][]str
 			continue
 		}
 
-		svc.accumulateRegion(img, sample.UV, &acc)
+		svc.accumulateRegion(img, sample.UV, acc)
 	}
 
-	return acc.result()
+	return acc.Result()
 }
 
 func (svc *ColorExtractor) decodeTexture(filePath string) (image.Image, error) {
@@ -50,7 +51,7 @@ func (svc *ColorExtractor) decodeTexture(filePath string) (image.Image, error) {
 	return png.Decode(bytes.NewReader(data))
 }
 
-func (svc *ColorExtractor) accumulateRegion(img image.Image, uv [4]float64, acc *pixelAccumulator) {
+func (svc *ColorExtractor) accumulateRegion(img image.Image, uv [4]float64, acc *stateful.PixelAccumulator) {
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
 
@@ -62,7 +63,7 @@ func (svc *ColorExtractor) accumulateRegion(img image.Image, uv [4]float64, acc 
 	for y := vMin; y < vMax; y++ {
 		for x := uMin; x < uMax; x++ {
 			r, g, b, a := img.At(x, y).RGBA()
-			acc.add(r, g, b, a)
+			acc.Add(r, g, b, a)
 		}
 	}
 }
