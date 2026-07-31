@@ -12,32 +12,54 @@ func NewElementRotator() *ElementRotator {
 	return &ElementRotator{}
 }
 
-func (svc *ElementRotator) Run(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement {
+func (svc *ElementRotator) RunStyled(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement {
 	if rotX == 0 && rotY == 0 {
 		return elements
 	}
 	result := make([]model.StyledElement, len(elements))
 	copy(result, elements)
 	for i, elem := range result {
-		from := svc.rotatePoint(elem.From, rotX, rotY)
-		to := svc.rotatePoint(elem.To, rotX, rotY)
-		for a := 0; a < 3; a++ {
-			if from[a] > to[a] {
-				from[a], to[a] = to[a], from[a]
-			}
-		}
-		result[i].From, result[i].To = from, to
-		if elem.Rotation != nil {
-			newOrigin := svc.rotatePoint(elem.Rotation.Origin, rotX, rotY)
-			result[i].Rotation = &model.ElementRotation{
-				Origin:  newOrigin,
-				Axis:    elem.Rotation.Axis,
-				Angle:   elem.Rotation.Angle,
-				Rescale: elem.Rotation.Rescale,
-			}
-		}
+		from, to, rotation := svc.rotateElement(elem.From, elem.To, elem.Rotation, rotX, rotY)
+		result[i].From, result[i].To, result[i].Rotation = from, to, rotation
 	}
 	return result
+}
+
+func (svc *ElementRotator) RunModel(elements []model.ModelElement, rotX, rotY float64) []model.ModelElement {
+	if rotX == 0 && rotY == 0 {
+		return elements
+	}
+	result := make([]model.ModelElement, len(elements))
+	copy(result, elements)
+	for i, elem := range result {
+		from, to, rotation := svc.rotateElement(elem.From, elem.To, elem.Rotation, rotX, rotY)
+		result[i].From, result[i].To, result[i].Rotation = from, to, rotation
+	}
+	return result
+}
+
+func (svc *ElementRotator) rotateElement(from, to model.Vector3, rotation *model.ElementRotation, rotX, rotY float64) (model.Vector3, model.Vector3, *model.ElementRotation) {
+	from, to = svc.rotateBounds(from, to, rotX, rotY)
+	if rotation == nil {
+		return from, to, nil
+	}
+	return from, to, &model.ElementRotation{
+		Origin:  svc.rotatePoint(rotation.Origin, rotX, rotY),
+		Axis:    rotation.Axis,
+		Angle:   rotation.Angle,
+		Rescale: rotation.Rescale,
+	}
+}
+
+func (svc *ElementRotator) rotateBounds(from, to model.Vector3, rotX, rotY float64) (model.Vector3, model.Vector3) {
+	from = svc.rotatePoint(from, rotX, rotY)
+	to = svc.rotatePoint(to, rotX, rotY)
+	for a := 0; a < 3; a++ {
+		if from[a] > to[a] {
+			from[a], to[a] = to[a], from[a]
+		}
+	}
+	return from, to
 }
 
 func (svc *ElementRotator) rotatePoint(p model.Vector3, rotX, rotY float64) model.Vector3 {

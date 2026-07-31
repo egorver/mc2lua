@@ -61,7 +61,7 @@ func TestBlockResolver_SplitBlockID(t *testing.T) {
 func TestBlockResolver_New(t *testing.T) {
 	t.Parallel()
 
-	r := NewBlockResolver(nil, nil, nil)
+	r := NewBlockResolver(nil, nil, nil, NewElementRotator())
 	require.NotNil(t, r)
 }
 
@@ -131,7 +131,7 @@ func TestBlockResolver_Run(t *testing.T) {
 				},
 			}
 
-			svc := NewBlockResolver(mockBSP, mockMP, mockTR)
+			svc := NewBlockResolver(mockBSP, mockMP, mockTR, NewElementRotator())
 			resolved, err := svc.Run(tt.id, tt.propsKey, tt.props, nil)
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
@@ -163,19 +163,19 @@ func TestBlockResolver_Run_WithRotation(t *testing.T) {
 		mockTR := &mockTextureResolver{
 			runFn: func(textures map[string]string) map[string]string { return textures },
 		}
-		svc := NewBlockResolver(mockBSP, mockMP, mockTR)
+		svc := NewBlockResolver(mockBSP, mockMP, mockTR, NewElementRotator())
 		resolved, err := svc.Run("minecraft:furnace", "", nil, nil)
 		require.NoError(t, err)
 		require.Equal(t, 0.0, resolved.RotX)
 		require.Equal(t, 180.0, resolved.RotY)
 	})
 
-	t.Run("rotation from first match when multiple have rotation", func(t *testing.T) {
+	t.Run("same rotation across matches kept as global rotation", func(t *testing.T) {
 		mockBSP := &mockBlockstateParser{
 			runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
 				return []blockstateMatch{
 					{Model: "minecraft:block/stone", RotY: 90},
-					{Model: "minecraft:block/stone_alt", RotY: 180},
+					{Model: "minecraft:block/stone_alt", RotY: 90},
 				}, nil
 			},
 		}
@@ -187,10 +187,41 @@ func TestBlockResolver_Run_WithRotation(t *testing.T) {
 		mockTR := &mockTextureResolver{
 			runFn: func(textures map[string]string) map[string]string { return textures },
 		}
-		svc := NewBlockResolver(mockBSP, mockMP, mockTR)
+		svc := NewBlockResolver(mockBSP, mockMP, mockTR, NewElementRotator())
 		resolved, err := svc.Run("minecraft:stone", "", nil, nil)
 		require.NoError(t, err)
+		require.Equal(t, 0.0, resolved.RotX)
 		require.Equal(t, 90.0, resolved.RotY)
+	})
+
+	t.Run("differing rotations are baked and global rotation zeroed", func(t *testing.T) {
+		sideElem := model.ModelElement{From: model.Vector3{0, 0, 0}, To: model.Vector3{8, 8, 8}, Shade: true}
+		mockBSP := &mockBlockstateParser{
+			runFn: func(_, _ string, _ map[string]string, _ map[string][]string) ([]blockstateMatch, error) {
+				return []blockstateMatch{
+					{Model: "minecraft:block/side"},
+					{Model: "minecraft:block/side", RotY: 90},
+				}, nil
+			},
+		}
+		mockMP := &mockModelParser{
+			runFn: func(_ string, _ map[string][]string) (*flattenedModel, error) {
+				return &flattenedModel{Elements: []model.ModelElement{sideElem}}, nil
+			},
+		}
+		mockTR := &mockTextureResolver{
+			runFn: func(textures map[string]string) map[string]string { return textures },
+		}
+		svc := NewBlockResolver(mockBSP, mockMP, mockTR, NewElementRotator())
+		resolved, err := svc.Run("minecraft:oak_fence", "", nil, nil)
+		require.NoError(t, err)
+		require.Equal(t, 0.0, resolved.RotX)
+		require.Equal(t, 0.0, resolved.RotY)
+		require.Len(t, resolved.Elements, 2)
+		require.Equal(t, model.Vector3{0, 0, 0}, resolved.Elements[0].From)
+		require.Equal(t, model.Vector3{8, 8, 8}, resolved.Elements[0].To)
+		require.Equal(t, model.Vector3{8, 0, 0}, resolved.Elements[1].From)
+		require.Equal(t, model.Vector3{16, 8, 8}, resolved.Elements[1].To)
 	})
 
 	t.Run("nil props does not panic", func(t *testing.T) {
@@ -207,7 +238,7 @@ func TestBlockResolver_Run_WithRotation(t *testing.T) {
 		mockTR := &mockTextureResolver{
 			runFn: func(textures map[string]string) map[string]string { return textures },
 		}
-		svc := NewBlockResolver(mockBSP, mockMP, mockTR)
+		svc := NewBlockResolver(mockBSP, mockMP, mockTR, NewElementRotator())
 		resolved, err := svc.Run("minecraft:stone", "key", nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, resolved)
@@ -236,7 +267,7 @@ func TestBlockResolver_Run_WithRotation(t *testing.T) {
 				return result
 			},
 		}
-		svc := NewBlockResolver(mockBSP, mockMP, mockTR)
+		svc := NewBlockResolver(mockBSP, mockMP, mockTR, NewElementRotator())
 		resolved, err := svc.Run("minecraft:cube", "", nil, nil)
 		require.NoError(t, err)
 		require.Equal(t, "resolved:block/particle", resolved.Textures["particle"])
@@ -333,8 +364,74 @@ func TestBlockResolver_ResolveElements(t *testing.T) {
 			mockMP := &mockModelParser{runFn: tt.modelFn}
 			svc := &BlockResolver{modelParser: mockMP}
 
-			got := svc.resolveFlattened(tt.matches, nil)
+			got, rotX, rotY := svc.resolveFlattened(tt.matches, nil)
 			require.Equal(t, tt.want, got)
+			require.Equal(t, 0.0, rotX)
+			require.Equal(t, 0.0, rotY)
+		})
+	}
+}
+
+func TestBlockResolver_RotationStrategy(t *testing.T) {
+	t.Parallel()
+
+	svc := &BlockResolver{}
+	tests := []struct {
+		name        string
+		matches     []blockstateMatch
+		wantBake    bool
+		wantRotX    float64
+		wantRotY    float64
+	}{
+		{
+			name:     "empty matches",
+			matches:  nil,
+			wantBake: false,
+		},
+		{
+			name:     "no rotation",
+			matches:  []blockstateMatch{{Model: "block/a"}, {Model: "block/b"}},
+			wantBake: false,
+		},
+		{
+			name:     "single rotated match",
+			matches:  []blockstateMatch{{Model: "block/furnace", RotY: 180}},
+			wantBake: false,
+			wantRotY: 180,
+		},
+		{
+			name: "uniform rotation kept as global",
+			matches: []blockstateMatch{
+				{Model: "block/a", RotY: 90},
+				{Model: "block/b", RotY: 90},
+			},
+			wantBake: false,
+			wantRotY: 90,
+		},
+		{
+			name: "differing rotations baked and global zeroed",
+			matches: []blockstateMatch{
+				{Model: "block/a"},
+				{Model: "block/b", RotY: 90},
+			},
+			wantBake: true,
+		},
+		{
+			name: "rotX difference triggers bake",
+			matches: []blockstateMatch{
+				{Model: "block/a", RotX: 90},
+				{Model: "block/b", RotX: 180},
+			},
+			wantBake: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			bake, rotX, rotY := svc.rotationStrategy(tt.matches)
+			require.Equal(t, tt.wantBake, bake)
+			require.Equal(t, tt.wantRotX, rotX)
+			require.Equal(t, tt.wantRotY, rotY)
 		})
 	}
 }

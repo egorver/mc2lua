@@ -57,8 +57,8 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	gridAnalyzer := minecraft.NewGridAnalyzer()
 	modelParser := minecraft.NewModelParser(fs)
 	textureResolver := minecraft.NewTextureResolver()
-	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelParser, textureResolver)
 	elementRotator := minecraft.NewElementRotator()
+	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelParser, textureResolver, elementRotator)
 	colorExtractor := minecraft.NewColorExtractor(fs)
 
 	materialMatcher, err := pipeline.NewMaterialMatcher(fs, filepath.Join(configDir, "materials.yaml"))

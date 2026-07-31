@@ -48,7 +48,7 @@ type mockElementRotator struct {
 	runFn func(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement
 }
 
-func (m *mockElementRotator) Run(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement {
+func (m *mockElementRotator) RunStyled(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement {
 	if m.runFn != nil {
 		return m.runFn(elements, rotX, rotY)
 	}

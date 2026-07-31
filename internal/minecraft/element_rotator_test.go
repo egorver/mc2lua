@@ -19,7 +19,7 @@ func TestElementRotator_New(t *testing.T) {
 func TestElementRotator_RoundCoord(t *testing.T) {
 	t.Parallel()
 
-	svc := &ElementRotator{}
+	svc := NewElementRotator()
 	tests := []struct {
 		name string
 		v    float64
@@ -51,7 +51,7 @@ func TestElementRotator_RoundCoord(t *testing.T) {
 func TestElementRotator_RotatePoint(t *testing.T) {
 	t.Parallel()
 
-	svc := &ElementRotator{}
+	svc := NewElementRotator()
 	tests := []struct {
 		name   string
 		p      model.Vector3
@@ -118,7 +118,7 @@ func TestElementRotator_RotatePoint(t *testing.T) {
 	}
 }
 
-func TestElementRotator_Run(t *testing.T) {
+func TestElementRotator_RunStyled(t *testing.T) {
 	t.Parallel()
 
 	svc := NewElementRotator()
@@ -207,7 +207,90 @@ func TestElementRotator_Run(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := svc.Run(tt.elements, tt.rotX, tt.rotY)
+			got := svc.RunStyled(tt.elements, tt.rotX, tt.rotY)
+			require.Len(t, got, tt.wantLen)
+			if tt.check != nil {
+				tt.check(t, got)
+			}
+		})
+	}
+}
+
+func TestElementRotator_RunModel(t *testing.T) {
+	t.Parallel()
+
+	svc := NewElementRotator()
+	asymmetric := model.ModelElement{From: model.Vector3{0, 0, 0}, To: model.Vector3{8, 8, 8}, Shade: true}
+	elemWithRotation := model.ModelElement{
+		From: model.Vector3{0, 0, 0},
+		To:   model.Vector3{8, 8, 8},
+		Shade: true,
+		Rotation: &model.ElementRotation{
+			Origin: model.Vector3{4, 8, 8},
+			Axis:   "y",
+			Angle:  45,
+		},
+	}
+
+	tests := []struct {
+		name     string
+		elements []model.ModelElement
+		rotX     float64
+		rotY     float64
+		wantLen  int
+		check    func(t *testing.T, result []model.ModelElement)
+	}{
+		{
+			name:     "empty elements",
+			elements: nil,
+			wantLen:  0,
+		},
+		{
+			name:     "no rotation returns original slice",
+			elements: []model.ModelElement{asymmetric},
+			wantLen:  1,
+			check: func(t *testing.T, result []model.ModelElement) {
+				require.Equal(t, model.Vector3{0, 0, 0}, result[0].From)
+				require.Equal(t, model.Vector3{8, 8, 8}, result[0].To)
+			},
+		},
+		{
+			name:     "rotY 90 rotates from and to",
+			elements: []model.ModelElement{asymmetric},
+			rotY:     90,
+			wantLen:  1,
+			check: func(t *testing.T, result []model.ModelElement) {
+				require.Equal(t, model.Vector3{8, 0, 0}, result[0].From)
+				require.Equal(t, model.Vector3{16, 8, 8}, result[0].To)
+			},
+		},
+		{
+			name:     "rotX 90 rotates from and to",
+			elements: []model.ModelElement{asymmetric},
+			rotX:     90,
+			wantLen:  1,
+			check: func(t *testing.T, result []model.ModelElement) {
+				require.Equal(t, model.Vector3{0, 8, 0}, result[0].From)
+				require.Equal(t, model.Vector3{8, 16, 8}, result[0].To)
+			},
+		},
+		{
+			name:     "sub-rotation origin transformed",
+			elements: []model.ModelElement{elemWithRotation},
+			rotY:     90,
+			wantLen:  1,
+			check: func(t *testing.T, result []model.ModelElement) {
+				require.NotNil(t, result[0].Rotation)
+				require.Equal(t, model.Vector3{8, 8, 4}, result[0].Rotation.Origin)
+				require.Equal(t, "y", result[0].Rotation.Axis)
+				require.Equal(t, 45.0, result[0].Rotation.Angle)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := svc.RunModel(tt.elements, tt.rotX, tt.rotY)
 			require.Len(t, got, tt.wantLen)
 			if tt.check != nil {
 				tt.check(t, got)

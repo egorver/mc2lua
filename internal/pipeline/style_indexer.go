@@ -13,7 +13,7 @@ type gridAnalyzer interface {
 }
 
 type elementRotator interface {
-	Run(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement
+	RunStyled(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement
 }
 
 type materialMatcher interface {
@@ -71,7 +71,7 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock, nsRoots map[string][]
 			}
 		}
 
-		rotated := svc.elementRotator.Run(elements, b.RotX, b.RotY)
+		rotated := svc.elementRotator.RunStyled(elements, b.RotX, b.RotY)
 		gridAlignment := svc.gridAnalyzer.Run(rotated)
 
 		styled := model.StyledBlock{
