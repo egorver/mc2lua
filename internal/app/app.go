@@ -60,15 +60,20 @@ func buildDeps(materialsPath string) (*pipeline.Runner, error) {
 	elementRotator := minecraft.NewElementRotator()
 	colorExtractor := minecraft.NewColorExtractor(fs)
 
-	matcher, err := pipeline.NewMaterialMatcher(fs, materialsPath)
+	materialMatcher, err := pipeline.NewMaterialMatcher(fs, materialsPath)
 	if err != nil {
 		return nil, fmt.Errorf("create material matcher: %w", err)
+	}
+
+	brightnessMatcher, err := pipeline.NewBrightnessMatcher(fs, materialsPath)
+	if err != nil {
+		return nil, fmt.Errorf("create brightness matcher: %w", err)
 	}
 
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
 	coordNormalizer := pipeline.NewCoordNormalizer()
 	blockCollector := pipeline.NewBlockCollector(blockResolver, propsKeyBuilder)
-	styleIndexer := pipeline.NewStyleIndexer(gridAnalyzer, elementRotator, matcher, colorExtractor)
+	styleIndexer := pipeline.NewStyleIndexer(gridAnalyzer, elementRotator, materialMatcher, brightnessMatcher, colorExtractor)
 	blockVoxelIndexer := pipeline.NewBlockVoxelIndexer(propsKeyBuilder)
 	microVoxelIndexer := pipeline.NewMicroVoxelIndexer(propsKeyBuilder)
 	regionMerger := pipeline.NewRegionMerger()

@@ -2,7 +2,6 @@ package minecraft
 
 import (
 	"bytes"
-	"fmt"
 	"image"
 	"image/png"
 	"strings"
@@ -21,32 +20,6 @@ func NewColorExtractor(fs fsApi) *ColorExtractor {
 type TextureSample struct {
 	TextureVar string
 	UV         [4]float64
-}
-
-type pixelAccumulator struct {
-	rSum, gSum, bSum int64
-	count            int
-}
-
-func (a *pixelAccumulator) add(r, g, b, alpha uint32) {
-	if alpha == 0 {
-		return
-	}
-	a.rSum += int64(r >> 8)
-	a.gSum += int64(g >> 8)
-	a.bSum += int64(b >> 8)
-	a.count++
-}
-
-func (a *pixelAccumulator) result() (model.Color, error) {
-	if a.count == 0 {
-		return model.DefaultColor, fmt.Errorf("no valid pixels found")
-	}
-	return model.Color{
-		uint8(a.rSum / int64(a.count)),
-		uint8(a.gSum / int64(a.count)),
-		uint8(a.bSum / int64(a.count)),
-	}, nil
 }
 
 func (svc *ColorExtractor) Run(samples []TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {

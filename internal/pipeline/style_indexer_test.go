@@ -32,6 +32,17 @@ func (m *mockMaterialMatcher) Run(blockID string) string {
 	return model.DefaultMaterial
 }
 
+type mockBrightnessMatcher struct {
+	runFn func(material string) float64
+}
+
+func (m *mockBrightnessMatcher) Run(material string) float64 {
+	if m.runFn != nil {
+		return m.runFn(material)
+	}
+	return 1.0
+}
+
 type mockElementRotator struct {
 	runFn func(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement
 }
@@ -57,7 +68,7 @@ func (m *mockColorExtractor) Run(samples []minecraft.TextureSample, nsRoots map[
 func TestStyleIndexer_New(t *testing.T) {
 	t.Parallel()
 
-	si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockColorExtractor{})
+	si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{})
 	require.NotNil(t, si)
 }
 
@@ -68,12 +79,13 @@ func TestStyleIndexer_Run(t *testing.T) {
 	halfBlock := model.ModelElement{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 8, 16}}
 
 	tests := []struct {
-		name      string
-		blocks    []model.ResolvedBlock
-		analyzer  func([]model.StyledElement) model.GridAlignment
-		matcher   func(blockID string) string
-		wantLen   int
-		wantCheck func(t *testing.T, idx *index.StyleIndex)
+		name       string
+		blocks     []model.ResolvedBlock
+		analyzer   func([]model.StyledElement) model.GridAlignment
+		matcher    func(blockID string) string
+		brightness func(material string) float64
+		wantLen    int
+		wantCheck  func(t *testing.T, idx *index.StyleIndex)
 	}{
 		{
 			name:    "empty input",
@@ -181,13 +193,40 @@ func TestStyleIndexer_Run(t *testing.T) {
 				require.True(t, b.Elements[0].Shade)
 			},
 		},
+		{
+			name: "brightness applied to element color",
+			blocks: []model.ResolvedBlock{
+				{
+					ID: "minecraft:stone",
+					Elements: []model.ModelElement{
+						{
+							From:  model.Vector3{0, 0, 0},
+							To:    model.Vector3{16, 16, 16},
+							Shade: true,
+							Faces: map[string]model.ElementFace{"up": {Texture: "#up", UV: [4]float64{0, 0, 16, 16}}},
+						},
+					},
+					Textures: map[string]string{"up": "block/stone"},
+				},
+			},
+			analyzer:   func(elements []model.StyledElement) model.GridAlignment { return model.GridFullBlock },
+			matcher:    func(blockID string) string { return "Slate" },
+			brightness: func(material string) float64 { return 1.2 },
+			wantLen:    1,
+			wantCheck: func(t *testing.T, idx *index.StyleIndex) {
+				b, ok := idx.Get("minecraft:stone", "")
+				require.True(t, ok)
+				require.Equal(t, model.Color{229, 229, 229}, b.Elements[0].Color)
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ga := &mockGridAnalyzer{runFn: tt.analyzer}
 			mm := &mockMaterialMatcher{runFn: tt.matcher}
-			si := NewStyleIndexer(ga, &mockElementRotator{}, mm, &mockColorExtractor{})
+			bm := &mockBrightnessMatcher{runFn: tt.brightness}
+			si := NewStyleIndexer(ga, &mockElementRotator{}, mm, bm, &mockColorExtractor{})
 
 			idx := si.Run(tt.blocks, nil)
 			require.Equal(t, tt.wantLen, idx.Len())
