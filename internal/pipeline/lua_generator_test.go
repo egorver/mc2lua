@@ -120,6 +120,19 @@ func TestWriteCreatePart(t *testing.T) {
 	require.Contains(t, got, ", folder)")
 }
 
+func TestWriteCreatePart_RoundsCoordinates(t *testing.T) {
+	t.Parallel()
+
+	svc := testLuaGenerator(t, nil)
+	var sb strings.Builder
+	svc.writeCreatePart(&sb, 292.00000000000006, 12, 8, 3.5999999999999996, 4, 0, model.Color{139, 140, 139}, "SmoothPlastic", "bush", "minecraft:bush", "", "folder")
+	got := sb.String()
+
+	require.Contains(t, got, "Vector3.new(292, 12, 8)")
+	require.Contains(t, got, "Vector3.new(3.6, 4, 0)")
+	require.NotContains(t, got, "3.5999999999999996")
+}
+
 func TestElementKey(t *testing.T) {
 	t.Parallel()
 

@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strings"
 
@@ -95,8 +96,13 @@ func (svc *LuaGenerator) writeHeader(sb *strings.Builder, scale float64) {
 func (svc *LuaGenerator) writeCreatePart(sb *strings.Builder, w, h, d float64, px, py, pz float64, color model.Color, material, name, blockID, properties string, parent string) {
 	sb.WriteString(fmt.Sprintf(
 		"createPart(Vector3.new(%g, %g, %g), Vector3.new(%g, %g, %g), %d, %d, %d, %q, %q, %q, %q, %s)\n",
-		w, h, d, px, py, pz, color[0], color[1], color[2], material, name, blockID, properties, parent,
+		svc.roundCoord(w), svc.roundCoord(h), svc.roundCoord(d), svc.roundCoord(px), svc.roundCoord(py), svc.roundCoord(pz),
+		color[0], color[1], color[2], material, name, blockID, properties, parent,
 	))
+}
+
+func (svc *LuaGenerator) roundCoord(v float64) float64 {
+	return math.Round(v*100) / 100
 }
 
 func (svc *LuaGenerator) writeSimplePart(sb *strings.Builder, cuboid model.Cuboid, style model.StyledBlock, scale float64) error {
