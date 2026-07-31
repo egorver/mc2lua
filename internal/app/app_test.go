@@ -21,13 +21,13 @@ func TestBuildDeps(t *testing.T) {
 	t.Parallel()
 
 	t.Run("with valid config path", func(t *testing.T) {
-		r, err := buildDeps("../../config/materials.yaml")
+		r, err := buildDeps("../../config/materials.yaml", "../../config/colors.yaml")
 		require.NoError(t, err)
 		require.NotNil(t, r)
 	})
 
 	t.Run("with invalid config path", func(t *testing.T) {
-		_, err := buildDeps("nonexistent.yaml")
+		_, err := buildDeps("nonexistent.yaml", "nonexistent.yaml")
 		require.Error(t, err)
 	})
 }
@@ -49,6 +49,7 @@ func TestApp_Run_WithValidMaterials_ReturnsRunnerError(t *testing.T) {
 	err := a.Run(AppConfig{
 		Input:         t.TempDir() + "nonexistent",
 		MaterialsPath: "../../config/materials.yaml",
+		ColorsPath:    "../../config/colors.yaml",
 	})
 	require.Error(t, err)
 }

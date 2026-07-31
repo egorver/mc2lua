@@ -66,11 +66,135 @@ func (m *mockColorExtractor) Run(samples []minecraft.TextureSample, nsRoots map[
 	return model.DefaultColor, nil
 }
 
+type mockColorMatcher struct {
+	runFn func(blockID string) (model.Color, bool)
+}
+
+func (m *mockColorMatcher) Run(blockID string) (model.Color, bool) {
+	if m.runFn != nil {
+		return m.runFn(blockID)
+	}
+	return model.Color{}, false
+}
+
+func TestStyleIndexer_ElementColorParticleFallback(t *testing.T) {
+	t.Parallel()
+
+	noFaces := model.ModelElement{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true}
+
+	tests := []struct {
+		name       string
+		el         model.ModelElement
+		textures   map[string]string
+		brightness float64
+		extractor  func(samples []minecraft.TextureSample) model.Color
+		want       model.Color
+	}{
+		{
+			name:       "no faces uses particle texture",
+			el:         noFaces,
+			textures:   map[string]string{"particle": "block/water_still"},
+			brightness: 1.0,
+			extractor: func(samples []minecraft.TextureSample) model.Color {
+				require.Len(t, samples, 1)
+				require.Equal(t, "block/water_still", samples[0].TextureVar)
+				require.Equal(t, [4]float64{0, 0, 16, 16}, samples[0].UV)
+				return model.Color{10, 20, 30}
+			},
+			want: model.Color{10, 20, 30},
+		},
+		{
+			name:       "brightness applied to particle color",
+			el:         noFaces,
+			textures:   map[string]string{"particle": "block/lava_still"},
+			brightness: 1.2,
+			extractor: func(samples []minecraft.TextureSample) model.Color {
+				return model.Color{200, 100, 50}
+			},
+			want: model.Color{240, 120, 60},
+		},
+		{
+			name:       "unresolved particle reference falls back to default",
+			el:         noFaces,
+			textures:   map[string]string{"particle": "#missing"},
+			brightness: 1.0,
+			extractor: func(samples []minecraft.TextureSample) model.Color {
+				require.Fail(t, "extractor should not be called")
+				return model.DefaultColor
+			},
+			want: model.DefaultColor,
+		},
+		{
+			name:       "no particle texture falls back to default",
+			el:         noFaces,
+			textures:   nil,
+			brightness: 1.0,
+			extractor: func(samples []minecraft.TextureSample) model.Color {
+				require.Fail(t, "extractor should not be called")
+				return model.DefaultColor
+			},
+			want: model.DefaultColor,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ce := &mockColorExtractor{runFn: func(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
+				return tt.extractor(samples), nil
+			}}
+			si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, ce, &mockColorMatcher{})
+			got := si.elementColor(tt.el, tt.textures, nil, "minecraft:water", tt.brightness)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestStyleIndexer_New(t *testing.T) {
 	t.Parallel()
 
-	si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{})
+	si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{}, &mockColorMatcher{})
 	require.NotNil(t, si)
+}
+
+func TestStyleIndexer_ElementColorOverride(t *testing.T) {
+	t.Parallel()
+
+	el := model.ModelElement{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true}
+
+	t.Run("configured color wins over textures", func(t *testing.T) {
+		cm := &mockColorMatcher{runFn: func(blockID string) (model.Color, bool) {
+			require.Equal(t, "minecraft:water", blockID)
+			return model.Color{38, 94, 173}, true
+		}}
+		ce := &mockColorExtractor{runFn: func(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
+			require.Fail(t, "extractor should not be called when override exists")
+			return model.DefaultColor, nil
+		}}
+		si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, ce, cm)
+		got := si.elementColor(el, map[string]string{"particle": "block/water_still"}, nil, "minecraft:water", 1.0)
+		require.Equal(t, model.Color{38, 94, 173}, got)
+	})
+
+	t.Run("brightness applied to override color", func(t *testing.T) {
+		cm := &mockColorMatcher{runFn: func(blockID string) (model.Color, bool) {
+			return model.Color{200, 82, 18}, true
+		}}
+		si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{}, cm)
+		got := si.elementColor(el, nil, nil, "minecraft:lava", 1.2)
+		require.Equal(t, model.Color{240, 98, 21}, got)
+	})
+
+	t.Run("unconfigured block falls through to textures", func(t *testing.T) {
+		cm := &mockColorMatcher{runFn: func(blockID string) (model.Color, bool) {
+			return model.Color{}, false
+		}}
+		ce := &mockColorExtractor{runFn: func(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
+			return model.Color{10, 20, 30}, nil
+		}}
+		si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, ce, cm)
+		got := si.elementColor(el, map[string]string{"particle": "block/stone"}, nil, "minecraft:stone", 1.0)
+		require.Equal(t, model.Color{10, 20, 30}, got)
+	})
 }
 
 func TestStyleIndexer_Run(t *testing.T) {
@@ -227,7 +351,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 			ga := &mockGridAnalyzer{runFn: tt.analyzer}
 			mm := &mockMaterialMatcher{runFn: tt.matcher}
 			bm := &mockBrightnessMatcher{runFn: tt.brightness}
-			si := NewStyleIndexer(ga, &mockElementRotator{}, mm, bm, &mockColorExtractor{})
+			si := NewStyleIndexer(ga, &mockElementRotator{}, mm, bm, &mockColorExtractor{}, &mockColorMatcher{})
 
 			idx := si.Run(tt.blocks, nil)
 			require.Equal(t, tt.wantLen, idx.Len())
@@ -241,7 +365,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 func TestStyleIndexer_ScaleColor(t *testing.T) {
 	t.Parallel()
 
-	svc := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{})
+	svc := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{}, &mockColorMatcher{})
 
 	tests := []struct {
 		name   string
@@ -269,7 +393,7 @@ func TestStyleIndexer_ScaleColor(t *testing.T) {
 func TestStyleIndexer_ClampByte(t *testing.T) {
 	t.Parallel()
 
-	svc := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{})
+	svc := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{}, &mockColorMatcher{})
 
 	tests := []struct {
 		name string
@@ -357,7 +481,7 @@ func TestStyleIndexer_ElementColor(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ce := &mockColorExtractor{runFn: tt.colorRun}
-			svc := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, ce)
+			svc := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, ce, &mockColorMatcher{})
 
 			got := svc.elementColor(tt.el, tt.textures, nil, "minecraft:stone", tt.brightness)
 			require.Equal(t, tt.want, got)

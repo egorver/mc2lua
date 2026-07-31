@@ -3,9 +3,9 @@ package pipeline
 import (
 	"strings"
 
-	"mc2lua/internal/stateful"
 	"mc2lua/internal/minecraft"
 	"mc2lua/internal/model"
+	"mc2lua/internal/stateful"
 )
 
 type gridAnalyzer interface {
@@ -24,6 +24,10 @@ type brightnessMatcher interface {
 	Run(material string) float64
 }
 
+type colorMatcher interface {
+	Run(blockID string) (model.Color, bool)
+}
+
 type colorExtractor interface {
 	Run(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error)
 }
@@ -33,16 +37,18 @@ type StyleIndexer struct {
 	elementRotator    elementRotator
 	materialMatcher   materialMatcher
 	brightnessMatcher brightnessMatcher
+	colorMatcher      colorMatcher
 	colorExtractor    colorExtractor
 }
 
-func NewStyleIndexer(ga gridAnalyzer, er elementRotator, mm materialMatcher, bm brightnessMatcher, ce colorExtractor) *StyleIndexer {
+func NewStyleIndexer(ga gridAnalyzer, er elementRotator, mm materialMatcher, bm brightnessMatcher, ce colorExtractor, cm colorMatcher) *StyleIndexer {
 	return &StyleIndexer{
 		gridAnalyzer:      ga,
 		elementRotator:    er,
 		materialMatcher:   mm,
 		brightnessMatcher: bm,
 		colorExtractor:    ce,
+		colorMatcher:      cm,
 	}
 }
 
@@ -82,7 +88,15 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock, nsRoots map[string][]
 }
 
 func (svc *StyleIndexer) elementColor(el model.ModelElement, textures map[string]string, nsRoots map[string][]string, blockID string, brightness float64) model.Color {
+	if c, ok := svc.colorMatcher.Run(blockID); ok {
+		return svc.scaleColor(c, brightness)
+	}
 	samples := svc.resolveTextureSamples(el.Faces, textures)
+	if len(samples) == 0 {
+		if tex, ok := textures["particle"]; ok && !strings.HasPrefix(tex, "#") {
+			samples = []minecraft.TextureSample{{TextureVar: tex, UV: [4]float64{0, 0, 16, 16}}}
+		}
+	}
 	if len(samples) == 0 {
 		return model.DefaultColor
 	}

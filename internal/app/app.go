@@ -19,7 +19,7 @@ func New() *App {
 func (svc *App) Run(cfg AppConfig) error {
 	runCfg := buildConfig(cfg)
 
-	runner, err := buildDeps(cfg.MaterialsPath)
+	runner, err := buildDeps(cfg.MaterialsPath, cfg.ColorsPath)
 	if err != nil {
 		return fmt.Errorf("build runner: %w", err)
 	}
@@ -46,7 +46,7 @@ func buildConfig(cfg AppConfig) pipeline.RunConfig {
 	}
 }
 
-func buildDeps(materialsPath string) (*pipeline.Runner, error) {
+func buildDeps(materialsPath, colorsPath string) (*pipeline.Runner, error) {
 	fs := runtime.NewFS()
 
 	chunkDecoder := minecraft.NewChunkDecoder()
@@ -70,10 +70,16 @@ func buildDeps(materialsPath string) (*pipeline.Runner, error) {
 		return nil, fmt.Errorf("create brightness matcher: %w", err)
 	}
 
+	colorMatcher, err := pipeline.NewColorMatcher(fs, colorsPath)
+	if err != nil {
+		return nil, fmt.Errorf("create color matcher: %w", err)
+	}
+
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
 	coordNormalizer := pipeline.NewCoordNormalizer()
 	blockCollector := pipeline.NewBlockCollector(blockResolver, propsKeyBuilder)
-	styleIndexer := pipeline.NewStyleIndexer(gridAnalyzer, elementRotator, materialMatcher, brightnessMatcher, colorExtractor)
+	styleIndexer := pipeline.NewStyleIndexer(
+		gridAnalyzer, elementRotator, materialMatcher, brightnessMatcher, colorExtractor, colorMatcher)
 	blockVoxelIndexer := pipeline.NewBlockVoxelIndexer(propsKeyBuilder)
 	microVoxelIndexer := pipeline.NewMicroVoxelIndexer(propsKeyBuilder)
 	regionMerger := pipeline.NewRegionMerger()
