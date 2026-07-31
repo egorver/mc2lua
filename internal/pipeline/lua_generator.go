@@ -3,7 +3,6 @@ package pipeline
 import (
 	"fmt"
 	"math"
-	"os"
 	"strings"
 
 	"mc2lua/internal/minecraft"
@@ -12,22 +11,22 @@ import (
 )
 
 const (
-	coordPrecision       = 100.0
-	outputFilePermission = 0644
-	partsPlaceholder     = "-- Total parts: XXX"
-	importedFolderName   = "Imported"
-	elementNameFormat    = "elem %d"
+	coordPrecision     = 100.0
+	partsPlaceholder   = "-- Total parts: XXX"
+	importedFolderName = "Imported"
+	elementNameFormat  = "elem %d"
 )
 
 type generatorPropsKeyBuilder interface {
 	Run(props map[string]string) string
 }
 type LuaGenerator struct {
+	fs              fsApi
 	propsKeyBuilder generatorPropsKeyBuilder
 }
 
-func NewLuaGenerator(pkb generatorPropsKeyBuilder) *LuaGenerator {
-	return &LuaGenerator{propsKeyBuilder: pkb}
+func NewLuaGenerator(fs fsApi, pkb generatorPropsKeyBuilder) *LuaGenerator {
+	return &LuaGenerator{fs: fs, propsKeyBuilder: pkb}
 }
 
 func (svc *LuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
@@ -66,7 +65,15 @@ func (svc *LuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids
 	result = strings.Replace(result, partsPlaceholder,
 		fmt.Sprintf("-- Total parts: %d\nlocal _total = %d", totalParts, totalParts), 1)
 
-	if err := os.WriteFile(outputPath, []byte(result), outputFilePermission); err != nil {
+	w, err := svc.fs.Create(outputPath)
+	if err != nil {
+		return 0, fmt.Errorf("failed to write output file: %w", err)
+	}
+	if _, err := w.Write([]byte(result)); err != nil {
+		_ = w.Close()
+		return 0, fmt.Errorf("failed to write output file: %w", err)
+	}
+	if err := w.Close(); err != nil {
 		return 0, fmt.Errorf("failed to write output file: %w", err)
 	}
 

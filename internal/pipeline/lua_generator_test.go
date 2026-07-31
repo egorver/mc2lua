@@ -1,12 +1,12 @@
 package pipeline
 
 import (
+	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
+	"mc2lua/internal/runtime"
 	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
 
@@ -24,12 +24,13 @@ func (m *mockGeneratorPropsKeyBuilder) Run(props map[string]string) string {
 	return ""
 }
 
-func testLuaGenerator(t *testing.T, pkb *mockGeneratorPropsKeyBuilder) *LuaGenerator {
+func testLuaGenerator(t *testing.T, pkb *mockGeneratorPropsKeyBuilder) (*LuaGenerator, *runtime.FSMock) {
 	t.Helper()
 	if pkb == nil {
 		pkb = &mockGeneratorPropsKeyBuilder{}
 	}
-	return NewLuaGenerator(pkb)
+	mockFS := runtime.NewFSMock()
+	return NewLuaGenerator(mockFS, pkb), mockFS
 }
 
 func makeStyledBlock(id, propsKey string, alignment model.GridAlignment, elems ...model.StyledElement) model.StyledBlock {
@@ -48,14 +49,14 @@ func makeStyledElement(fromX, fromY, fromZ, toX, toY, toZ float64, color model.C
 func TestLuaGenerator_New(t *testing.T) {
 	t.Parallel()
 
-	lg := NewLuaGenerator(&mockGeneratorPropsKeyBuilder{})
+	lg := NewLuaGenerator(runtime.NewFSMock(), &mockGeneratorPropsKeyBuilder{})
 	require.NotNil(t, lg)
 }
 
 func TestMakePartName(t *testing.T) {
 	t.Parallel()
 
-	svc := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t, nil)
 
 	tests := []struct {
 		name    string
@@ -79,7 +80,7 @@ func TestMakePartName(t *testing.T) {
 func TestWriteHeader(t *testing.T) {
 	t.Parallel()
 
-	svc := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t, nil)
 	var sb strings.Builder
 	svc.writeHeader(&sb, 4)
 	got := sb.String()
@@ -105,7 +106,7 @@ func TestWriteHeader(t *testing.T) {
 func TestWriteCreatePart(t *testing.T) {
 	t.Parallel()
 
-	svc := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t, nil)
 	var sb strings.Builder
 	svc.writeCreatePart(&sb, 2, 3, 4, 1.5, 2.5, 3.5, model.Color{255, 128, 64}, "Wood", "stone", "minecraft:stone", "", "folder")
 	got := sb.String()
@@ -123,7 +124,7 @@ func TestWriteCreatePart(t *testing.T) {
 func TestWriteCreatePart_RoundsCoordinates(t *testing.T) {
 	t.Parallel()
 
-	svc := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t, nil)
 	var sb strings.Builder
 	svc.writeCreatePart(&sb, 292.00000000000006, 12, 8, 3.5999999999999996, 4, 0, model.Color{139, 140, 139}, "SmoothPlastic", "bush", "minecraft:bush", "", "folder")
 	got := sb.String()
@@ -136,7 +137,7 @@ func TestWriteCreatePart_RoundsCoordinates(t *testing.T) {
 func TestElementKey(t *testing.T) {
 	t.Parallel()
 
-	svc := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t, nil)
 	elem := makeStyledElement(0, 0, 0, 16, 8, 16, model.Color{}, "")
 
 	key := svc.elementKey(elem, -2, 6, 2, 4)
@@ -146,7 +147,7 @@ func TestElementKey(t *testing.T) {
 func TestWriteBeginGroup(t *testing.T) {
 	t.Parallel()
 
-	svc := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t, nil)
 	var sb strings.Builder
 	svc.writeBeginGroup(&sb, "oak_stairs")
 	got := sb.String()
@@ -159,7 +160,7 @@ func TestWriteBeginGroup(t *testing.T) {
 func TestWriteSimplePart(t *testing.T) {
 	t.Parallel()
 
-	svc := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t, nil)
 
 	tests := []struct {
 		name       string
@@ -217,7 +218,7 @@ func TestWriteSimplePart(t *testing.T) {
 func TestWriteComplexParts(t *testing.T) {
 	t.Parallel()
 
-	svc := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t, nil)
 
 	tests := []struct {
 		name      string
@@ -456,9 +457,8 @@ func TestRun(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pkb := &mockGeneratorPropsKeyBuilder{runFn: tt.pkbFn}
-			svc := testLuaGenerator(t, pkb)
-			dir := t.TempDir()
-			outPath := filepath.Join(dir, "out.lua")
+			svc, mockFS := testLuaGenerator(t, pkb)
+			outPath := "out.lua"
 
 			count, err := svc.Run(tt.blocks, tt.blockCuboids, tt.microCuboids, *tt.styleIdx, tt.scale, outPath)
 			if tt.wantErrMsg != "" {
@@ -469,7 +469,7 @@ func TestRun(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.wantCount, count)
 
-			data, err := os.ReadFile(outPath)
+			data, err := mockFS.ReadFile(outPath)
 			require.NoError(t, err)
 
 			require.Contains(t, string(data), fmt.Sprintf("-- Total parts: %d\nlocal _total = %d", tt.wantCount, tt.wantCount))
@@ -484,8 +484,9 @@ func TestRun(t *testing.T) {
 func TestRun_WriteError(t *testing.T) {
 	t.Parallel()
 
-	svc := testLuaGenerator(t, nil)
-	outPath := filepath.Join(t.TempDir(), "nested", "out.lua")
+	svc, mockFS := testLuaGenerator(t, nil)
+	outPath := "out.lua"
+	mockFS.CreateErrors[outPath] = errors.New("create fail")
 	_, err := svc.Run(nil, nil, nil, *stateful.NewStyleIndex(), 4, outPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to write output file")

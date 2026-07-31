@@ -84,7 +84,7 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	blockVoxelIndexer := pipeline.NewBlockVoxelIndexer(propsKeyBuilder)
 	microVoxelIndexer := pipeline.NewMicroVoxelIndexer(propsKeyBuilder)
 	regionMerger := pipeline.NewRegionMerger()
-	luaGenerator := pipeline.NewLuaGenerator(propsKeyBuilder)
+	luaGenerator := pipeline.NewLuaGenerator(fs, propsKeyBuilder)
 
 	return pipeline.NewRunner(
 		regionReader,
