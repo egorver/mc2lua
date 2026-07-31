@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"os"
 	"testing"
 
 	"mc2lua/internal/stateful"
@@ -233,6 +234,133 @@ func TestStyleIndexer_Run(t *testing.T) {
 			if tt.wantCheck != nil {
 				tt.wantCheck(t, idx)
 			}
+		})
+	}
+}
+
+func TestStyleIndexer_ScaleColor(t *testing.T) {
+	t.Parallel()
+
+	svc := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{})
+
+	tests := []struct {
+		name   string
+		color  model.Color
+		factor float64
+		want   model.Color
+	}{
+		{name: "zero factor returns original", color: model.Color{100, 100, 100}, factor: 0, want: model.Color{100, 100, 100}},
+		{name: "negative factor returns original", color: model.Color{100, 100, 100}, factor: -1, want: model.Color{100, 100, 100}},
+		{name: "unit factor returns original", color: model.Color{100, 100, 100}, factor: 1, want: model.Color{100, 100, 100}},
+		{name: "scales up color", color: model.Color{100, 100, 100}, factor: 1.5, want: model.Color{150, 150, 150}},
+		{name: "rounds down on scale", color: model.Color{100, 100, 100}, factor: 1.25, want: model.Color{125, 125, 125}},
+		{name: "clamps overflow to 255", color: model.Color{200, 200, 200}, factor: 2, want: model.Color{255, 255, 255}},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, svc.scaleColor(tt.color, tt.factor))
+		})
+	}
+}
+
+func TestStyleIndexer_ClampByte(t *testing.T) {
+	t.Parallel()
+
+	svc := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{})
+
+	tests := []struct {
+		name string
+		in   int
+		want uint8
+	}{
+		{name: "negative clamped to zero", in: -10, want: 0},
+		{name: "zero", in: 0, want: 0},
+		{name: "mid value", in: 128, want: 128},
+		{name: "max value", in: 255, want: 255},
+		{name: "overflow clamped to 255", in: 300, want: 255},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, svc.clampByte(tt.in))
+		})
+	}
+}
+
+func TestStyleIndexer_ElementColor(t *testing.T) {
+	t.Parallel()
+
+	elementWithFace := func(texture string) model.ModelElement {
+		return model.ModelElement{
+			Faces: map[string]model.ElementFace{"up": {Texture: texture, UV: [4]float64{0, 0, 16, 16}}},
+		}
+	}
+
+	tests := []struct {
+		name       string
+		el         model.ModelElement
+		textures   map[string]string
+		colorRun   func(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error)
+		brightness float64
+		want       model.Color
+	}{
+		{
+			name:     "no faces returns default color",
+			el:       model.ModelElement{},
+			textures: map[string]string{"up": "block/stone"},
+			want:     model.DefaultColor,
+		},
+		{
+			name:     "missing texture key returns default color",
+			el:       elementWithFace("#up"),
+			textures: map[string]string{"down": "block/dirt"},
+			want:     model.DefaultColor,
+		},
+		{
+			name:     "color extractor error returns default color",
+			el:       elementWithFace("#up"),
+			textures: map[string]string{"up": "block/stone"},
+			colorRun: func(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
+				return model.DefaultColor, os.ErrPermission
+			},
+			want: model.DefaultColor,
+		},
+		{
+			name:     "successful extraction returns color",
+			el:       elementWithFace("#up"),
+			textures: map[string]string{"up": "block/stone"},
+			colorRun: func(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
+				return model.Color{100, 100, 100}, nil
+			},
+			brightness: 1.0,
+			want:       model.Color{100, 100, 100},
+		},
+		{
+			name:     "brightness scales extracted color",
+			el:       elementWithFace("#up"),
+			textures: map[string]string{"up": "block/stone"},
+			colorRun: func(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
+				return model.Color{100, 100, 100}, nil
+			},
+			brightness: 1.5,
+			want:       model.Color{150, 150, 150},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ce := &mockColorExtractor{runFn: tt.colorRun}
+			svc := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, ce)
+
+			got := svc.elementColor(tt.el, tt.textures, nil, "minecraft:stone", tt.brightness)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

@@ -109,3 +109,180 @@ func TestColorExtractor_NoValidPixels(t *testing.T) {
 	_, err := extractor.Run(sample("block/empty"), roots, "minecraft:test_block")
 	require.Error(t, err)
 }
+
+func TestColorExtractor_SplitBlockID(t *testing.T) {
+	t.Parallel()
+
+	svc := NewColorExtractor(runtime.NewFSMock())
+
+	tests := []struct {
+		name        string
+		id          string
+		wantNS      string
+		wantBlockID string
+	}{
+		{name: "with namespace", id: "minecraft:stone", wantNS: "minecraft", wantBlockID: "stone"},
+		{name: "custom namespace", id: "cobblemon:ore", wantNS: "cobblemon", wantBlockID: "ore"},
+		{name: "without namespace", id: "stone", wantNS: "minecraft", wantBlockID: "stone"},
+		{name: "empty id", id: "", wantNS: "minecraft", wantBlockID: ""},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ns, blockID := svc.splitBlockID(tt.id)
+			require.Equal(t, tt.wantNS, ns)
+			require.Equal(t, tt.wantBlockID, blockID)
+		})
+	}
+}
+
+func TestColorExtractor_Clamp(t *testing.T) {
+	t.Parallel()
+
+	svc := NewColorExtractor(runtime.NewFSMock())
+
+	tests := []struct {
+		name string
+		v    int
+		low  int
+		high int
+		want int
+	}{
+		{name: "below low", v: -5, low: 0, high: 10, want: 0},
+		{name: "at low", v: 0, low: 0, high: 10, want: 0},
+		{name: "inside range", v: 5, low: 0, high: 10, want: 5},
+		{name: "at high", v: 10, low: 0, high: 10, want: 10},
+		{name: "above high", v: 15, low: 0, high: 10, want: 10},
+		{name: "negative range", v: -8, low: -10, high: -5, want: -8},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, svc.clamp(tt.v, tt.low, tt.high))
+		})
+	}
+}
+
+func TestColorExtractor_BuildTexturePath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		textureVar string
+		nsRoots    map[string][]string
+		blockID    string
+		files      map[string][]byte
+		want       string
+	}{
+		{
+			name:       "texture var with namespace and existing root",
+			textureVar: "minecraft:block/stone",
+			nsRoots:    map[string][]string{"minecraft": {"assets/minecraft"}},
+			files:      map[string][]byte{"assets/minecraft/textures/block/stone.png": {}},
+			want:       "assets/minecraft/textures/block/stone.png",
+		},
+		{
+			name:       "texture var without namespace uses block namespace",
+			textureVar: "block/stone",
+			nsRoots:    map[string][]string{"minecraft": {"assets/minecraft"}},
+			blockID:    "minecraft:stone",
+			files:      map[string][]byte{"assets/minecraft/textures/block/stone.png": {}},
+			want:       "assets/minecraft/textures/block/stone.png",
+		},
+		{
+			name:       "namespace missing in roots",
+			textureVar: "mod:block/ore",
+			nsRoots:    map[string][]string{"minecraft": {"assets/minecraft"}},
+			want:       "",
+		},
+		{
+			name:       "empty roots for namespace",
+			textureVar: "minecraft:block/stone",
+			nsRoots:    map[string][]string{"minecraft": {}},
+			want:       "",
+		},
+		{
+			name:       "first root missing file falls through to second",
+			textureVar: "minecraft:block/stone",
+			nsRoots:    map[string][]string{"minecraft": {"assets/first", "assets/second"}},
+			files:      map[string][]byte{"assets/second/textures/block/stone.png": {}},
+			want:       "assets/second/textures/block/stone.png",
+		},
+		{
+			name:       "no root contains the texture",
+			textureVar: "minecraft:block/stone",
+			nsRoots:    map[string][]string{"minecraft": {"assets/first", "assets/second"}},
+			files:      map[string][]byte{"assets/first/textures/block/dirt.png": {}},
+			want:       "",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fs := runtime.NewFSMock()
+			for path, data := range tt.files {
+				fs.AddFile(path, data, 0644)
+			}
+			svc := NewColorExtractor(fs)
+
+			got := svc.buildTexturePath(tt.textureVar, tt.nsRoots, tt.blockID)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestColorExtractor_DecodeTexture_InvalidPNG(t *testing.T) {
+	t.Parallel()
+
+	fs := runtime.NewFSMock()
+	fs.AddFile("assets/minecraft/textures/block/broken.png", []byte("not a png"), 0644)
+	svc := NewColorExtractor(fs)
+
+	_, err := svc.decodeTexture("assets/minecraft/textures/block/broken.png")
+	require.Error(t, err)
+}
+
+func TestColorExtractor_DecodeTexture_MissingFile(t *testing.T) {
+	t.Parallel()
+
+	svc := NewColorExtractor(runtime.NewFSMock())
+
+	_, err := svc.decodeTexture("assets/minecraft/textures/block/missing.png")
+	require.Error(t, err)
+}
+
+func TestColorExtractor_Run_MissingTextures(t *testing.T) {
+	t.Parallel()
+
+	_, extractor, roots := setupColorExtractorFS(t)
+
+	_, err := extractor.Run(sample("block/missing"), roots, "minecraft:test_block")
+	require.Error(t, err)
+}
+
+func TestColorExtractor_Run_BrokenTextureSkipped(t *testing.T) {
+	t.Parallel()
+
+	fs, extractor, roots := setupColorExtractorFS(t)
+	fs.AddFile("assets/minecraft/textures/block/broken.png", []byte("not a png"), 0644)
+
+	_, err := extractor.Run(sample("block/broken"), roots, "minecraft:test_block")
+	require.Error(t, err)
+}
+
+func TestColorExtractor_Run_UnknownNamespaceSkipped(t *testing.T) {
+	t.Parallel()
+
+	fs, extractor, _ := setupColorExtractorFS(t)
+	fs.AddFile("assets/minecraft/textures/block/present.png",
+		makePNG(16, 16, func(x, y int) color.NRGBA { return color.NRGBA{120, 120, 120, 255} }), 0644)
+
+	_, err := extractor.Run(sample("block/present"), map[string][]string{"other": {"assets/minecraft"}}, "minecraft:test_block")
+	require.Error(t, err)
+}

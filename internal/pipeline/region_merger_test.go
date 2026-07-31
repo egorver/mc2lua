@@ -973,4 +973,149 @@ func TestRegionMerger_connectedComponents(t *testing.T) {
 	}
 }
 
+func TestRegionMerger_BuildBoolGrid(t *testing.T) {
+	t.Parallel()
+
+	svc := NewRegionMerger()
+
+	tests := []struct {
+		name    string
+		blocks  []*model.MergedBlock
+		wantX   int
+		wantZ   int
+		wantCol int
+		wantSet [][2]int
+	}{
+		{
+			name: "positive coords",
+			blocks: []*model.MergedBlock{
+				{X: 0, Z: 0},
+				{X: 1, Z: 1},
+			},
+			wantX:   0,
+			wantZ:   0,
+			wantCol: 2,
+			wantSet: [][2]int{{0, 0}, {1, 1}},
+		},
+		{
+			name: "negative coords",
+			blocks: []*model.MergedBlock{
+				{X: -2, Z: -1},
+				{X: 1, Z: 2},
+			},
+			wantX:   -2,
+			wantZ:   -1,
+			wantCol: 4,
+			wantSet: [][2]int{{0, 0}, {3, 3}},
+		},
+		{
+			name: "single block",
+			blocks: []*model.MergedBlock{
+				{X: 5, Z: 5},
+			},
+			wantX:   5,
+			wantZ:   5,
+			wantCol: 1,
+			wantSet: [][2]int{{0, 0}},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			grid, xMin, zMin := svc.buildBoolGrid(tt.blocks)
+			require.Equal(t, tt.wantX, xMin)
+			require.Equal(t, tt.wantZ, zMin)
+			require.Len(t, grid, tt.wantCol)
+			if len(grid) > 0 {
+				require.Len(t, grid[0], tt.wantCol)
+			}
+			for _, rc := range tt.wantSet {
+				require.True(t, grid[rc[0]][rc[1]])
+			}
+		})
+	}
+}
+
+func TestRegionMerger_ProcessComponent(t *testing.T) {
+	t.Parallel()
+
+	svc := NewRegionMerger()
+
+	tests := []struct {
+		name      string
+		blocks    []*model.MergedBlock
+		wantCount int
+		wantCheck func(t *testing.T, cuboids []model.Cuboid)
+	}{
+		{
+			name: "single block",
+			blocks: []*model.MergedBlock{
+				{ID: "minecraft:stone", X: 0, Y: 0, Z: 0},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "stacked blocks merge vertically",
+			blocks: []*model.MergedBlock{
+				{ID: "minecraft:stone", X: 0, Y: 0, Z: 0},
+				{ID: "minecraft:stone", X: 0, Y: 1, Z: 0},
+			},
+			wantCount: 1,
+			wantCheck: func(t *testing.T, cuboids []model.Cuboid) {
+				require.Equal(t, model.Cuboid{
+					ID: "minecraft:stone", X: 0, Y: 0.5, Z: 0,
+					Width: 1, Depth: 1, Height: 2,
+				}, cuboids[0])
+			},
+		},
+		{
+			name: "disconnected blocks on same layer",
+			blocks: []*model.MergedBlock{
+				{ID: "minecraft:stone", X: 0, Y: 0, Z: 0},
+				{ID: "minecraft:stone", X: 2, Y: 0, Z: 0},
+			},
+			wantCount: 2,
+		},
+		{
+			name: "different ids do not merge",
+			blocks: []*model.MergedBlock{
+				{ID: "minecraft:stone", X: 0, Y: 0, Z: 0},
+				{ID: "minecraft:dirt", X: 0, Y: 1, Z: 0},
+			},
+			wantCount: 2,
+		},
+		{
+			name: "negative coordinates kept",
+			blocks: []*model.MergedBlock{
+				{ID: "minecraft:stone", X: -3, Y: -2, Z: -1},
+			},
+			wantCount: 1,
+			wantCheck: func(t *testing.T, cuboids []model.Cuboid) {
+				require.Equal(t, float64(-3), cuboids[0].X)
+				require.Equal(t, float64(-2), cuboids[0].Y)
+				require.Equal(t, float64(-1), cuboids[0].Z)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			grid := stateful.NewVoxelIndex()
+			for _, b := range tt.blocks {
+				grid.AddBlock(b)
+			}
+
+			cuboids := svc.processComponent(grid, tt.blocks)
+			require.Len(t, cuboids, tt.wantCount)
+			if tt.wantCheck != nil {
+				tt.wantCheck(t, cuboids)
+			}
+		})
+	}
+}
+
 

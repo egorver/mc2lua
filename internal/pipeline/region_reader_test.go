@@ -9,6 +9,7 @@ import (
 	"mc2lua/internal/model"
 	"mc2lua/internal/runtime"
 
+	"github.com/Tnze/go-mc/save/region"
 	"github.com/stretchr/testify/require"
 )
 
@@ -254,6 +255,224 @@ func TestRegionReader_Run(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Empty(t, blocks)
+		})
+	}
+}
+
+func writeRegionFile(t *testing.T, dir, name string, chunks map[[2]int][]byte) string {
+	t.Helper()
+
+	path := filepath.Join(dir, name)
+	f, err := os.Create(path)
+	require.NoError(t, err)
+
+	r, err := region.CreateWriter(f)
+	require.NoError(t, err)
+
+	for coords, data := range chunks {
+		require.NoError(t, r.WriteSector(coords[0], coords[1], data))
+	}
+	require.NoError(t, r.Close())
+
+	return path
+}
+
+func testRegionBlocks() model.RawBlock {
+	return model.RawBlock{ID: "minecraft:stone", X: 3, Y: 10, Z: 5}
+}
+
+func TestRegionReader_ProcessChunk(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		chunks     map[[2]int][]byte
+		lx, lz     int
+		bounds     model.Bounds
+		decoder    *mockChunkDecoder
+		want       []model.RawBlock
+		wantErrMsg string
+	}{
+		{
+			name:   "block inside bounds",
+			chunks: map[[2]int][]byte{{0, 0}: []byte("chunkdata")},
+			bounds: model.Bounds{XMin: 0, XMax: 15, YMin: 0, YMax: 20, ZMin: 0, ZMax: 15},
+			decoder: &mockChunkDecoder{runFn: func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+				return []model.RawBlock{testRegionBlocks()}, nil
+			}},
+			want: []model.RawBlock{testRegionBlocks()},
+		},
+		{
+			name:   "block outside X bounds filtered",
+			chunks: map[[2]int][]byte{{0, 0}: []byte("chunkdata")},
+			bounds: model.Bounds{XMin: 100, XMax: 200, YMin: 0, YMax: 20, ZMin: 0, ZMax: 15},
+			decoder: &mockChunkDecoder{runFn: func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+				return []model.RawBlock{testRegionBlocks()}, nil
+			}},
+			want: nil,
+		},
+		{
+			name:   "block outside Y bounds filtered",
+			chunks: map[[2]int][]byte{{0, 0}: []byte("chunkdata")},
+			bounds: model.Bounds{XMin: 0, XMax: 15, YMin: 100, YMax: 200, ZMin: 0, ZMax: 15},
+			decoder: &mockChunkDecoder{runFn: func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+				return []model.RawBlock{testRegionBlocks()}, nil
+			}},
+			want: nil,
+		},
+		{
+			name:   "block outside Z bounds filtered",
+			chunks: map[[2]int][]byte{{0, 0}: []byte("chunkdata")},
+			bounds: model.Bounds{XMin: 0, XMax: 15, YMin: 0, YMax: 20, ZMin: 100, ZMax: 200},
+			decoder: &mockChunkDecoder{runFn: func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+				return []model.RawBlock{testRegionBlocks()}, nil
+			}},
+			want: nil,
+		},
+		{
+			name:   "some blocks filtered some kept",
+			chunks: map[[2]int][]byte{{0, 0}: []byte("chunkdata")},
+			bounds: model.Bounds{XMin: 0, XMax: 15, YMin: 0, YMax: 20, ZMin: 0, ZMax: 15},
+			decoder: &mockChunkDecoder{runFn: func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+				return []model.RawBlock{
+					testRegionBlocks(),
+					{ID: "minecraft:air", X: 50, Y: 10, Z: 5},
+				}, nil
+			}},
+			want: []model.RawBlock{testRegionBlocks()},
+		},
+		{
+			name:   "missing sector returns error",
+			chunks: map[[2]int][]byte{},
+			bounds: model.Bounds{XMin: -1000, XMax: 1000, YMin: -1000, YMax: 1000, ZMin: -1000, ZMax: 1000},
+			decoder: &mockChunkDecoder{runFn: func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+				return []model.RawBlock{testRegionBlocks()}, nil
+			}},
+			wantErrMsg: "read sector for chunk (0, 0)",
+		},
+		{
+			name:   "decoder error propagates",
+			chunks: map[[2]int][]byte{{0, 0}: []byte("chunkdata")},
+			bounds: model.Bounds{XMin: -1000, XMax: 1000, YMin: -1000, YMax: 1000, ZMin: -1000, ZMax: 1000},
+			decoder: &mockChunkDecoder{runFn: func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+				return nil, os.ErrPermission
+			}},
+			wantErrMsg: "permission denied",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			path := writeRegionFile(t, dir, "r.0.0.mca", tt.chunks)
+
+			r, err := region.Open(path)
+			require.NoError(t, err)
+			defer r.Close()
+
+			svc := NewRegionReader(runtime.NewFS(), tt.decoder)
+			got, err := svc.processChunk(r, tt.lx, tt.lz, 0, 0, tt.bounds)
+
+			if tt.wantErrMsg != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErrMsg)
+				return
+			}
+			require.NoError(t, err)
+			if tt.want == nil {
+				require.Empty(t, got)
+				return
+			}
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestRegionReader_ProcessRegion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		chunks     map[[2]int][]byte
+		bounds     model.Bounds
+		decoder    *mockChunkDecoder
+		want       []model.RawBlock
+		wantErrMsg string
+	}{
+		{
+			name:   "single chunk inside bounds",
+			chunks: map[[2]int][]byte{{0, 0}: []byte("chunkdata")},
+			bounds: model.Bounds{XMin: 0, XMax: 15, YMin: 0, YMax: 20, ZMin: 0, ZMax: 15},
+			decoder: &mockChunkDecoder{runFn: func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+				return []model.RawBlock{testRegionBlocks()}, nil
+			}},
+			want: []model.RawBlock{testRegionBlocks()},
+		},
+		{
+			name:   "chunk outside bounds skipped",
+			chunks: map[[2]int][]byte{{0, 0}: []byte("chunkdata")},
+			bounds: model.Bounds{XMin: 10000, XMax: 20000, YMin: 0, YMax: 20, ZMin: 0, ZMax: 15},
+			decoder: &mockChunkDecoder{runFn: func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+				return []model.RawBlock{testRegionBlocks()}, nil
+			}},
+			want: nil,
+		},
+		{
+			name: "multiple in-bounds chunks decoded",
+			chunks: map[[2]int][]byte{
+				{0, 0}: []byte("chunkdata"),
+				{1, 0}: []byte("chunkdata"),
+			},
+			bounds: model.Bounds{XMin: 0, XMax: 1000, YMin: 0, YMax: 1000, ZMin: 0, ZMax: 1000},
+			decoder: &mockChunkDecoder{runFn: func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+				if chunkX == 1 {
+					return []model.RawBlock{{ID: "minecraft:stone", X: 19, Y: 10, Z: 5}}, nil
+				}
+				return []model.RawBlock{testRegionBlocks()}, nil
+			}},
+			want: []model.RawBlock{
+				testRegionBlocks(),
+				{ID: "minecraft:stone", X: 19, Y: 10, Z: 5},
+			},
+		},
+		{
+			name: "one failing chunk returns partial result with error",
+			chunks: map[[2]int][]byte{
+				{0, 0}: []byte("chunkdata"),
+				{1, 0}: []byte("chunkdata"),
+			},
+			bounds: model.Bounds{XMin: 0, XMax: 1000, YMin: 0, YMax: 1000, ZMin: 0, ZMax: 1000},
+			decoder: &mockChunkDecoder{runFn: func(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+				if chunkX == 1 {
+					return nil, os.ErrPermission
+				}
+				return []model.RawBlock{testRegionBlocks()}, nil
+			}},
+			want:       []model.RawBlock{testRegionBlocks()},
+			wantErrMsg: "process region",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			writeRegionFile(t, dir, "r.0.0.mca", tt.chunks)
+
+			svc := NewRegionReader(runtime.NewFS(), tt.decoder)
+			got, err := svc.processRegion(dir, "r.0.0.mca", 0, 0, tt.bounds)
+
+			if tt.wantErrMsg != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErrMsg)
+				require.Equal(t, tt.want, got)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

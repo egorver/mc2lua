@@ -303,6 +303,7 @@ func TestRun(t *testing.T) {
 		pkbFn         func(props map[string]string) string
 		scale         float64
 		wantCount     int
+		wantErrMsg    string
 		wantCheck     func(t *testing.T, data string)
 	}{
 		{
@@ -408,6 +409,21 @@ func TestRun(t *testing.T) {
 			wantCount: 0,
 		},
 		{
+			name: "aligned cuboid without elements returns error",
+			blockCuboids: []model.Cuboid{
+				{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
+			},
+			styleIdx: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
+				idx.Add("minecraft:stone", "", makeStyledBlock(
+					"minecraft:stone", "", model.GridFullBlock,
+				))
+				return idx
+			}(),
+			scale:      4,
+			wantErrMsg: "failed to write simple part for block ID minecraft:stone with properties ",
+		},
+		{
 			name: "full and complex blocks",
 			blocks: []model.RawBlock{
 				{ID: "minecraft:oak_stairs", Props: map[string]string{"half": "bottom", "facing": "north"}, X: 0, Y: 0, Z: 0},
@@ -445,6 +461,11 @@ func TestRun(t *testing.T) {
 			outPath := filepath.Join(dir, "out.lua")
 
 			count, err := svc.Run(tt.blocks, tt.blockCuboids, tt.microCuboids, *tt.styleIdx, tt.scale, outPath)
+			if tt.wantErrMsg != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErrMsg)
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, tt.wantCount, count)
 
