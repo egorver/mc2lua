@@ -30,8 +30,24 @@ func TestGridAnalyzer_Run(t *testing.T) {
 			want: model.GridFullBlock,
 		},
 		{
+			name: "multiple full blocks",
+			elements: []model.StyledElement{
+				{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true},
+				{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true},
+			},
+			want: model.GridFullBlock,
+		},
+		{
 			name: "half slab",
 			elements: []model.StyledElement{
+				{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 8, 16}, Shade: true},
+			},
+			want: model.GridSubBlock,
+		},
+		{
+			name: "full block plus partial element",
+			elements: []model.StyledElement{
+				{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true},
 				{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 8, 16}, Shade: true},
 			},
 			want: model.GridSubBlock,

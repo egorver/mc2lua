@@ -53,10 +53,10 @@ func TestBlockstateParserRun(t *testing.T) {
 			want:  []blockstateMatch{{Model: "block/cube"}},
 		},
 		{
-			name:      "array variant",
+			name:      "array variant uses first only",
 			namespace: "minecraft", blockID: "grass",
 			props: map[string]string{},
-			want:  []blockstateMatch{{Model: "block/grass"}, {Model: "block/grass_alt"}},
+			want:  []blockstateMatch{{Model: "block/grass"}},
 		},
 		{
 			name:      "no matching variant",
@@ -146,7 +146,7 @@ func TestBlockstateParserParseVariantValue(t *testing.T) {
 	}{
 		{name: "single object", input: []byte(`{"model":"block/cube"}`), want: []blockstateMatch{{Model: "block/cube"}}},
 		{name: "object with rotation", input: []byte(`{"model":"block/furnace","x":90,"y":180}`), want: []blockstateMatch{{Model: "block/furnace", RotX: 90, RotY: 180}}},
-		{name: "array of variants", input: []byte(`[{"model":"block/stone"},{"model":"block/andesite"}]`), want: []blockstateMatch{{Model: "block/stone"}, {Model: "block/andesite"}}},
+		{name: "array of variants uses first only", input: []byte(`[{"model":"block/stone"},{"model":"block/andesite"}]`), want: []blockstateMatch{{Model: "block/stone"}}},
 		{name: "empty value", input: []byte(``), wantErr: "empty variant value"},
 		{name: "whitespace only", input: []byte(`   `), wantErr: "empty variant value"},
 		{name: "invalid JSON object", input: []byte(`{broken`), wantErr: "parse variant object"},

@@ -133,11 +133,11 @@ func (svc *BlockstateParser) parseVariantValue(raw json.RawMessage) ([]blockstat
 		if err := json.Unmarshal(raw, &entries); err != nil {
 			return nil, fmt.Errorf("parse variant array: %w", err)
 		}
-		matches := make([]blockstateMatch, len(entries))
-		for i, e := range entries {
-			matches[i] = blockstateMatch{Model: e.Model, RotX: e.X, RotY: e.Y}
+		if len(entries) == 0 {
+			return nil, fmt.Errorf("empty variant array")
 		}
-		return matches, nil
+		first := entries[0]
+		return []blockstateMatch{{Model: first.Model, RotX: first.X, RotY: first.Y}}, nil
 	}
 
 	var entry variantEntry
