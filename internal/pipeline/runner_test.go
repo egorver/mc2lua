@@ -1,8 +1,11 @@
 package pipeline
 
 import (
+	"bytes"
 	"errors"
 	"io"
+	"math"
+	"strings"
 	"testing"
 
 	"mc2lua/internal/stateful"
@@ -25,6 +28,17 @@ type mockCoordNormalizer struct {
 
 func (m *mockCoordNormalizer) Run(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 	return m.runFn(blocks, noOffset)
+}
+
+type mockBoundsResolver struct {
+	runFn func(blocks []model.RawBlock) model.Bounds
+}
+
+func (m *mockBoundsResolver) Run(blocks []model.RawBlock) model.Bounds {
+	if m.runFn != nil {
+		return m.runFn(blocks)
+	}
+	return model.Bounds{}
 }
 
 type mockAssetScanner struct {
@@ -108,6 +122,7 @@ func TestRunner_New(t *testing.T) {
 	t.Parallel()
 
 	mockRR := &mockRegionReader{}
+	mockBR := &mockBoundsResolver{}
 	mockCN := &mockCoordNormalizer{}
 	mockAS := &mockAssetScanner{}
 	mockCol := &mockCollector{}
@@ -116,7 +131,7 @@ func TestRunner_New(t *testing.T) {
 	mockMVI := &mockMicroVoxelIndexer{}
 	mockRM := &mockMerger{}
 	mockLG := &mockLuaGenerator{}
-	r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockLG, io.Discard)
+	r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockLG, io.Discard)
 	require.NotNil(t, r)
 }
 
@@ -235,6 +250,7 @@ func TestRunner_Run(t *testing.T) {
 			t.Parallel()
 
 			mockRR := &mockRegionReader{runFn: tt.mockRun}
+			mockBR := &mockBoundsResolver{}
 			mockCN := &mockCoordNormalizer{runFn: tt.mockNormalize}
 			mockAS := &mockAssetScanner{}
 			if tt.mockScan != nil {
@@ -258,7 +274,7 @@ func TestRunner_Run(t *testing.T) {
 			if tt.mockLG != nil {
 				mockLG.runFn = tt.mockLG
 			}
-			r := NewRunner(mockRR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockLG, io.Discard)
+			r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockLG, io.Discard)
 
 			err := r.Run(RunConfig{
 				Input:     "/test",
@@ -273,6 +289,76 @@ func TestRunner_Run(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestRunner_RunLogsArea(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		bounds         model.Bounds
+		blocks         []model.RawBlock
+		runFn          func(blocks []model.RawBlock) model.Bounds
+		wantRequested  bool
+		wantActualLine string
+	}{
+		{
+			name:   "requested and actual bounds logged",
+			bounds: model.Bounds{XMin: -10, XMax: 10, YMin: 0, YMax: 255, ZMin: -100, ZMax: 100},
+			blocks: []model.RawBlock{
+				{X: -5, Y: 0, Z: -20},
+				{X: 7, Y: 200, Z: 40},
+			},
+			wantRequested:  true,
+			wantActualLine: "Actual bounds: x [-5..7], y [0..200], z [-20..40]",
+		},
+		{
+			name:   "requested bounds not logged when unbounded",
+			bounds: model.Bounds{
+				XMin: math.MinInt32, XMax: math.MaxInt32,
+				YMin: math.MinInt32, YMax: math.MaxInt32,
+				ZMin: math.MinInt32, ZMax: math.MaxInt32,
+			},
+			blocks: []model.RawBlock{
+				{X: 1, Y: 2, Z: 3},
+			},
+			wantRequested:  false,
+			wantActualLine: "Actual bounds: x [1..1], y [2..2], z [3..3]",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			r := NewRunner(
+				&mockRegionReader{runFn: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
+					return tt.blocks, nil
+				}},
+				NewBoundsResolver(),
+				&mockCoordNormalizer{runFn: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
+					return blocks, nil
+				}},
+				&mockAssetScanner{},
+				&mockCollector{},
+				&mockIndexer{},
+				&mockBlockVoxelIndexer{},
+				&mockMicroVoxelIndexer{},
+				&mockMerger{},
+				&mockLuaGenerator{},
+				&buf,
+			)
+
+			err := r.Run(RunConfig{Input: "/test", AssetsDir: "assets", Bounds: tt.bounds})
+			require.NoError(t, err)
+
+			output := buf.String()
+			require.Equal(t, tt.wantRequested, strings.Contains(output, "Requested bounds:"))
+			require.Contains(t, output, tt.wantActualLine)
 		})
 	}
 }

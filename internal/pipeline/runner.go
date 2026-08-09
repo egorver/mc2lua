@@ -3,17 +3,22 @@ package pipeline
 import (
 	"fmt"
 	"io"
+	"math"
 	"sort"
 	"strings"
 
-	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
+	"mc2lua/internal/stateful"
 )
 
 const percentMultiplier = 100.0
 
 type regionReader interface {
 	Run(input string, bounds model.Bounds) ([]model.RawBlock, error)
+}
+
+type boundsResolver interface {
+	Run(blocks []model.RawBlock) model.Bounds
 }
 
 type coordNormalizer interface {
@@ -50,6 +55,7 @@ type luaGenerator interface {
 
 type Runner struct {
 	regionReader      regionReader
+	boundsResolver    boundsResolver
 	coordNormalizer   coordNormalizer
 	assetScanner      assetScanner
 	blockCollector    blockCollector
@@ -63,6 +69,7 @@ type Runner struct {
 
 func NewRunner(
 	rr regionReader,
+	br boundsResolver,
 	cn coordNormalizer,
 	as assetScanner,
 	bc blockCollector,
@@ -75,6 +82,7 @@ func NewRunner(
 ) *Runner {
 	return &Runner{
 		regionReader:      rr,
+		boundsResolver:    br,
 		coordNormalizer:   cn,
 		assetScanner:      as,
 		blockCollector:    bc,
@@ -100,6 +108,9 @@ func (svc *Runner) Run(cfg RunConfig) error {
 	blocks, err := svc.regionReader.Run(cfg.Input, cfg.Bounds)
 	svc.logRegionErrors(err)
 	svc.log("Read %d blocks\n", len(blocks))
+
+	actualBounds := svc.boundsResolver.Run(blocks)
+	svc.logArea(cfg.Bounds, actualBounds)
 
 	blocks, err = svc.coordNormalizer.Run(blocks, cfg.NoOffset)
 	if err != nil {
@@ -143,6 +154,17 @@ func (svc *Runner) Run(cfg RunConfig) error {
 
 func (svc *Runner) log(format string, args ...any) {
 	fmt.Fprintf(svc.logOutput, format, args...)
+}
+
+func (svc *Runner) logArea(requested, actual model.Bounds) {
+	if requested.XMin != math.MinInt32 || requested.XMax != math.MaxInt32 ||
+		requested.YMin != math.MinInt32 || requested.YMax != math.MaxInt32 ||
+		requested.ZMin != math.MinInt32 || requested.ZMax != math.MaxInt32 {
+		svc.log("Requested bounds: x [%d..%d], y [%d..%d], z [%d..%d]\n",
+			requested.XMin, requested.XMax, requested.YMin, requested.YMax, requested.ZMin, requested.ZMax)
+	}
+	svc.log("Actual bounds: x [%d..%d], y [%d..%d], z [%d..%d]\n",
+		actual.XMin, actual.XMax, actual.YMin, actual.YMax, actual.ZMin, actual.ZMax)
 }
 
 func (svc *Runner) logRegionErrors(err error) {

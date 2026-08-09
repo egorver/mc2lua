@@ -77,6 +77,7 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	}
 
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
+	boundsResolver := pipeline.NewBoundsResolver()
 	coordNormalizer := pipeline.NewCoordNormalizer()
 	blockCollector := pipeline.NewBlockCollector(blockResolver, propsKeyBuilder)
 	styleIndexer := pipeline.NewStyleIndexer(
@@ -88,6 +89,7 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 
 	return pipeline.NewRunner(
 		regionReader,
+		boundsResolver,
 		coordNormalizer,
 		assetScanner,
 		blockCollector,
