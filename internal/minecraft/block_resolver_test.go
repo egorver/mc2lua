@@ -377,11 +377,11 @@ func TestBlockResolver_RotationStrategy(t *testing.T) {
 
 	svc := &BlockResolver{}
 	tests := []struct {
-		name        string
-		matches     []blockstateMatch
-		wantBake    bool
-		wantRotX    float64
-		wantRotY    float64
+		name     string
+		matches  []blockstateMatch
+		wantBake bool
+		wantRotX float64
+		wantRotY float64
 	}{
 		{
 			name:     "empty matches",

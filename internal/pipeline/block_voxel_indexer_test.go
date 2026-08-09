@@ -32,9 +32,9 @@ func TestBlockVoxelIndexer_Run(t *testing.T) {
 	}{"minecraft:stone", "", model.GridFullBlock})
 
 	tests := []struct {
-		name     string
-		blocks   []model.RawBlock
-		wantLen  int
+		name    string
+		blocks  []model.RawBlock
+		wantLen int
 	}{
 		{
 			name:    "empty input",

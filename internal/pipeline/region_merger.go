@@ -3,8 +3,8 @@ package pipeline
 import (
 	"sort"
 
-	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
+	"mc2lua/internal/stateful"
 )
 
 type RegionMerger struct{}

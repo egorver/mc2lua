@@ -279,13 +279,13 @@ func TestComputeMinCoords(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		blocks       []model.RawBlock
+		name                         string
+		blocks                       []model.RawBlock
 		wantMinX, wantMinY, wantMinZ int
 	}{
 		{
-			name:   "single block",
-			blocks: []model.RawBlock{{X: 10, Y: 5, Z: 20}},
+			name:     "single block",
+			blocks:   []model.RawBlock{{X: 10, Y: 5, Z: 20}},
 			wantMinX: 10, wantMinY: 5, wantMinZ: 20,
 		},
 		{
@@ -322,45 +322,45 @@ func TestComputeOffsets(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name                 string
-		minX, minY, minZ     int
-		noOffset             bool
+		name                         string
+		minX, minY, minZ             int
+		noOffset                     bool
 		wantXOff, wantYOff, wantZOff int
 	}{
 		{
-			name:     "positive coords without noOffset",
+			name: "positive coords without noOffset",
 			minX: 10, minY: 5, minZ: 20,
-			noOffset:     false,
+			noOffset: false,
 			wantXOff: -10, wantYOff: -5, wantZOff: -20,
 		},
 		{
-			name:     "negative coords without noOffset",
+			name: "negative coords without noOffset",
 			minX: -10, minY: -5, minZ: -20,
-			noOffset:     false,
+			noOffset: false,
 			wantXOff: 10, wantYOff: 5, wantZOff: 20,
 		},
 		{
-			name:     "positive coords with noOffset",
+			name: "positive coords with noOffset",
 			minX: 10, minY: 5, minZ: 20,
-			noOffset:     true,
+			noOffset: true,
 			wantXOff: -10, wantYOff: 0, wantZOff: -20,
 		},
 		{
-			name:     "negative coords with noOffset",
+			name: "negative coords with noOffset",
 			minX: -10, minY: -5, minZ: -20,
-			noOffset:     true,
+			noOffset: true,
 			wantXOff: 10, wantYOff: 0, wantZOff: 20,
 		},
 		{
-			name:     "minY=0 without noOffset keeps Y offset zero",
+			name: "minY=0 without noOffset keeps Y offset zero",
 			minX: 10, minY: 0, minZ: 20,
-			noOffset:     false,
+			noOffset: false,
 			wantXOff: -10, wantYOff: 0, wantZOff: -20,
 		},
 		{
-			name:     "minY=0 with noOffset keeps Y offset zero",
+			name: "minY=0 with noOffset keeps Y offset zero",
 			minX: 10, minY: 0, minZ: 20,
-			noOffset:     true,
+			noOffset: true,
 			wantXOff: -10, wantYOff: 0, wantZOff: -20,
 		},
 	}
@@ -380,10 +380,10 @@ func TestApplyOffset(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		blocks     []model.RawBlock
+		name             string
+		blocks           []model.RawBlock
 		xOff, yOff, zOff int
-		want       []model.RawBlock
+		want             []model.RawBlock
 	}{
 		{
 			name:   "zero offset",
@@ -393,13 +393,13 @@ func TestApplyOffset(t *testing.T) {
 		{
 			name:   "positive offset",
 			blocks: []model.RawBlock{{ID: "stone", X: 10, Y: 5, Z: 20}},
-			xOff: 5, yOff: 3, zOff: 7,
+			xOff:   5, yOff: 3, zOff: 7,
 			want: []model.RawBlock{{ID: "stone", X: 15, Y: 8, Z: 27}},
 		},
 		{
 			name:   "negative offset",
 			blocks: []model.RawBlock{{ID: "stone", X: 10, Y: 5, Z: 20}},
-			xOff: -10, yOff: -5, zOff: -20,
+			xOff:   -10, yOff: -5, zOff: -20,
 			want: []model.RawBlock{{ID: "stone", X: 0, Y: 0, Z: 0}},
 		},
 		{

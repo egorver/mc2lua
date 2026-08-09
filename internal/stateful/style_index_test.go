@@ -1,8 +1,9 @@
 package stateful
 
 import (
-	"mc2lua/internal/model"
 	"testing"
+
+	"mc2lua/internal/model"
 
 	"github.com/stretchr/testify/require"
 )

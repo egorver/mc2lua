@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
+	"mc2lua/internal/stateful"
 
 	"github.com/stretchr/testify/require"
 )
@@ -315,7 +315,7 @@ func TestRunner_RunLogsArea(t *testing.T) {
 			wantActualLine: "Actual bounds: x [-5..7], y [0..200], z [-20..40]",
 		},
 		{
-			name:   "requested bounds not logged when unbounded",
+			name: "requested bounds not logged when unbounded",
 			bounds: model.Bounds{
 				XMin: math.MinInt32, XMax: math.MaxInt32,
 				YMin: math.MinInt32, YMax: math.MaxInt32,

@@ -3,8 +3,9 @@ package minecraft
 import (
 	"encoding/json"
 	"fmt"
-	"mc2lua/internal/model"
 	"strings"
+
+	"mc2lua/internal/model"
 )
 
 type ModelParser struct {
@@ -50,8 +51,12 @@ func (svc *ModelParser) flatten(modelName string, namespaces map[string][]string
 		result.merge(parent)
 	}
 
+	elements, err := svc.parseElements(raw.Elements)
+	if err != nil {
+		return nil, fmt.Errorf("model %s elements: %w", modelName, err)
+	}
 	result.merge(&flattenedModel{
-		Elements: svc.parseElements(raw.Elements),
+		Elements: elements,
 		Textures: raw.Textures,
 	})
 
@@ -124,11 +129,13 @@ type rawElement struct {
 	Faces    map[string]model.ElementFace `json:"faces,omitempty"`
 }
 
-func (svc *ModelParser) parseElements(raws []json.RawMessage) []model.ModelElement {
+func (svc *ModelParser) parseElements(raws []json.RawMessage) ([]model.ModelElement, error) {
 	out := make([]model.ModelElement, 0, len(raws))
 	for _, rawElem := range raws {
 		var re rawElement
-		json.Unmarshal(rawElem, &re)
+		if err := json.Unmarshal(rawElem, &re); err != nil {
+			return nil, fmt.Errorf("parse element: %w", err)
+		}
 		out = append(out, model.ModelElement{
 			From:     re.From,
 			To:       re.To,
@@ -137,5 +144,5 @@ func (svc *ModelParser) parseElements(raws []json.RawMessage) []model.ModelEleme
 			Faces:    re.Faces,
 		})
 	}
-	return out
+	return out, nil
 }

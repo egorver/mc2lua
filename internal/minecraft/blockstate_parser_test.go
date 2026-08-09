@@ -2,8 +2,9 @@ package minecraft
 
 import (
 	"encoding/json"
-	"mc2lua/internal/runtime"
 	"testing"
+
+	"mc2lua/internal/runtime"
 
 	"github.com/stretchr/testify/require"
 )
@@ -164,8 +165,6 @@ func TestBlockstateParserParseVariantValue(t *testing.T) {
 		})
 	}
 }
-
-
 
 func TestBlockstateParserMatchKey(t *testing.T) {
 	svc := NewBlockstateParser(nil, NewPropsKeyBuilder())

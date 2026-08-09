@@ -106,12 +106,12 @@ func TestStyledBlock(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name             string
-		block            StyledBlock
-		wantID           string
-		wantProps        string
-		wantGridAligned  GridAlignment
-		wantElems        int
+		name            string
+		block           StyledBlock
+		wantID          string
+		wantProps       string
+		wantGridAligned GridAlignment
+		wantElems       int
 	}{
 		{name: "zero value"},
 		{

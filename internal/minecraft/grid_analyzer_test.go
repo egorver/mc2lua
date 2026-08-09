@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"mc2lua/internal/model"
+
 	"github.com/stretchr/testify/require"
 )
 

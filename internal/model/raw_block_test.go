@@ -38,26 +38,26 @@ func TestRawBlock_PartialInit(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		block    RawBlock
-		wantID   string
-		wantNil  bool
-		wantX    int
-		wantY    int
-		wantZ    int
+		name    string
+		block   RawBlock
+		wantID  string
+		wantNil bool
+		wantX   int
+		wantY   int
+		wantZ   int
 	}{
 		{
-			name:   "only ID",
-			block:  RawBlock{ID: "minecraft:dirt"},
-			wantID: "minecraft:dirt",
+			name:    "only ID",
+			block:   RawBlock{ID: "minecraft:dirt"},
+			wantID:  "minecraft:dirt",
 			wantNil: true,
 		},
 		{
-			name:   "only coords",
-			block:  RawBlock{X: 1, Y: 2, Z: 3},
-			wantX:  1,
-			wantY:  2,
-			wantZ:  3,
+			name:    "only coords",
+			block:   RawBlock{X: 1, Y: 2, Z: 3},
+			wantX:   1,
+			wantY:   2,
+			wantZ:   3,
 			wantNil: true,
 		},
 		{
@@ -69,10 +69,10 @@ func TestRawBlock_PartialInit(t *testing.T) {
 				Y:     10,
 				Z:     15,
 			},
-			wantID:  "minecraft:oak_log",
-			wantX:   5,
-			wantY:   10,
-			wantZ:   15,
+			wantID: "minecraft:oak_log",
+			wantX:  5,
+			wantY:  10,
+			wantZ:  15,
 		},
 	}
 	for _, tt := range tests {

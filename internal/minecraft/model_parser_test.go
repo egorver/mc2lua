@@ -141,9 +141,10 @@ func TestModelParser_ParseElements(t *testing.T) {
 	svc := &ModelParser{}
 
 	tests := []struct {
-		name string
-		raws []json.RawMessage
-		want []model.ModelElement
+		name    string
+		raws    []json.RawMessage
+		want    []model.ModelElement
+		wantErr string
 	}{
 		{
 			name: "nil raws returns empty slice",
@@ -183,13 +184,9 @@ func TestModelParser_ParseElements(t *testing.T) {
 			},
 		},
 		{
-			name: "broken JSON element produces zero value",
-			raws: []json.RawMessage{
-				json.RawMessage(`{bad json}`),
-			},
-			want: []model.ModelElement{
-				{From: model.Vector3{0, 0, 0}, To: model.Vector3{0, 0, 0}, Shade: true},
-			},
+			name:    "broken JSON element returns error",
+			raws:    []json.RawMessage{json.RawMessage(`{bad json}`)},
+			wantErr: "parse element",
 		},
 		{
 			name: "element with faces",
@@ -235,7 +232,12 @@ func TestModelParser_ParseElements(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := svc.parseElements(tt.raws)
+			got, err := svc.parseElements(tt.raws)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}

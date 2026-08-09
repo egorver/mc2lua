@@ -53,11 +53,11 @@ func TestElementRotator_RotatePoint(t *testing.T) {
 
 	svc := NewElementRotator()
 	tests := []struct {
-		name   string
-		p      model.Vector3
-		rotX   float64
-		rotY   float64
-		want   model.Vector3
+		name string
+		p    model.Vector3
+		rotX float64
+		rotY float64
+		want model.Vector3
 	}{
 		{
 			name: "no rotation",
@@ -123,13 +123,13 @@ func TestElementRotator_RunStyled(t *testing.T) {
 
 	svc := NewElementRotator()
 	elem := model.StyledElement{
-		From: model.Vector3{0, 0, 0},
-		To:   model.Vector3{16, 16, 16},
+		From:  model.Vector3{0, 0, 0},
+		To:    model.Vector3{16, 16, 16},
 		Shade: true,
 	}
 	elemWithRotation := model.StyledElement{
-		From: model.Vector3{0, 0, 0},
-		To:   model.Vector3{16, 16, 16},
+		From:  model.Vector3{0, 0, 0},
+		To:    model.Vector3{16, 16, 16},
 		Shade: true,
 		Rotation: &model.ElementRotation{
 			Origin: model.Vector3{4, 8, 8},
@@ -222,8 +222,8 @@ func TestElementRotator_RunModel(t *testing.T) {
 	svc := NewElementRotator()
 	asymmetric := model.ModelElement{From: model.Vector3{0, 0, 0}, To: model.Vector3{8, 8, 8}, Shade: true}
 	elemWithRotation := model.ModelElement{
-		From: model.Vector3{0, 0, 0},
-		To:   model.Vector3{8, 8, 8},
+		From:  model.Vector3{0, 0, 0},
+		To:    model.Vector3{8, 8, 8},
 		Shade: true,
 		Rotation: &model.ElementRotation{
 			Origin: model.Vector3{4, 8, 8},

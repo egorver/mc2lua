@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	minBitsPerEntry            = 4
-	chunkStatusFull            = "full"
-	chunkStatusFullNamespaced  = "minecraft:full"
+	minBitsPerEntry           = 4
+	chunkStatusFull           = "full"
+	chunkStatusFullNamespaced = "minecraft:full"
 )
 
 var airBlockIDs = map[string]bool{

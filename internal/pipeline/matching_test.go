@@ -66,9 +66,9 @@ func TestMatchPrefixes(t *testing.T) {
 	t.Parallel()
 
 	dict := map[string]int{
-		"apple":      1,
+		"apple":       1,
 		"application": 2,
-		"banana":     3,
+		"banana":      3,
 	}
 	keys := sortedKeys(dict)
 

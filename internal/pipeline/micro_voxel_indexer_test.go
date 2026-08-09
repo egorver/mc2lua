@@ -3,8 +3,8 @@ package pipeline
 import (
 	"testing"
 
-	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
+	"mc2lua/internal/stateful"
 
 	"github.com/stretchr/testify/require"
 )

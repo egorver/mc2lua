@@ -10,11 +10,11 @@ func TestVector3(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		vector   Vector3
-		wantX    float64
-		wantY    float64
-		wantZ    float64
+		name   string
+		vector Vector3
+		wantX  float64
+		wantY  float64
+		wantZ  float64
 	}{
 		{name: "zero", vector: Vector3{0, 0, 0}},
 		{name: "positive", vector: Vector3{1.5, 2.5, 3.5}, wantX: 1.5, wantY: 2.5, wantZ: 3.5},
@@ -70,9 +70,9 @@ func TestElementFace(t *testing.T) {
 	}{
 		{name: "zero value"},
 		{
-			name:    "with values",
-			face:    ElementFace{UV: [4]float64{0, 0, 16, 16}, Texture: "block/stone"},
-			wantUV:  [4]float64{0, 0, 16, 16}, wantTex: "block/stone",
+			name:   "with values",
+			face:   ElementFace{UV: [4]float64{0, 0, 16, 16}, Texture: "block/stone"},
+			wantUV: [4]float64{0, 0, 16, 16}, wantTex: "block/stone",
 		},
 	}
 	for _, tt := range tests {
@@ -144,7 +144,7 @@ func TestResolvedBlock(t *testing.T) {
 		{
 			name: "with textures",
 			block: ResolvedBlock{
-				ID: "minecraft:stone",
+				ID:       "minecraft:stone",
 				Elements: []ModelElement{{}},
 				Textures: map[string]string{"#all": "block/stone"},
 			},

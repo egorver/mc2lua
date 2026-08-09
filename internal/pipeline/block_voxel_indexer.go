@@ -1,8 +1,8 @@
 package pipeline
 
 import (
-	"mc2lua/internal/stateful"
 	"mc2lua/internal/model"
+	"mc2lua/internal/stateful"
 )
 
 type indexerPropsKeyBuilder interface {

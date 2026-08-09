@@ -3,9 +3,9 @@ package pipeline
 import (
 	"fmt"
 
-	"gopkg.in/yaml.v3"
-
 	"mc2lua/internal/model"
+
+	"gopkg.in/yaml.v3"
 )
 
 type ColorMatcher struct {

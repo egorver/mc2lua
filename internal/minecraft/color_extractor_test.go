@@ -13,7 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makePNG(w, h int, px func(x, y int) color.NRGBA) []byte {
+func makePNG(t *testing.T, w, h int, px func(x, y int) color.NRGBA) []byte {
+	t.Helper()
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
@@ -21,7 +22,7 @@ func makePNG(w, h int, px func(x, y int) color.NRGBA) []byte {
 		}
 	}
 	var buf bytes.Buffer
-	png.Encode(&buf, img)
+	require.NoError(t, png.Encode(&buf, img))
 	return buf.Bytes()
 }
 
@@ -41,7 +42,7 @@ func TestColorExtractor_UniformTexture(t *testing.T) {
 
 	fs, extractor, roots := setupColorExtractorFS(t)
 	fs.AddFile("assets/minecraft/textures/block/uniform.png",
-		makePNG(16, 16, func(x, y int) color.NRGBA { return color.NRGBA{150, 150, 150, 255} }), 0644)
+		makePNG(t, 16, 16, func(x, y int) color.NRGBA { return color.NRGBA{150, 150, 150, 255} }), 0644)
 
 	got, err := extractor.Run(sample("block/uniform"), roots, "minecraft:test_block")
 	require.NoError(t, err)
@@ -53,7 +54,7 @@ func TestColorExtractor_ShadedTexture(t *testing.T) {
 
 	fs, extractor, roots := setupColorExtractorFS(t)
 	fs.AddFile("assets/minecraft/textures/block/shaded.png",
-		makePNG(16, 16, func(x, y int) color.NRGBA {
+		makePNG(t, 16, 16, func(x, y int) color.NRGBA {
 			if x < 8 {
 				return color.NRGBA{100, 100, 100, 255}
 			}
@@ -70,7 +71,7 @@ func TestColorExtractor_TransparentPixelsIgnored(t *testing.T) {
 
 	fs, extractor, roots := setupColorExtractorFS(t)
 	fs.AddFile("assets/minecraft/textures/block/transparent.png",
-		makePNG(16, 16, func(x, y int) color.NRGBA {
+		makePNG(t, 16, 16, func(x, y int) color.NRGBA {
 			if x < 8 {
 				return color.NRGBA{0, 0, 0, 0}
 			}
@@ -87,7 +88,7 @@ func TestColorExtractor_LiftCapped(t *testing.T) {
 
 	fs, extractor, roots := setupColorExtractorFS(t)
 	fs.AddFile("assets/minecraft/textures/block/capped.png",
-		makePNG(16, 16, func(x, y int) color.NRGBA {
+		makePNG(t, 16, 16, func(x, y int) color.NRGBA {
 			if x < 8 {
 				return color.NRGBA{30, 30, 30, 255}
 			}
@@ -104,7 +105,7 @@ func TestColorExtractor_NoValidPixels(t *testing.T) {
 
 	fs, extractor, roots := setupColorExtractorFS(t)
 	fs.AddFile("assets/minecraft/textures/block/empty.png",
-		makePNG(16, 16, func(x, y int) color.NRGBA { return color.NRGBA{0, 0, 0, 0} }), 0644)
+		makePNG(t, 16, 16, func(x, y int) color.NRGBA { return color.NRGBA{0, 0, 0, 0} }), 0644)
 
 	_, err := extractor.Run(sample("block/empty"), roots, "minecraft:test_block")
 	require.Error(t, err)
@@ -281,7 +282,7 @@ func TestColorExtractor_Run_UnknownNamespaceSkipped(t *testing.T) {
 
 	fs, extractor, _ := setupColorExtractorFS(t)
 	fs.AddFile("assets/minecraft/textures/block/present.png",
-		makePNG(16, 16, func(x, y int) color.NRGBA { return color.NRGBA{120, 120, 120, 255} }), 0644)
+		makePNG(t, 16, 16, func(x, y int) color.NRGBA { return color.NRGBA{120, 120, 120, 255} }), 0644)
 
 	_, err := extractor.Run(sample("block/present"), map[string][]string{"other": {"assets/minecraft"}}, "minecraft:test_block")
 	require.Error(t, err)

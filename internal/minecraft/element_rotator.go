@@ -59,7 +59,7 @@ func (svc *ElementRotator) rotateElement(from, to model.Vector3, rotation *model
 func (svc *ElementRotator) rotateBounds(from, to model.Vector3, rotX, rotY float64) (model.Vector3, model.Vector3) {
 	from = svc.rotatePoint(from, rotX, rotY)
 	to = svc.rotatePoint(to, rotX, rotY)
-		for a := 0; a < model.BlockDimensions; a++ {
+	for a := 0; a < model.BlockDimensions; a++ {
 		if from[a] > to[a] {
 			from[a], to[a] = to[a], from[a]
 		}

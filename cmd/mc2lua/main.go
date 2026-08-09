@@ -41,18 +41,18 @@ func main() {
 	}
 
 	cfg := app.AppConfig{
-		Input:         *inputPath,
-		AssetsDir:     *assetsDir,
-		Output:        *outputPath,
-		Scale:         *scale,
-		NoOffset:      *noOffset,
-		ConfigDir:     *configDir,
-		XMin:          *xmin,
-		XMax:          *xmax,
-		YMin:          *ymin,
-		YMax:          *ymax,
-		ZMin:          *zmin,
-		ZMax:          *zmax,
+		Input:     *inputPath,
+		AssetsDir: *assetsDir,
+		Output:    *outputPath,
+		Scale:     *scale,
+		NoOffset:  *noOffset,
+		ConfigDir: *configDir,
+		XMin:      *xmin,
+		XMax:      *xmax,
+		YMin:      *ymin,
+		YMax:      *ymax,
+		ZMin:      *zmin,
+		ZMax:      *zmax,
 	}
 
 	if err := app.New().Run(cfg); err != nil {

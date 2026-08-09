@@ -33,12 +33,12 @@ func TestBlockCollector_Run(t *testing.T) {
 	errResolve := errors.New("resolve failed")
 
 	tests := []struct {
-		name       string
-		blocks     []model.RawBlock
-		resolveFn  func(id string, propsKey string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error)
-		wantUnres  map[string]string
-		wantCount  int
-		wantCheck  func(t *testing.T, result []model.ResolvedBlock)
+		name      string
+		blocks    []model.RawBlock
+		resolveFn func(id string, propsKey string, props map[string]string, namespaces map[string][]string) (*model.ResolvedBlock, error)
+		wantUnres map[string]string
+		wantCount int
+		wantCheck func(t *testing.T, result []model.ResolvedBlock)
 	}{
 		{
 			name:   "empty blocks",
