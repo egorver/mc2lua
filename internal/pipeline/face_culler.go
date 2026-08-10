@@ -7,11 +7,15 @@ import (
 	"mc2lua/internal/stateful"
 )
 
-type FaceCuller struct {
-	propsKeyBuilder generatorPropsKeyBuilder
+type cullerPropsKeyBuilder interface {
+	Run(props map[string]string) string
 }
 
-func NewFaceCuller(pkb generatorPropsKeyBuilder) *FaceCuller {
+type FaceCuller struct {
+	propsKeyBuilder cullerPropsKeyBuilder
+}
+
+func NewFaceCuller(pkb cullerPropsKeyBuilder) *FaceCuller {
 	return &FaceCuller{propsKeyBuilder: pkb}
 }
 

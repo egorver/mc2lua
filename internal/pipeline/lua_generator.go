@@ -20,6 +20,7 @@ const (
 type generatorPropsKeyBuilder interface {
 	Run(props map[string]string) string
 }
+
 type LuaGenerator struct {
 	fs              fsApi
 	propsKeyBuilder generatorPropsKeyBuilder
