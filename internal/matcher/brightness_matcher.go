@@ -1,4 +1,4 @@
-package pipeline
+package matcher
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ type BrightnessMatcher struct {
 	factors map[string]float64
 }
 
-func NewBrightnessMatcher(fs fsApi, path string) (*BrightnessMatcher, error) {
+func NewBrightnessMatcher(fs fileReader, path string) (*BrightnessMatcher, error) {
 	data, err := fs.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read brightness config: %w", err)

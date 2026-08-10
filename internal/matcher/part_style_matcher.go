@@ -1,4 +1,4 @@
-package pipeline
+package matcher
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ type PartStyleMatcher struct {
 	styles map[string]model.PartStyle
 }
 
-func NewPartStyleMatcher(fs fsApi, path string) (*PartStyleMatcher, error) {
+func NewPartStyleMatcher(fs fileReader, path string) (*PartStyleMatcher, error) {
 	data, err := fs.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read parts config: %w", err)

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"mc2lua/internal/matcher"
 	"mc2lua/internal/minecraft"
 	"mc2lua/internal/model"
 	"mc2lua/internal/pipeline"
@@ -61,22 +62,22 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelParser, textureResolver, elementRotator)
 	colorExtractor := minecraft.NewColorExtractor(fs)
 
-	materialMatcher, err := pipeline.NewMaterialMatcher(fs, filepath.Join(configDir, "materials.yaml"))
+	materialMatcher, err := matcher.NewMaterialMatcher(fs, filepath.Join(configDir, "materials.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("create material matcher: %w", err)
 	}
 
-	brightnessMatcher, err := pipeline.NewBrightnessMatcher(fs, filepath.Join(configDir, "materials.yaml"))
+	brightnessMatcher, err := matcher.NewBrightnessMatcher(fs, filepath.Join(configDir, "materials.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("create brightness matcher: %w", err)
 	}
 
-	colorMatcher, err := pipeline.NewColorMatcher(fs, filepath.Join(configDir, "colors.yaml"))
+	colorMatcher, err := matcher.NewColorMatcher(fs, filepath.Join(configDir, "colors.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("create color matcher: %w", err)
 	}
 
-	partStyleMatcher, err := pipeline.NewPartStyleMatcher(fs, filepath.Join(configDir, "parts.yaml"))
+	partStyleMatcher, err := matcher.NewPartStyleMatcher(fs, filepath.Join(configDir, "parts.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("create part style matcher: %w", err)
 	}

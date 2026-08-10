@@ -1,4 +1,4 @@
-package pipeline
+package matcher
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ type MaterialMatcher struct {
 	overrides  map[string]string
 }
 
-func NewMaterialMatcher(fs fsApi, path string) (*MaterialMatcher, error) {
+func NewMaterialMatcher(fs fileReader, path string) (*MaterialMatcher, error) {
 	data, err := fs.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read materials config: %w", err)

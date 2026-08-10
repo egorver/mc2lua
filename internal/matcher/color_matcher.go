@@ -1,4 +1,4 @@
-package pipeline
+package matcher
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ type ColorMatcher struct {
 	colors map[string]model.Color
 }
 
-func NewColorMatcher(fs fsApi, path string) (*ColorMatcher, error) {
+func NewColorMatcher(fs fileReader, path string) (*ColorMatcher, error) {
 	data, err := fs.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read colors config: %w", err)
