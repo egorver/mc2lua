@@ -95,7 +95,8 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	regionMerger := pipeline.NewRegionMerger(cuboidHelper)
 	occupancyIndexer := pipeline.NewOccupancyIndexer(propsKeyBuilder)
 	faceCuller := pipeline.NewFaceCuller(propsKeyBuilder, cuboidHelper)
-	luaGenerator := pipeline.NewLuaGenerator(fs, propsKeyBuilder)
+	partBuilder := pipeline.NewPartBuilder(propsKeyBuilder)
+	luaGenerator := pipeline.NewLuaGenerator(fs)
 
 	return pipeline.NewRunner(
 		regionReader,
@@ -109,6 +110,7 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 		regionMerger,
 		occupancyIndexer,
 		faceCuller,
+		partBuilder,
 		luaGenerator,
 		os.Stdout), nil
 }

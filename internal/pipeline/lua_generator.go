@@ -5,59 +5,43 @@ import (
 	"math"
 	"strings"
 
-	"mc2lua/internal/minecraft"
 	"mc2lua/internal/model"
-	"mc2lua/internal/stateful"
 )
 
 const (
 	coordPrecision     = 100.0
 	partsPlaceholder   = "-- Total parts: XXX"
 	importedFolderName = "Imported"
-	elementNameFormat  = "elem %d"
 )
 
-type generatorPropsKeyBuilder interface {
-	Run(props map[string]string) string
-}
-
 type LuaGenerator struct {
-	fs              fsApi
-	propsKeyBuilder generatorPropsKeyBuilder
+	fs fsApi
 }
 
-func NewLuaGenerator(fs fsApi, pkb generatorPropsKeyBuilder) *LuaGenerator {
-	return &LuaGenerator{fs: fs, propsKeyBuilder: pkb}
+func NewLuaGenerator(fs fsApi) *LuaGenerator {
+	return &LuaGenerator{fs: fs}
 }
 
-func (svc *LuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
+func (svc *LuaGenerator) Run(parts []model.Part, scale float64, outputPath string) error {
 	var sb strings.Builder
 	svc.writeHeader(&sb, scale)
 
 	totalParts := 0
+	currentGroupID := 0
 
-	for _, cuboids := range [][]model.Cuboid{blockCuboids, microCuboids} {
-		for _, c := range cuboids {
-			style, ok := styleIndex.Get(c.ID, c.PropsKey)
-			if !ok {
-				continue
+	for _, p := range parts {
+		if p.GroupID != currentGroupID {
+			if p.GroupID > 0 {
+				svc.writeBeginGroup(&sb, p.Group)
 			}
-			if style.GridAlignment == model.GridNotAligned {
-				continue
-			}
-			if err := svc.writeSimplePart(&sb, c, style, scale); err != nil {
-				return 0, fmt.Errorf("failed to write simple part for block ID %s with properties %s: %w", c.ID, c.PropsKey, err)
-			}
-			totalParts++
+			currentGroupID = p.GroupID
 		}
-	}
-
-	for _, r := range blocks {
-		propsKey := svc.propsKeyBuilder.Run(r.Props)
-		style, ok := styleIndex.Get(r.ID, propsKey)
-		if ok && style.GridAlignment == model.GridNotAligned {
-			totalParts += svc.writeComplexParts(&sb, r, style, scale)
+		parent := "folder"
+		if p.GroupID > 0 {
+			parent = "_group"
 		}
+		svc.writeCreatePart(&sb, p, parent)
+		totalParts++
 	}
 
 	sb.WriteString("print(string.format(\"Building... %d/%d (100%%)\", _total, _total))\n")
@@ -68,17 +52,17 @@ func (svc *LuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids
 
 	w, err := svc.fs.Create(outputPath)
 	if err != nil {
-		return 0, fmt.Errorf("failed to write output file: %w", err)
+		return fmt.Errorf("failed to write output file: %w", err)
 	}
 	if _, err := w.Write([]byte(result)); err != nil {
 		_ = w.Close()
-		return 0, fmt.Errorf("failed to write output file: %w", err)
+		return fmt.Errorf("failed to write output file: %w", err)
 	}
 	if err := w.Close(); err != nil {
-		return 0, fmt.Errorf("failed to write output file: %w", err)
+		return fmt.Errorf("failed to write output file: %w", err)
 	}
 
-	return totalParts, nil
+	return nil
 }
 
 func (svc *LuaGenerator) writeHeader(sb *strings.Builder, scale float64) {
@@ -110,11 +94,12 @@ func (svc *LuaGenerator) writeHeader(sb *strings.Builder, scale float64) {
 	sb.WriteString("end\n\n")
 }
 
-func (svc *LuaGenerator) writeCreatePart(sb *strings.Builder, w, h, d float64, px, py, pz float64, color model.Color, material, name, blockID, properties string, parent string) {
+func (svc *LuaGenerator) writeCreatePart(sb *strings.Builder, p model.Part, parent string) {
 	fmt.Fprintf(sb,
 		"createPart(Vector3.new(%g, %g, %g), Vector3.new(%g, %g, %g), %d, %d, %d, %q, %q, %q, %q, %s)\n",
-		svc.roundCoord(w), svc.roundCoord(h), svc.roundCoord(d), svc.roundCoord(px), svc.roundCoord(py), svc.roundCoord(pz),
-		color[0], color[1], color[2], material, name, blockID, properties, parent,
+		svc.roundCoord(p.Size[0]), svc.roundCoord(p.Size[1]), svc.roundCoord(p.Size[2]),
+		svc.roundCoord(p.Position[0]), svc.roundCoord(p.Position[1]), svc.roundCoord(p.Position[2]),
+		p.Color[0], p.Color[1], p.Color[2], p.Material, p.Name, p.BlockID, p.PropsKey, parent,
 	)
 }
 
@@ -122,92 +107,7 @@ func (svc *LuaGenerator) roundCoord(v float64) float64 {
 	return math.Round(v*coordPrecision) / coordPrecision
 }
 
-func (svc *LuaGenerator) writeSimplePart(sb *strings.Builder, cuboid model.Cuboid, style model.StyledBlock, scale float64) error {
-	if len(style.Elements) == 0 {
-		return fmt.Errorf("no elements found for block ID %s with properties %s", cuboid.ID, cuboid.PropsKey)
-	}
-
-	elem := style.Elements[0]
-
-	gs := 1.0
-	if style.GridAlignment == model.GridSubBlock {
-		gs = float64(model.SubGridSize)
-	}
-
-	x := (float64(cuboid.X) - (gs-1)/2) * scale / gs
-	y := (float64(cuboid.Y) - (gs-1)/2) * scale / gs
-	z := (float64(cuboid.Z) - (gs-1)/2) * scale / gs
-	width := float64(cuboid.Width) * scale / gs
-	height := float64(cuboid.Height) * scale / gs
-	depth := float64(cuboid.Depth) * scale / gs
-	name := svc.makePartName(cuboid.ID)
-
-	svc.writeCreatePart(sb, width, height, depth, x, y, z, elem.Color, elem.Material, name, cuboid.ID, cuboid.PropsKey, "folder")
-	return nil
-}
-
-func (svc *LuaGenerator) writeComplexParts(sb *strings.Builder, block model.RawBlock, style model.StyledBlock, scale float64) int {
-	if len(style.Elements) == 0 {
-		return 0
-	}
-	count := 0
-
-	xBase := float64(block.X)*scale - scale/2.0
-	yBase := float64(block.Y)*scale - scale/2.0
-	zBase := float64(block.Z)*scale - scale/2.0
-
-	parent := "folder"
-	if len(style.Elements) > 1 {
-		firstPos := svc.elementKey(style.Elements[0], xBase, yBase, zBase, scale)
-		distinct := false
-		for _, elem := range style.Elements[1:] {
-			if svc.elementKey(elem, xBase, yBase, zBase, scale) != firstPos {
-				distinct = true
-				break
-			}
-		}
-		if distinct {
-			svc.writeBeginGroup(sb, svc.makePartName(block.ID))
-			parent = "_group"
-		}
-	}
-
-	for idx, elem := range style.Elements {
-		sizeX := (elem.To[0] - elem.From[0]) / model.FullBlockSize * scale
-		sizeY := (elem.To[1] - elem.From[1]) / model.FullBlockSize * scale
-		sizeZ := (elem.To[2] - elem.From[2]) / model.FullBlockSize * scale
-
-		cx := (elem.From[0] + elem.To[0]) / 2.0 / model.FullBlockSize * scale
-		cy := (elem.From[1] + elem.To[1]) / 2.0 / model.FullBlockSize * scale
-		cz := (elem.From[2] + elem.To[2]) / 2.0 / model.FullBlockSize * scale
-
-		px := xBase + cx
-		py := yBase + cy
-		pz := zBase + cz
-
-		partName := svc.makePartName(block.ID)
-		if parent == "_group" {
-			partName = fmt.Sprintf(elementNameFormat, idx+1)
-		}
-
-		svc.writeCreatePart(sb, sizeX, sizeY, sizeZ, px, py, pz, elem.Color, elem.Material, partName, block.ID, style.PropsKey, parent)
-		count++
-	}
-	return count
-}
-
-func (svc *LuaGenerator) elementKey(elem model.StyledElement, xBase, yBase, zBase, scale float64) string {
-	cx := xBase + (elem.From[0]+elem.To[0])/2.0/model.FullBlockSize*scale
-	cy := yBase + (elem.From[1]+elem.To[1])/2.0/model.FullBlockSize*scale
-	cz := zBase + (elem.From[2]+elem.To[2])/2.0/model.FullBlockSize*scale
-	return fmt.Sprintf("%.4f,%.4f,%.4f", cx, cy, cz)
-}
-
 func (svc *LuaGenerator) writeBeginGroup(sb *strings.Builder, groupName string) {
 	sb.WriteString("_group = Instance.new(\"Folder\")\n")
 	fmt.Fprintf(sb, "_group.Name = %q\n_group.Parent = folder\n", groupName)
-}
-
-func (svc *LuaGenerator) makePartName(blockID string) string {
-	return strings.TrimPrefix(blockID, minecraft.MinecraftNamespacePrefix)
 }

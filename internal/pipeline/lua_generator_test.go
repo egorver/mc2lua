@@ -8,39 +8,25 @@ import (
 
 	"mc2lua/internal/model"
 	"mc2lua/internal/runtime"
-	"mc2lua/internal/stateful"
 
 	"github.com/stretchr/testify/require"
 )
 
-type mockGeneratorPropsKeyBuilder struct {
-	runFn func(props map[string]string) string
-}
-
-func (m *mockGeneratorPropsKeyBuilder) Run(props map[string]string) string {
-	if m.runFn != nil {
-		return m.runFn(props)
-	}
-	return ""
-}
-
-func testLuaGenerator(t *testing.T, pkb *mockGeneratorPropsKeyBuilder) (*LuaGenerator, *runtime.FSMock) {
+func testLuaGenerator(t *testing.T) (*LuaGenerator, *runtime.FSMock) {
 	t.Helper()
-	if pkb == nil {
-		pkb = &mockGeneratorPropsKeyBuilder{}
-	}
 	mockFS := runtime.NewFSMock()
-	return NewLuaGenerator(mockFS, pkb), mockFS
+	return NewLuaGenerator(mockFS), mockFS
 }
 
-func makeStyledBlock(id, propsKey string, alignment model.GridAlignment, elems ...model.StyledElement) model.StyledBlock {
-	return model.StyledBlock{ID: id, PropsKey: propsKey, GridAlignment: alignment, Elements: elems}
-}
-
-func makeStyledElement(fromX, fromY, fromZ, toX, toY, toZ float64, color model.Color, material string) model.StyledElement {
-	return model.StyledElement{
-		From:     model.Vector3{fromX, fromY, fromZ},
-		To:       model.Vector3{toX, toY, toZ},
+func makePart(name, group string, groupID int, blockID, propsKey string, size, pos model.Vector3, color model.Color, material string) model.Part {
+	return model.Part{
+		Name:     name,
+		Group:    group,
+		GroupID:  groupID,
+		BlockID:  blockID,
+		PropsKey: propsKey,
+		Size:     size,
+		Position: pos,
 		Color:    color,
 		Material: material,
 	}
@@ -49,38 +35,14 @@ func makeStyledElement(fromX, fromY, fromZ, toX, toY, toZ float64, color model.C
 func TestLuaGenerator_New(t *testing.T) {
 	t.Parallel()
 
-	lg := NewLuaGenerator(runtime.NewFSMock(), &mockGeneratorPropsKeyBuilder{})
+	lg := NewLuaGenerator(runtime.NewFSMock())
 	require.NotNil(t, lg)
-}
-
-func TestMakePartName(t *testing.T) {
-	t.Parallel()
-
-	svc, _ := testLuaGenerator(t, nil)
-
-	tests := []struct {
-		name    string
-		blockID string
-		want    string
-	}{
-		{name: "with minecraft prefix", blockID: "minecraft:stone", want: "stone"},
-		{name: "without prefix", blockID: "stone", want: "stone"},
-		{name: "empty", blockID: "", want: ""},
-		{name: "custom namespace", blockID: "cobblemon:ore", want: "cobblemon:ore"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := svc.makePartName(tt.blockID)
-			require.Equal(t, tt.want, got)
-		})
-	}
 }
 
 func TestWriteHeader(t *testing.T) {
 	t.Parallel()
 
-	svc, _ := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t)
 	var sb strings.Builder
 	svc.writeHeader(&sb, 4)
 	got := sb.String()
@@ -106,9 +68,13 @@ func TestWriteHeader(t *testing.T) {
 func TestWriteCreatePart(t *testing.T) {
 	t.Parallel()
 
-	svc, _ := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t)
 	var sb strings.Builder
-	svc.writeCreatePart(&sb, 2, 3, 4, 1.5, 2.5, 3.5, model.Color{255, 128, 64}, "Wood", "stone", "minecraft:stone", "", "folder")
+	svc.writeCreatePart(&sb, makePart(
+		"stone", "", 0, "minecraft:stone", "",
+		model.Vector3{2, 3, 4}, model.Vector3{1.5, 2.5, 3.5},
+		model.Color{255, 128, 64}, "Wood",
+	), "folder")
 	got := sb.String()
 
 	require.Contains(t, got, "createPart(")
@@ -124,9 +90,13 @@ func TestWriteCreatePart(t *testing.T) {
 func TestWriteCreatePart_RoundsCoordinates(t *testing.T) {
 	t.Parallel()
 
-	svc, _ := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t)
 	var sb strings.Builder
-	svc.writeCreatePart(&sb, 292.00000000000006, 12, 8, 3.5999999999999996, 4, 0, model.Color{139, 140, 139}, "SmoothPlastic", "bush", "minecraft:bush", "", "folder")
+	svc.writeCreatePart(&sb, makePart(
+		"bush", "", 0, "minecraft:bush", "",
+		model.Vector3{292.00000000000006, 12, 8}, model.Vector3{3.5999999999999996, 4, 0},
+		model.Color{139, 140, 139}, "SmoothPlastic",
+	), "folder")
 	got := sb.String()
 
 	require.Contains(t, got, "Vector3.new(292, 12, 8)")
@@ -134,20 +104,10 @@ func TestWriteCreatePart_RoundsCoordinates(t *testing.T) {
 	require.NotContains(t, got, "3.5999999999999996")
 }
 
-func TestElementKey(t *testing.T) {
-	t.Parallel()
-
-	svc, _ := testLuaGenerator(t, nil)
-	elem := makeStyledElement(0, 0, 0, 16, 8, 16, model.Color{}, "")
-
-	key := svc.elementKey(elem, -2, 6, 2, 4)
-	require.Equal(t, "0.0000,7.0000,4.0000", key)
-}
-
 func TestWriteBeginGroup(t *testing.T) {
 	t.Parallel()
 
-	svc, _ := testLuaGenerator(t, nil)
+	svc, _ := testLuaGenerator(t)
 	var sb strings.Builder
 	svc.writeBeginGroup(&sb, "oak_stairs")
 	got := sb.String()
@@ -157,322 +117,102 @@ func TestWriteBeginGroup(t *testing.T) {
 	require.Contains(t, got, "_group.Parent = folder")
 }
 
-func TestWriteSimplePart(t *testing.T) {
-	t.Parallel()
-
-	svc, _ := testLuaGenerator(t, nil)
-
-	tests := []struct {
-		name       string
-		cuboid     model.Cuboid
-		style      model.StyledBlock
-		scale      float64
-		wantErr    bool
-		wantErrMsg string
-		wantCheck  func(t *testing.T, out string)
-	}{
-		{
-			name:   "normal",
-			cuboid: model.Cuboid{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 2, Z: 1, Width: 3, Height: 2, Depth: 4},
-			style: makeStyledBlock("minecraft:stone", "", model.GridFullBlock,
-				makeStyledElement(0, 0, 0, 16, 16, 16, model.Color{131, 84, 50}, "Wood"),
-			),
-			scale: 4,
-			wantCheck: func(t *testing.T, out string) {
-				require.Contains(t, out, "Vector3.new(12, 8, 16)")
-				require.Contains(t, out, "Vector3.new(0, 8, 4)")
-				require.Contains(t, out, "131, 84, 50")
-				require.Contains(t, out, `"Wood"`)
-				require.Contains(t, out, ", folder)")
-			},
-		},
-		{
-			name:       "empty elements",
-			cuboid:     model.Cuboid{ID: "minecraft:stone", PropsKey: ""},
-			style:      makeStyledBlock("minecraft:stone", "", model.GridFullBlock),
-			scale:      4,
-			wantErr:    true,
-			wantErrMsg: "no elements found for block ID minecraft:stone with properties ",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var sb strings.Builder
-			err := svc.writeSimplePart(&sb, tt.cuboid, tt.style, tt.scale)
-			if tt.wantErr {
-				require.Error(t, err)
-				if tt.wantErrMsg != "" {
-					require.Contains(t, err.Error(), tt.wantErrMsg)
-				}
-				return
-			}
-			require.NoError(t, err)
-			if tt.wantCheck != nil {
-				tt.wantCheck(t, sb.String())
-			}
-		})
-	}
-}
-
-func TestWriteComplexParts(t *testing.T) {
-	t.Parallel()
-
-	svc, _ := testLuaGenerator(t, nil)
-
-	tests := []struct {
-		name      string
-		block     model.RawBlock
-		style     model.StyledBlock
-		scale     float64
-		wantCount int
-		wantCheck func(t *testing.T, out string)
-	}{
-		{
-			name:  "single element",
-			block: model.RawBlock{X: 0, Y: 2, Z: 1},
-			style: makeStyledBlock("minecraft:stone", "", model.GridNotAligned,
-				makeStyledElement(0, 0, 0, 16, 8, 16, model.Color{128, 128, 128}, "Slate"),
-			),
-			scale:     4,
-			wantCount: 1,
-			wantCheck: func(t *testing.T, out string) {
-				require.Contains(t, out, ", folder)")
-				require.Contains(t, out, `"Slate"`)
-				require.NotContains(t, out, "Instance.new(\"Folder\")")
-			},
-		},
-		{
-			name:  "elements at same position no group",
-			block: model.RawBlock{X: 0, Y: 0, Z: 0},
-			style: makeStyledBlock("minecraft:stone", "", model.GridNotAligned,
-				makeStyledElement(0, 0, 0, 16, 16, 16, model.Color{128, 128, 128}, "Slate"),
-				makeStyledElement(0, 0, 0, 16, 16, 16, model.Color{128, 128, 128}, "Slate"),
-			),
-			scale:     4,
-			wantCount: 2,
-			wantCheck: func(t *testing.T, out string) {
-				require.Contains(t, out, ", folder)")
-				require.NotContains(t, out, "Instance.new(\"Folder\")")
-			},
-		},
-		{
-			name:  "elements at different positions with group",
-			block: model.RawBlock{ID: "minecraft:oak_stairs", X: 0, Y: 0, Z: 0},
-			style: makeStyledBlock("minecraft:oak_stairs", "half=bottom,facing=north", model.GridNotAligned,
-				makeStyledElement(0, 0, 0, 16, 8, 16, model.Color{131, 84, 50}, "Wood"),
-				makeStyledElement(0, 8, 0, 16, 16, 8, model.Color{131, 84, 50}, "Wood"),
-			),
-			scale:     4,
-			wantCount: 2,
-			wantCheck: func(t *testing.T, out string) {
-				require.Contains(t, out, "Instance.new(\"Folder\")")
-				require.Contains(t, out, "oak_stairs")
-				require.Contains(t, out, "_group")
-			},
-		},
-		{
-			name:      "empty elements",
-			block:     model.RawBlock{X: 0, Y: 0, Z: 0},
-			style:     makeStyledBlock("minecraft:stone", "", model.GridNotAligned),
-			scale:     4,
-			wantCount: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var sb strings.Builder
-			count := svc.writeComplexParts(&sb, tt.block, tt.style, tt.scale)
-			require.Equal(t, tt.wantCount, count)
-			if tt.wantCheck != nil {
-				tt.wantCheck(t, sb.String())
-			}
-		})
-	}
-}
-
 func TestRun(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		blocks       []model.RawBlock
-		blockCuboids []model.Cuboid
-		microCuboids []model.Cuboid
-		styleIdx     *stateful.StyleIndex
-		pkbFn        func(props map[string]string) string
-		scale        float64
-		wantCount    int
-		wantErrMsg   string
-		wantCheck    func(t *testing.T, data string)
+		name       string
+		parts      []model.Part
+		scale      float64
+		wantErrMsg string
+		wantCheck  func(t *testing.T, data string)
 	}{
 		{
-			name:      "empty input",
-			blocks:    nil,
-			styleIdx:  stateful.NewStyleIndex(),
-			scale:     4,
-			wantCount: 0,
+			name:  "empty input",
+			parts: nil,
+			scale: 4,
 			wantCheck: func(t *testing.T, data string) {
 				require.Contains(t, data, "-- Auto-generated by mc2lua")
 				require.Contains(t, data, "-- Total parts: 0\nlocal _total = 0")
 			},
 		},
 		{
-			name: "only full blocks",
-			blockCuboids: []model.Cuboid{
-				{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
+			name: "single full block",
+			parts: []model.Part{
+				makePart("stone", "", 0, "minecraft:stone", "", model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0}, model.Color{128, 128, 128}, "Slate"),
 			},
-			styleIdx: func() *stateful.StyleIndex {
-				idx := stateful.NewStyleIndex()
-				idx.Add("minecraft:stone", "", makeStyledBlock("minecraft:stone", "", model.GridFullBlock,
-					makeStyledElement(0, 0, 0, 16, 16, 16, model.Color{128, 128, 128}, "Slate"),
-				))
-				return idx
-			}(),
-			scale:     4,
-			wantCount: 1,
+			scale: 4,
 		},
 		{
-			name: "only micro blocks",
-			microCuboids: []model.Cuboid{
-				{ID: "minecraft:stone_slab", PropsKey: "", X: 1.5, Y: 0.5, Z: 1.5, Width: 4, Height: 2, Depth: 4},
+			name: "single micro block",
+			parts: []model.Part{
+				makePart("stone_slab", "", 0, "minecraft:stone_slab", "", model.Vector3{4, 2, 4}, model.Vector3{0, -1, 0}, model.Color{128, 128, 128}, "Stone"),
 			},
-			styleIdx: func() *stateful.StyleIndex {
-				idx := stateful.NewStyleIndex()
-				idx.Add("minecraft:stone_slab", "", makeStyledBlock("minecraft:stone_slab", "", model.GridSubBlock,
-					makeStyledElement(0, 0, 0, 16, 8, 16, model.Color{128, 128, 128}, "Stone"),
-				))
-				return idx
-			}(),
-			scale:     4,
-			wantCount: 1,
+			scale: 4,
 			wantCheck: func(t *testing.T, data string) {
 				require.Contains(t, data, "Vector3.new(4, 2, 4)")
 				require.Contains(t, data, "Vector3.new(0, -1, 0)")
 			},
 		},
 		{
-			name: "only complex blocks",
-			blocks: []model.RawBlock{
-				{ID: "minecraft:oak_stairs", Props: map[string]string{"half": "bottom", "facing": "north"}, X: 0, Y: 0, Z: 0},
+			name: "grouped parts create group",
+			parts: []model.Part{
+				makePart("elem 1", "oak_stairs", 1, "minecraft:oak_stairs", "facing=north,half=bottom", model.Vector3{4, 2, 4}, model.Vector3{0, 0, 2}, model.Color{131, 84, 50}, "Wood"),
+				makePart("elem 2", "oak_stairs", 1, "minecraft:oak_stairs", "facing=north,half=bottom", model.Vector3{4, 2, 2}, model.Vector3{0, 2, 0}, model.Color{131, 84, 50}, "Wood"),
 			},
-			styleIdx: func() *stateful.StyleIndex {
-				idx := stateful.NewStyleIndex()
-				idx.Add("minecraft:oak_stairs", "facing=north,half=bottom", makeStyledBlock("minecraft:oak_stairs", "facing=north,half=bottom", model.GridNotAligned,
-					makeStyledElement(0, 0, 0, 16, 8, 16, model.Color{131, 84, 50}, "Wood"),
-					makeStyledElement(0, 8, 0, 16, 16, 8, model.Color{131, 84, 50}, "Wood"),
-				))
-				return idx
-			}(),
-			pkbFn: func(props map[string]string) string {
-				return "facing=north,half=bottom"
-			},
-			scale:     4,
-			wantCount: 2,
-		},
-		{
-			name: "skips cuboids with missing style or not-aligned style",
-			blockCuboids: []model.Cuboid{
-				{ID: "minecraft:oak_stairs", PropsKey: "facing=north", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
-				{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
-				{ID: "minecraft:unknown", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
-			},
-			styleIdx: func() *stateful.StyleIndex {
-				idx := stateful.NewStyleIndex()
-				idx.Add("minecraft:oak_stairs", "facing=north", makeStyledBlock(
-					"minecraft:oak_stairs", "facing=north", model.GridNotAligned,
-				))
-				idx.Add("minecraft:stone", "", makeStyledBlock(
-					"minecraft:stone", "", model.GridFullBlock,
-					makeStyledElement(0, 0, 0, 16, 16, 16, model.Color{128, 128, 128}, "Slate"),
-				))
-				return idx
-			}(),
-			scale:     4,
-			wantCount: 1,
-		},
-		{
-			name: "skips raw block with full block style",
-			blocks: []model.RawBlock{
-				{ID: "minecraft:stone", Props: map[string]string{}, X: 0, Y: 0, Z: 0},
-				{ID: "minecraft:unknown", Props: map[string]string{}, X: 0, Y: 0, Z: 0},
-			},
-			styleIdx: func() *stateful.StyleIndex {
-				idx := stateful.NewStyleIndex()
-				idx.Add("minecraft:stone", "", makeStyledBlock(
-					"minecraft:stone", "", model.GridFullBlock,
-				))
-				return idx
-			}(),
-			pkbFn:     func(props map[string]string) string { return "" },
-			scale:     4,
-			wantCount: 0,
-		},
-		{
-			name: "aligned cuboid without elements returns error",
-			blockCuboids: []model.Cuboid{
-				{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
-			},
-			styleIdx: func() *stateful.StyleIndex {
-				idx := stateful.NewStyleIndex()
-				idx.Add("minecraft:stone", "", makeStyledBlock(
-					"minecraft:stone", "", model.GridFullBlock,
-				))
-				return idx
-			}(),
-			scale:      4,
-			wantErrMsg: "failed to write simple part for block ID minecraft:stone with properties ",
-		},
-		{
-			name: "full and complex blocks",
-			blocks: []model.RawBlock{
-				{ID: "minecraft:oak_stairs", Props: map[string]string{"half": "bottom", "facing": "north"}, X: 0, Y: 0, Z: 0},
-			},
-			blockCuboids: []model.Cuboid{
-				{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
-			},
-			styleIdx: func() *stateful.StyleIndex {
-				idx := stateful.NewStyleIndex()
-				idx.Add("minecraft:stone", "", makeStyledBlock("minecraft:stone", "", model.GridFullBlock,
-					makeStyledElement(0, 0, 0, 16, 16, 16, model.Color{128, 128, 128}, "Slate"),
-				))
-				idx.Add("minecraft:oak_stairs", "facing=north,half=bottom", makeStyledBlock("minecraft:oak_stairs", "facing=north,half=bottom", model.GridNotAligned,
-					makeStyledElement(0, 0, 0, 16, 8, 16, model.Color{131, 84, 50}, "Wood"),
-					makeStyledElement(0, 8, 0, 16, 16, 8, model.Color{131, 84, 50}, "Wood"),
-				))
-				return idx
-			}(),
-			pkbFn: func(props map[string]string) string {
-				return "facing=north,half=bottom"
-			},
-			scale:     4,
-			wantCount: 3,
+			scale: 4,
 			wantCheck: func(t *testing.T, data string) {
-				require.Contains(t, data, "-- Total parts: 3\nlocal _total = 3")
+				require.Contains(t, data, "Instance.new(\"Folder\")")
+				require.Contains(t, data, "oak_stairs")
+				require.Contains(t, data, ", _group)")
+			},
+		},
+		{
+			name: "groups with same name stay separate",
+			parts: []model.Part{
+				makePart("elem 1", "oak_stairs", 1, "minecraft:oak_stairs", "facing=north,half=bottom", model.Vector3{4, 2, 4}, model.Vector3{0, 0, 2}, model.Color{131, 84, 50}, "Wood"),
+				makePart("elem 2", "oak_stairs", 1, "minecraft:oak_stairs", "facing=north,half=bottom", model.Vector3{4, 2, 2}, model.Vector3{0, 2, 0}, model.Color{131, 84, 50}, "Wood"),
+				makePart("elem 1", "oak_stairs", 2, "minecraft:oak_stairs", "facing=south,half=bottom", model.Vector3{4, 2, 4}, model.Vector3{12, 0, 2}, model.Color{131, 84, 50}, "Wood"),
+				makePart("elem 2", "oak_stairs", 2, "minecraft:oak_stairs", "facing=south,half=bottom", model.Vector3{4, 2, 2}, model.Vector3{12, 2, 0}, model.Color{131, 84, 50}, "Wood"),
+			},
+			scale: 4,
+			wantCheck: func(t *testing.T, data string) {
+				require.Equal(t, 2, strings.Count(data, "_group = Instance.new(\"Folder\")"))
+				require.Equal(t, 2, strings.Count(data, "_group.Name = \"oak_stairs\""))
+			},
+		},
+		{
+			name: "folder and group parts",
+			parts: []model.Part{
+				makePart("stone", "", 0, "minecraft:stone", "", model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0}, model.Color{128, 128, 128}, "Slate"),
+				makePart("elem 1", "oak_stairs", 1, "minecraft:oak_stairs", "facing=north,half=bottom", model.Vector3{4, 2, 4}, model.Vector3{4, 0, 2}, model.Color{131, 84, 50}, "Wood"),
+				makePart("elem 2", "oak_stairs", 1, "minecraft:oak_stairs", "facing=north,half=bottom", model.Vector3{4, 2, 2}, model.Vector3{4, 2, 0}, model.Color{131, 84, 50}, "Wood"),
+			},
+			scale: 4,
+			wantCheck: func(t *testing.T, data string) {
+				require.Contains(t, data, ", folder)")
+				require.Contains(t, data, ", _group)")
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pkb := &mockGeneratorPropsKeyBuilder{runFn: tt.pkbFn}
-			svc, mockFS := testLuaGenerator(t, pkb)
+			svc, mockFS := testLuaGenerator(t)
 			outPath := "out.lua"
 
-			count, err := svc.Run(tt.blocks, tt.blockCuboids, tt.microCuboids, model.FaceVisibility{}, *tt.styleIdx, tt.scale, outPath)
+			err := svc.Run(tt.parts, tt.scale, outPath)
 			if tt.wantErrMsg != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.wantErrMsg)
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tt.wantCount, count)
 
 			data, err := mockFS.ReadFile(outPath)
 			require.NoError(t, err)
 
-			require.Contains(t, string(data), fmt.Sprintf("-- Total parts: %d\nlocal _total = %d", tt.wantCount, tt.wantCount))
+			require.Contains(t, string(data), fmt.Sprintf("-- Total parts: %d\nlocal _total = %d", len(tt.parts), len(tt.parts)))
 
 			if tt.wantCheck != nil {
 				tt.wantCheck(t, string(data))
@@ -484,10 +224,10 @@ func TestRun(t *testing.T) {
 func TestRun_WriteError(t *testing.T) {
 	t.Parallel()
 
-	svc, mockFS := testLuaGenerator(t, nil)
+	svc, mockFS := testLuaGenerator(t)
 	outPath := "out.lua"
 	mockFS.CreateErrors[outPath] = errors.New("create fail")
-	_, err := svc.Run(nil, nil, nil, model.FaceVisibility{}, *stateful.NewStyleIndex(), 4, outPath)
+	err := svc.Run(nil, 4, outPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to write output file")
 }

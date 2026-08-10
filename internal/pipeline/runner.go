@@ -57,8 +57,12 @@ type faceCuller interface {
 	Run(occ *stateful.OccupancyIndex, blockRegions, microRegions []model.Cuboid, blocks []model.RawBlock, styles stateful.StyleIndex) model.FaceVisibility
 }
 
+type partBuilder interface {
+	Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64) ([]model.Part, error)
+}
+
 type luaGenerator interface {
-	Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
+	Run(parts []model.Part, scale float64, outputPath string) error
 }
 
 type Runner struct {
@@ -73,6 +77,7 @@ type Runner struct {
 	regionMerger      regionMerger
 	occupancyIndexer  occupancyIndexer
 	faceCuller        faceCuller
+	partBuilder       partBuilder
 	luaGenerator      luaGenerator
 	logOutput         io.Writer
 }
@@ -89,6 +94,7 @@ func NewRunner(
 	rm regionMerger,
 	oi occupancyIndexer,
 	fc faceCuller,
+	pb partBuilder,
 	lg luaGenerator,
 	logOutput io.Writer,
 ) *Runner {
@@ -104,6 +110,7 @@ func NewRunner(
 		regionMerger:      rm,
 		occupancyIndexer:  oi,
 		faceCuller:        fc,
+		partBuilder:       pb,
 		luaGenerator:      lg,
 		logOutput:         logOutput,
 	}
@@ -163,11 +170,16 @@ func (svc *Runner) Run(cfg RunConfig) error {
 	visibility := svc.faceCuller.Run(occIdx, blockRegions, microRegions, blocks, *styledIdx)
 	svc.logFaceVisibility(visibility)
 
-	totalParts, err := svc.luaGenerator.Run(blocks, blockRegions, microRegions, visibility, *styledIdx, float64(cfg.Scale), cfg.Output)
+	parts, err := svc.partBuilder.Run(blocks, blockRegions, microRegions, visibility, *styledIdx, float64(cfg.Scale))
 	if err != nil {
+		return fmt.Errorf("build parts: %w", err)
+	}
+	svc.log("Built %d part(s)\n", len(parts))
+
+	if err := svc.luaGenerator.Run(parts, float64(cfg.Scale), cfg.Output); err != nil {
 		return fmt.Errorf("generate lua: %w", err)
 	}
-	svc.log("Generated %d part(s)\n", totalParts)
+	svc.log("Lua script generated at %s\n", cfg.Output)
 
 	return nil
 }

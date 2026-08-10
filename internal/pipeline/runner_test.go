@@ -129,15 +129,26 @@ func (m *mockFaceCuller) Run(occ *stateful.OccupancyIndex, blockRegions, microRe
 	return model.FaceVisibility{}
 }
 
-type mockLuaGenerator struct {
-	runFn func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
+type mockPartBuilder struct {
+	runFn func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64) ([]model.Part, error)
 }
 
-func (m *mockLuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
+func (m *mockPartBuilder) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64) ([]model.Part, error) {
 	if m.runFn != nil {
-		return m.runFn(blocks, blockCuboids, microCuboids, visibility, styleIndex, scale, outputPath)
+		return m.runFn(blocks, blockCuboids, microCuboids, visibility, styleIndex, scale)
 	}
-	return 0, nil
+	return nil, nil
+}
+
+type mockLuaGenerator struct {
+	runFn func(parts []model.Part, scale float64, outputPath string) error
+}
+
+func (m *mockLuaGenerator) Run(parts []model.Part, scale float64, outputPath string) error {
+	if m.runFn != nil {
+		return m.runFn(parts, scale, outputPath)
+	}
+	return nil
 }
 
 func TestRunner_New(t *testing.T) {
@@ -154,8 +165,9 @@ func TestRunner_New(t *testing.T) {
 	mockRM := &mockMerger{}
 	mockOI := &mockOccupancyIndexer{}
 	mockFC := &mockFaceCuller{}
+	mockPB := &mockPartBuilder{}
 	mockLG := &mockLuaGenerator{}
-	r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockLG, io.Discard)
+	r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockPB, mockLG, io.Discard)
 	require.NotNil(t, r)
 }
 
@@ -173,7 +185,8 @@ func TestRunner_Run(t *testing.T) {
 		mockCollect   func(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string)
 		mockBVI       func(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex
 		mockRM        func(grid *stateful.VoxelIndex) []model.Cuboid
-		mockLG        func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
+		mockPB        func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64) ([]model.Part, error)
+		mockLG        func(parts []model.Part, scale float64, outputPath string) error
 		wantErr       bool
 		wantErrMsg    string
 	}{
@@ -214,11 +227,25 @@ func TestRunner_Run(t *testing.T) {
 			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 				return blocks, nil
 			},
-			mockLG: func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
-				return 0, errors.New("write failed")
+			mockLG: func(parts []model.Part, scale float64, outputPath string) error {
+				return errors.New("write failed")
 			},
 			wantErr:    true,
 			wantErrMsg: "generate lua: write failed",
+		},
+		{
+			name: "part builder error",
+			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
+				return []model.RawBlock{{}}, nil
+			},
+			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
+				return blocks, nil
+			},
+			mockPB: func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64) ([]model.Part, error) {
+				return nil, errors.New("build failed")
+			},
+			wantErr:    true,
+			wantErrMsg: "build parts: build failed",
 		},
 		{
 			name: "log output written on success",
@@ -296,11 +323,15 @@ func TestRunner_Run(t *testing.T) {
 			}
 			mockOI := &mockOccupancyIndexer{}
 			mockFC := &mockFaceCuller{}
+			mockPB := &mockPartBuilder{}
+			if tt.mockPB != nil {
+				mockPB.runFn = tt.mockPB
+			}
 			mockLG := &mockLuaGenerator{}
 			if tt.mockLG != nil {
 				mockLG.runFn = tt.mockLG
 			}
-			r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockLG, io.Discard)
+			r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockPB, mockLG, io.Discard)
 
 			err := r.Run(RunConfig{
 				Input:     "/test",
@@ -377,6 +408,7 @@ func TestRunner_RunLogsArea(t *testing.T) {
 				&mockMerger{},
 				&mockOccupancyIndexer{},
 				&mockFaceCuller{},
+				&mockPartBuilder{},
 				&mockLuaGenerator{},
 				&buf,
 			)
