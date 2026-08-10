@@ -284,6 +284,20 @@ func TestStyleIndexer_Run(t *testing.T) {
 			},
 		},
 		{
+			name: "rotation angles preserved in styled block",
+			blocks: []model.ResolvedBlock{
+				{ID: "minecraft:stone", PropsKey: "facing=north", RotX: 90, RotY: 180, Elements: []model.ModelElement{fullBlock}},
+			},
+			analyzer: func(elements []model.StyledElement) model.GridAlignment { return model.GridFullBlock },
+			wantLen:  1,
+			wantCheck: func(t *testing.T, idx *stateful.StyleIndex) {
+				b, ok := idx.Get("minecraft:stone", "facing=north")
+				require.True(t, ok)
+				require.Equal(t, 90.0, b.RotX)
+				require.Equal(t, 180.0, b.RotY)
+			},
+		},
+		{
 			name: "multiple blocks",
 			blocks: []model.ResolvedBlock{
 				{ID: "minecraft:stone", Elements: []model.ModelElement{fullBlock}},
@@ -360,6 +374,65 @@ func TestStyleIndexer_Run(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestStyleIndexer_RotationPassedUnchangedToRotator(t *testing.T) {
+	t.Parallel()
+
+	var gotRotX, gotRotY float64
+	rotator := &mockElementRotator{runFn: func(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement {
+		gotRotX, gotRotY = rotX, rotY
+		return elements
+	}}
+
+	si := NewStyleIndexer(&mockGridAnalyzer{}, rotator, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{}, &mockColorMatcher{})
+
+	block := model.ResolvedBlock{
+		ID:   "minecraft:stone",
+		RotX: 90,
+		RotY: 180,
+		Elements: []model.ModelElement{
+			{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true},
+		},
+	}
+
+	idx := si.Run([]model.ResolvedBlock{block}, nil)
+
+	require.Equal(t, 90.0, gotRotX)
+	require.Equal(t, 180.0, gotRotY)
+
+	b, ok := idx.Get("minecraft:stone", "")
+	require.True(t, ok)
+	require.Equal(t, 90.0, b.RotX)
+	require.Equal(t, 180.0, b.RotY)
+}
+
+func TestStyleIndexer_ZeroRotationKeptZero(t *testing.T) {
+	t.Parallel()
+
+	var rotatorCalls int
+	rotator := &mockElementRotator{runFn: func(elements []model.StyledElement, rotX, rotY float64) []model.StyledElement {
+		rotatorCalls++
+		return elements
+	}}
+
+	si := NewStyleIndexer(&mockGridAnalyzer{}, rotator, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{}, &mockColorMatcher{})
+
+	block := model.ResolvedBlock{
+		ID:   "minecraft:stone",
+		Elements: []model.ModelElement{
+			{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true},
+		},
+	}
+
+	idx := si.Run([]model.ResolvedBlock{block}, nil)
+
+	require.Equal(t, 1, rotatorCalls)
+
+	b, ok := idx.Get("minecraft:stone", "")
+	require.True(t, ok)
+	require.Equal(t, 0.0, b.RotX)
+	require.Equal(t, 0.0, b.RotY)
 }
 
 func TestStyleIndexer_ScaleColor(t *testing.T) {

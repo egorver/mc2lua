@@ -27,5 +27,7 @@ type StyledBlock struct {
 	ID            string
 	PropsKey      string
 	GridAlignment GridAlignment
+	RotX          float64
+	RotY          float64
 	Elements      []StyledElement
 }

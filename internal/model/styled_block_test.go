@@ -111,6 +111,8 @@ func TestStyledBlock(t *testing.T) {
 		wantID          string
 		wantProps       string
 		wantGridAligned GridAlignment
+		wantRotX        float64
+		wantRotY        float64
 		wantElems       int
 	}{
 		{name: "zero value"},
@@ -150,6 +152,18 @@ func TestStyledBlock(t *testing.T) {
 			},
 			wantID: "minecraft:grass_block", wantGridAligned: GridFullBlock, wantElems: 1,
 		},
+		{
+			name: "block with rotation angles",
+			block: StyledBlock{
+				ID: "minecraft:stone", GridAlignment: GridFullBlock,
+				RotX: 90, RotY: 180,
+				Elements: []StyledElement{
+					{From: Vector3{0, 0, 0}, To: Vector3{16, 16, 16}, Shade: true},
+				},
+			},
+			wantID: "minecraft:stone", wantGridAligned: GridFullBlock,
+			wantRotX: 90, wantRotY: 180, wantElems: 1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -157,6 +171,8 @@ func TestStyledBlock(t *testing.T) {
 			require.Equal(t, tt.wantID, tt.block.ID)
 			require.Equal(t, tt.wantProps, tt.block.PropsKey)
 			require.Equal(t, tt.wantGridAligned, tt.block.GridAlignment)
+			require.Equal(t, tt.wantRotX, tt.block.RotX)
+			require.Equal(t, tt.wantRotY, tt.block.RotY)
 			require.Len(t, tt.block.Elements, tt.wantElems)
 		})
 	}

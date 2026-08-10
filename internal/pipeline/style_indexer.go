@@ -78,6 +78,8 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock, nsRoots map[string][]
 			ID:            b.ID,
 			PropsKey:      b.PropsKey,
 			GridAlignment: gridAlignment,
+			RotX:          b.RotX,
+			RotY:          b.RotY,
 			Elements:      rotated,
 		}
 
