@@ -49,6 +49,14 @@ type regionMerger interface {
 	Run(grid *stateful.VoxelIndex) []model.Cuboid
 }
 
+type occupancyIndexer interface {
+	Run(blocks []model.RawBlock, blockIdx, microIdx *stateful.VoxelIndex, styles stateful.StyleIndex) *stateful.OccupancyIndex
+}
+
+type faceCuller interface {
+	Run(occ *stateful.OccupancyIndex, blockRegions, microRegions []model.Cuboid, blocks []model.RawBlock, styles stateful.StyleIndex) model.FaceVisibility
+}
+
 type luaGenerator interface {
 	Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
 }
@@ -63,6 +71,8 @@ type Runner struct {
 	blockVoxelIndexer blockVoxelIndexer
 	microVoxelIndexer microVoxelIndexer
 	regionMerger      regionMerger
+	occupancyIndexer  occupancyIndexer
+	faceCuller        faceCuller
 	luaGenerator      luaGenerator
 	logOutput         io.Writer
 }
@@ -77,6 +87,8 @@ func NewRunner(
 	bvi blockVoxelIndexer,
 	mvi microVoxelIndexer,
 	rm regionMerger,
+	oi occupancyIndexer,
+	fc faceCuller,
 	lg luaGenerator,
 	logOutput io.Writer,
 ) *Runner {
@@ -90,6 +102,8 @@ func NewRunner(
 		blockVoxelIndexer: bvi,
 		microVoxelIndexer: mvi,
 		regionMerger:      rm,
+		occupancyIndexer:  oi,
+		faceCuller:        fc,
 		luaGenerator:      lg,
 		logOutput:         logOutput,
 	}
@@ -142,6 +156,12 @@ func (svc *Runner) Run(cfg RunConfig) error {
 
 	microRegions := svc.regionMerger.Run(microIdx)
 	svc.logMergeStats(len(microIdx.Blocks()), len(microRegions))
+
+	occIdx := svc.occupancyIndexer.Run(blocks, blockIdx, microIdx, *styledIdx)
+	svc.log("Built occupancy index: %d cell(s)\n", occIdx.Len())
+
+	visibility := svc.faceCuller.Run(occIdx, blockRegions, microRegions, blocks, *styledIdx)
+	svc.logFaceVisibility(visibility)
 
 	totalParts, err := svc.luaGenerator.Run(blocks, blockRegions, microRegions, *styledIdx, float64(cfg.Scale), cfg.Output)
 	if err != nil {
@@ -204,4 +224,9 @@ func (svc *Runner) logMergeStats(voxelCount, regionCount int) {
 	} else {
 		svc.log("\n")
 	}
+}
+
+func (svc *Runner) logFaceVisibility(v model.FaceVisibility) {
+	svc.log("Computed face visibility: %d block region(s), %d micro region(s), %d complex block(s)\n",
+		len(v.BlockFaces), len(v.MicroFaces), len(v.ComplexFaces))
 }

@@ -92,6 +92,8 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	blockVoxelIndexer := pipeline.NewBlockVoxelIndexer(propsKeyBuilder)
 	microVoxelIndexer := pipeline.NewMicroVoxelIndexer(propsKeyBuilder)
 	regionMerger := pipeline.NewRegionMerger()
+	occupancyIndexer := pipeline.NewOccupancyIndexer(propsKeyBuilder)
+	faceCuller := pipeline.NewFaceCuller(propsKeyBuilder)
 	luaGenerator := pipeline.NewLuaGenerator(fs, propsKeyBuilder)
 
 	return pipeline.NewRunner(
@@ -104,6 +106,8 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 		blockVoxelIndexer,
 		microVoxelIndexer,
 		regionMerger,
+		occupancyIndexer,
+		faceCuller,
 		luaGenerator,
 		os.Stdout), nil
 }

@@ -107,6 +107,28 @@ func (m *mockMerger) Run(grid *stateful.VoxelIndex) []model.Cuboid {
 	return nil
 }
 
+type mockOccupancyIndexer struct {
+	runFn func(blocks []model.RawBlock, blockIdx, microIdx *stateful.VoxelIndex, styles stateful.StyleIndex) *stateful.OccupancyIndex
+}
+
+func (m *mockOccupancyIndexer) Run(blocks []model.RawBlock, blockIdx, microIdx *stateful.VoxelIndex, styles stateful.StyleIndex) *stateful.OccupancyIndex {
+	if m.runFn != nil {
+		return m.runFn(blocks, blockIdx, microIdx, styles)
+	}
+	return stateful.NewOccupancyIndex()
+}
+
+type mockFaceCuller struct {
+	runFn func(occ *stateful.OccupancyIndex, blockRegions, microRegions []model.Cuboid, blocks []model.RawBlock, styles stateful.StyleIndex) model.FaceVisibility
+}
+
+func (m *mockFaceCuller) Run(occ *stateful.OccupancyIndex, blockRegions, microRegions []model.Cuboid, blocks []model.RawBlock, styles stateful.StyleIndex) model.FaceVisibility {
+	if m.runFn != nil {
+		return m.runFn(occ, blockRegions, microRegions, blocks, styles)
+	}
+	return model.FaceVisibility{}
+}
+
 type mockLuaGenerator struct {
 	runFn func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
 }
@@ -130,8 +152,10 @@ func TestRunner_New(t *testing.T) {
 	mockBVI := &mockBlockVoxelIndexer{}
 	mockMVI := &mockMicroVoxelIndexer{}
 	mockRM := &mockMerger{}
+	mockOI := &mockOccupancyIndexer{}
+	mockFC := &mockFaceCuller{}
 	mockLG := &mockLuaGenerator{}
-	r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockLG, io.Discard)
+	r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockLG, io.Discard)
 	require.NotNil(t, r)
 }
 
@@ -270,11 +294,13 @@ func TestRunner_Run(t *testing.T) {
 			if tt.mockRM != nil {
 				mockRM.runFn = tt.mockRM
 			}
+			mockOI := &mockOccupancyIndexer{}
+			mockFC := &mockFaceCuller{}
 			mockLG := &mockLuaGenerator{}
 			if tt.mockLG != nil {
 				mockLG.runFn = tt.mockLG
 			}
-			r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockLG, io.Discard)
+			r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockLG, io.Discard)
 
 			err := r.Run(RunConfig{
 				Input:     "/test",
@@ -349,6 +375,8 @@ func TestRunner_RunLogsArea(t *testing.T) {
 				&mockBlockVoxelIndexer{},
 				&mockMicroVoxelIndexer{},
 				&mockMerger{},
+				&mockOccupancyIndexer{},
+				&mockFaceCuller{},
 				&mockLuaGenerator{},
 				&buf,
 			)

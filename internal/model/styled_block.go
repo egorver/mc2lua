@@ -30,4 +30,5 @@ type StyledBlock struct {
 	RotX          float64
 	RotY          float64
 	Elements      []StyledElement
+	Transparent   bool
 }
