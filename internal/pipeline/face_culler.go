@@ -20,30 +20,47 @@ func NewFaceCuller(pkb cullerPropsKeyBuilder) *FaceCuller {
 }
 
 func (svc *FaceCuller) Run(occ *stateful.OccupancyIndex, blockRegions, microRegions []model.Cuboid, blocks []model.RawBlock, styles stateful.StyleIndex) model.FaceVisibility {
-	vis := model.FaceVisibility{
-		BlockFaces:   make([]model.FaceMask, len(blockRegions)),
-		MicroFaces:   make([]model.FaceMask, len(microRegions)),
-		ComplexFaces: make([]model.FaceMask, len(blocks)),
-	}
+	blockFaces := svc.cullBlockRegions(occ, blockRegions)
+	microFaces := svc.cullMicroRegions(occ, microRegions)
+	complexFaces := svc.cullComplexBlocks(occ, blocks, styles)
 
-	for i, c := range blockRegions {
-		vis.BlockFaces[i] = svc.cuboidFaces(occ, c, model.SubGridSize)
+	vis := model.FaceVisibility{
+		BlockFaces:   blockFaces,
+		MicroFaces:   microFaces,
+		ComplexFaces: complexFaces,
 	}
-	for i, c := range microRegions {
-		vis.MicroFaces[i] = svc.cuboidFaces(occ, c, 1)
+	return vis
+}
+
+func (svc *FaceCuller) cullBlockRegions(occ *stateful.OccupancyIndex, regions []model.Cuboid) []model.FaceMask {
+	masks := make([]model.FaceMask, len(regions))
+	for i, c := range regions {
+		masks[i] = svc.cuboidFaces(occ, c, model.SubGridSize)
 	}
+	return masks
+}
+
+func (svc *FaceCuller) cullMicroRegions(occ *stateful.OccupancyIndex, regions []model.Cuboid) []model.FaceMask {
+	masks := make([]model.FaceMask, len(regions))
+	for i, c := range regions {
+		masks[i] = svc.cuboidFaces(occ, c, 1)
+	}
+	return masks
+}
+
+func (svc *FaceCuller) cullComplexBlocks(occ *stateful.OccupancyIndex, blocks []model.RawBlock, styles stateful.StyleIndex) []model.FaceMask {
+	masks := make([]model.FaceMask, len(blocks))
 	for i, b := range blocks {
 		propsKey := svc.propsKeyBuilder.Run(b.Props)
 		style, ok := styles.Get(b.ID, propsKey)
 		if !ok || style.GridAlignment != model.GridNotAligned {
 			continue
 		}
-		vis.ComplexFaces[i] = svc.regionFaces(occ,
+		masks[i] = svc.regionFaces(occ,
 			b.X*model.SubGridSize, b.Y*model.SubGridSize, b.Z*model.SubGridSize,
 			model.SubGridSize, model.SubGridSize, model.SubGridSize)
 	}
-
-	return vis
+	return masks
 }
 
 func (svc *FaceCuller) cuboidFaces(occ *stateful.OccupancyIndex, c model.Cuboid, scale int) model.FaceMask {

@@ -5,15 +5,15 @@ import (
 	"mc2lua/internal/stateful"
 )
 
-type indexerPropsKeyBuilder interface {
+type blockIndexerPropsKeyBuilder interface {
 	Run(props map[string]string) string
 }
 
 type BlockVoxelIndexer struct {
-	propsKeyBuilder indexerPropsKeyBuilder
+	propsKeyBuilder blockIndexerPropsKeyBuilder
 }
 
-func NewBlockVoxelIndexer(pkb indexerPropsKeyBuilder) *BlockVoxelIndexer {
+func NewBlockVoxelIndexer(pkb blockIndexerPropsKeyBuilder) *BlockVoxelIndexer {
 	return &BlockVoxelIndexer{propsKeyBuilder: pkb}
 }
 

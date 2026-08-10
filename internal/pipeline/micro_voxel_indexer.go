@@ -5,11 +5,15 @@ import (
 	"mc2lua/internal/stateful"
 )
 
-type MicroVoxelIndexer struct {
-	propsKeyBuilder indexerPropsKeyBuilder
+type microIndexerPropsKeyBuilder interface {
+	Run(props map[string]string) string
 }
 
-func NewMicroVoxelIndexer(pkb indexerPropsKeyBuilder) *MicroVoxelIndexer {
+type MicroVoxelIndexer struct {
+	propsKeyBuilder microIndexerPropsKeyBuilder
+}
+
+func NewMicroVoxelIndexer(pkb microIndexerPropsKeyBuilder) *MicroVoxelIndexer {
 	return &MicroVoxelIndexer{propsKeyBuilder: pkb}
 }
 

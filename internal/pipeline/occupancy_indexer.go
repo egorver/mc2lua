@@ -5,11 +5,15 @@ import (
 	"mc2lua/internal/stateful"
 )
 
-type OccupancyIndexer struct {
-	propsKeyBuilder indexerPropsKeyBuilder
+type occupancyPropsKeyBuilder interface {
+	Run(props map[string]string) string
 }
 
-func NewOccupancyIndexer(pkb indexerPropsKeyBuilder) *OccupancyIndexer {
+type OccupancyIndexer struct {
+	propsKeyBuilder occupancyPropsKeyBuilder
+}
+
+func NewOccupancyIndexer(pkb occupancyPropsKeyBuilder) *OccupancyIndexer {
 	return &OccupancyIndexer{propsKeyBuilder: pkb}
 }
 
