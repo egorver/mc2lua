@@ -76,6 +76,12 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 		return nil, fmt.Errorf("create color matcher: %w", err)
 	}
 
+	partStyleMatcher, err := pipeline.NewPartStyleMatcher(fs, filepath.Join(configDir, "parts.yaml"))
+	if err != nil {
+		return nil, fmt.Errorf("create part style matcher: %w", err)
+	}
+	_ = partStyleMatcher
+
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
 	boundsResolver := pipeline.NewBoundsResolver()
 	coordNormalizer := pipeline.NewCoordNormalizer()
