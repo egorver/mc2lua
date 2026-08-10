@@ -110,8 +110,33 @@ func TestModelElement(t *testing.T) {
 			require.Equal(t, tt.wantFrom, tt.element.From)
 			require.Equal(t, tt.wantTo, tt.element.To)
 			require.Equal(t, tt.wantShade, tt.element.Shade)
+			require.Nil(t, tt.element.Rotation)
+			require.Nil(t, tt.element.Faces)
 		})
 	}
+}
+
+func TestModelElement_RotationAndFaces(t *testing.T) {
+	t.Parallel()
+
+	rot := &ElementRotation{Origin: Vector3{8, 8, 8}, Axis: "x", Angle: 22.5, Rescale: true}
+	faces := map[string]ElementFace{
+		"up":    {UV: [4]float64{0, 0, 16, 16}, Texture: "block/stone"},
+		"down":  {UV: [4]float64{0, 0, 16, 16}, Texture: "block/stone"},
+		"north": {UV: [4]float64{0, 0, 16, 16}, Texture: "block/stone"},
+	}
+	element := ModelElement{
+		From:     Vector3{0, 0, 0},
+		To:       Vector3{16, 16, 16},
+		Rotation: rot,
+		Shade:    true,
+		Faces:    faces,
+	}
+
+	require.Equal(t, rot, element.Rotation)
+	require.Equal(t, faces, element.Faces)
+	require.Len(t, element.Faces, 3)
+	require.Equal(t, ElementFace{UV: [4]float64{0, 0, 16, 16}, Texture: "block/stone"}, element.Faces["up"])
 }
 
 func TestResolvedBlock(t *testing.T) {
@@ -159,4 +184,25 @@ func TestResolvedBlock(t *testing.T) {
 			require.Len(t, tt.block.Elements, tt.wantElems)
 		})
 	}
+}
+
+func TestResolvedBlock_Textures(t *testing.T) {
+	t.Parallel()
+
+	block := ResolvedBlock{
+		ID:       "minecraft:stone",
+		PropsKey: "",
+		Textures: map[string]string{"#all": "block/stone", "#top": "block/stone_top"},
+	}
+	require.Len(t, block.Textures, 2)
+	require.Equal(t, "block/stone", block.Textures["#all"])
+	require.Equal(t, "block/stone_top", block.Textures["#top"])
+}
+
+func TestResolvedBlock_Rotations(t *testing.T) {
+	t.Parallel()
+
+	block := ResolvedBlock{ID: "minecraft:oak_log", RotX: 90, RotY: 180}
+	require.Equal(t, 90.0, block.RotX)
+	require.Equal(t, 180.0, block.RotY)
 }

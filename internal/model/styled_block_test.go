@@ -102,6 +102,16 @@ func TestStyledElement(t *testing.T) {
 	}
 }
 
+func TestGridAlignment(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, GridAlignment(0), GridNotAligned)
+	require.Equal(t, GridAlignment(1), GridFullBlock)
+	require.Equal(t, GridAlignment(2), GridSubBlock)
+	require.Less(t, GridNotAligned, GridFullBlock)
+	require.Less(t, GridFullBlock, GridSubBlock)
+}
+
 func TestStyledBlock(t *testing.T) {
 	t.Parallel()
 
@@ -114,6 +124,7 @@ func TestStyledBlock(t *testing.T) {
 		wantRotX        float64
 		wantRotY        float64
 		wantElems       int
+		wantTransparent bool
 	}{
 		{name: "zero value"},
 		{
@@ -164,6 +175,17 @@ func TestStyledBlock(t *testing.T) {
 			wantID: "minecraft:stone", wantGridAligned: GridFullBlock,
 			wantRotX: 90, wantRotY: 180, wantElems: 1,
 		},
+		{
+			name: "sub block with transparency",
+			block: StyledBlock{
+				ID: "minecraft:oak_leaves", GridAlignment: GridSubBlock, Transparent: true,
+				Elements: []StyledElement{
+					{From: Vector3{0, 0, 0}, To: Vector3{16, 16, 16}, Shade: true},
+				},
+			},
+			wantID: "minecraft:oak_leaves", wantGridAligned: GridSubBlock,
+			wantElems: 1, wantTransparent: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -174,6 +196,7 @@ func TestStyledBlock(t *testing.T) {
 			require.Equal(t, tt.wantRotX, tt.block.RotX)
 			require.Equal(t, tt.wantRotY, tt.block.RotY)
 			require.Len(t, tt.block.Elements, tt.wantElems)
+			require.Equal(t, tt.wantTransparent, tt.block.Transparent)
 		})
 	}
 }
