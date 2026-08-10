@@ -87,7 +87,7 @@ func countOverlaps(voxels map[[3]int]int) int {
 func TestRegionMerger_New(t *testing.T) {
 	t.Parallel()
 
-	svc := NewRegionMerger()
+	svc := NewRegionMerger(NewCuboidHelper())
 	require.NotNil(t, svc)
 }
 
@@ -434,7 +434,7 @@ func TestRegionMerger_Run(t *testing.T) {
 
 			indexer := NewBlockVoxelIndexer(pkb)
 			grid := indexer.Run(tt.blocks, tt.styles)
-			svc := NewRegionMerger()
+			svc := NewRegionMerger(NewCuboidHelper())
 			cuboids := svc.Run(grid)
 
 			if tt.wantCount > 0 {
@@ -460,7 +460,7 @@ func TestRegionMerger_Run(t *testing.T) {
 func TestRegionMerger_findLargestRect(t *testing.T) {
 	t.Parallel()
 
-	svc := NewRegionMerger()
+	svc := NewRegionMerger(NewCuboidHelper())
 
 	tests := []struct {
 		name               string
@@ -553,7 +553,7 @@ func TestRegionMerger_findLargestRect(t *testing.T) {
 func TestRegionMerger_maxRectInHistogram(t *testing.T) {
 	t.Parallel()
 
-	svc := NewRegionMerger()
+	svc := NewRegionMerger(NewCuboidHelper())
 
 	tests := []struct {
 		name                       string
@@ -630,7 +630,7 @@ func TestRegionMerger_maxRectInHistogram(t *testing.T) {
 func TestRegionMerger_decomposeLayer(t *testing.T) {
 	t.Parallel()
 
-	svc := NewRegionMerger()
+	svc := NewRegionMerger(NewCuboidHelper())
 
 	tests := []struct {
 		name   string
@@ -712,7 +712,7 @@ func TestRegionMerger_decomposeLayer(t *testing.T) {
 func TestRegionMerger_expandRegion(t *testing.T) {
 	t.Parallel()
 
-	svc := NewRegionMerger()
+	svc := NewRegionMerger(NewCuboidHelper())
 
 	tests := []struct {
 		name       string
@@ -870,7 +870,7 @@ func itoa(n int) string {
 func TestRegionMerger_connectedComponents(t *testing.T) {
 	t.Parallel()
 
-	svc := NewRegionMerger()
+	svc := NewRegionMerger(NewCuboidHelper())
 
 	tests := []struct {
 		name  string
@@ -974,7 +974,7 @@ func TestRegionMerger_connectedComponents(t *testing.T) {
 func TestRegionMerger_BuildBoolGrid(t *testing.T) {
 	t.Parallel()
 
-	svc := NewRegionMerger()
+	svc := NewRegionMerger(NewCuboidHelper())
 
 	tests := []struct {
 		name    string
@@ -1039,7 +1039,7 @@ func TestRegionMerger_BuildBoolGrid(t *testing.T) {
 func TestRegionMerger_ProcessComponent(t *testing.T) {
 	t.Parallel()
 
-	svc := NewRegionMerger()
+	svc := NewRegionMerger(NewCuboidHelper())
 
 	tests := []struct {
 		name      string

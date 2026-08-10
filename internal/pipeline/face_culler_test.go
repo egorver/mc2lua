@@ -13,7 +13,7 @@ func TestFaceCuller_New(t *testing.T) {
 	t.Parallel()
 
 	pkb := &mockMergerPropsKeyBuilder{}
-	svc := NewFaceCuller(pkb)
+	svc := NewFaceCuller(pkb, NewCuboidHelper())
 	require.NotNil(t, svc)
 }
 
@@ -29,7 +29,7 @@ func TestFaceCuller_TwoAdjacentFullCuboids(t *testing.T) {
 		{ID: "minecraft:stone", X: 1, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
 	}
 
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}).Run(occ, blockRegions, nil, nil, styleIndex())
+	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, blockRegions, nil, nil, styleIndex())
 
 	require.Equal(t, model.FaceMask{
 		model.FaceIndexTop:    true,
@@ -64,7 +64,7 @@ func TestFaceCuller_FullCuboidPartiallyCoveredByMicro(t *testing.T) {
 		{ID: "minecraft:flower", X: 4.5, Y: 0.5, Z: 1.5, Width: 2, Height: 2, Depth: 4},
 	}
 
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}).Run(occ, blockRegions, microRegions, nil, styleIndex())
+	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, blockRegions, microRegions, nil, styleIndex())
 
 	require.Equal(t, model.FaceMask{
 		model.FaceIndexTop:    true,
@@ -87,7 +87,7 @@ func TestFaceCuller_FullCuboidFullyCoveredByMicro(t *testing.T) {
 		{ID: "minecraft:stone", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
 	}
 
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}).Run(occ, blockRegions, nil, nil, styleIndex())
+	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, blockRegions, nil, nil, styleIndex())
 
 	require.Equal(t, model.FaceMask{
 		model.FaceIndexTop:    true,
@@ -112,7 +112,7 @@ func TestFaceCuller_ComplexBlockAtWorldEdge(t *testing.T) {
 		alignment model.GridAlignment
 	}{"minecraft:stairs", "", model.GridNotAligned})
 
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}).Run(occ, nil, nil, blocks, styles)
+	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, nil, nil, blocks, styles)
 
 	require.Equal(t, model.FaceMask{
 		model.FaceIndexTop:    true,
@@ -138,7 +138,7 @@ func TestFaceCuller_ComplexBlockSurrounded(t *testing.T) {
 		alignment model.GridAlignment
 	}{"minecraft:stairs", "", model.GridNotAligned})
 
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}).Run(occ, nil, nil, blocks, styles)
+	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, nil, nil, blocks, styles)
 
 	require.Equal(t, model.FaceMask{
 		model.FaceIndexTop:    false,
@@ -161,7 +161,7 @@ func TestFaceCuller_TransparentNeighborDoesNotHideFace(t *testing.T) {
 		{ID: "minecraft:stone", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
 	}
 
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}).Run(occ, blockRegions, nil, nil, styleIndex())
+	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, blockRegions, nil, nil, styleIndex())
 
 	require.Equal(t, model.FaceMask{
 		model.FaceIndexTop:    true,

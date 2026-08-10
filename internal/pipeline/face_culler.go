@@ -1,8 +1,6 @@
 package pipeline
 
 import (
-	"math"
-
 	"mc2lua/internal/model"
 	"mc2lua/internal/stateful"
 )
@@ -11,12 +9,17 @@ type cullerPropsKeyBuilder interface {
 	Run(props map[string]string) string
 }
 
-type FaceCuller struct {
-	propsKeyBuilder cullerPropsKeyBuilder
+type cullerCuboidHelper interface {
+	MinCorner(c model.Cuboid) (x, y, z int)
 }
 
-func NewFaceCuller(pkb cullerPropsKeyBuilder) *FaceCuller {
-	return &FaceCuller{propsKeyBuilder: pkb}
+type FaceCuller struct {
+	propsKeyBuilder cullerPropsKeyBuilder
+	cuboidHelper    cullerCuboidHelper
+}
+
+func NewFaceCuller(pkb cullerPropsKeyBuilder, ch cullerCuboidHelper) *FaceCuller {
+	return &FaceCuller{propsKeyBuilder: pkb, cuboidHelper: ch}
 }
 
 func (svc *FaceCuller) Run(occ *stateful.OccupancyIndex, blockRegions, microRegions []model.Cuboid, blocks []model.RawBlock, styles stateful.StyleIndex) model.FaceVisibility {
@@ -64,9 +67,10 @@ func (svc *FaceCuller) cullComplexBlocks(occ *stateful.OccupancyIndex, blocks []
 }
 
 func (svc *FaceCuller) cuboidFaces(occ *stateful.OccupancyIndex, c model.Cuboid, scale int) model.FaceMask {
-	xMin := int(math.Floor(c.X-float64(c.Width-1)/2.0)) * scale
-	yMin := int(math.Floor(c.Y-float64(c.Height-1)/2.0)) * scale
-	zMin := int(math.Floor(c.Z-float64(c.Depth-1)/2.0)) * scale
+	xMin, yMin, zMin := svc.cuboidHelper.MinCorner(c)
+	xMin *= scale
+	yMin *= scale
+	zMin *= scale
 	return svc.regionFaces(occ, xMin, yMin, zMin, c.Width*scale, c.Height*scale, c.Depth*scale)
 }
 

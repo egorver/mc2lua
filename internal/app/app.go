@@ -91,9 +91,10 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 		gridAnalyzer, elementRotator, materialMatcher, brightnessMatcher, colorExtractor, colorMatcher)
 	blockVoxelIndexer := pipeline.NewBlockVoxelIndexer(propsKeyBuilder)
 	microVoxelIndexer := pipeline.NewMicroVoxelIndexer(propsKeyBuilder)
-	regionMerger := pipeline.NewRegionMerger()
+	cuboidHelper := pipeline.NewCuboidHelper()
+	regionMerger := pipeline.NewRegionMerger(cuboidHelper)
 	occupancyIndexer := pipeline.NewOccupancyIndexer(propsKeyBuilder)
-	faceCuller := pipeline.NewFaceCuller(propsKeyBuilder)
+	faceCuller := pipeline.NewFaceCuller(propsKeyBuilder, cuboidHelper)
 	luaGenerator := pipeline.NewLuaGenerator(fs, propsKeyBuilder)
 
 	return pipeline.NewRunner(

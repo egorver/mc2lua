@@ -7,10 +7,16 @@ import (
 	"mc2lua/internal/stateful"
 )
 
-type RegionMerger struct{}
+type mergerCuboidHelper interface {
+	Center(x, size int) float64
+}
 
-func NewRegionMerger() *RegionMerger {
-	return &RegionMerger{}
+type RegionMerger struct {
+	cuboidHelper mergerCuboidHelper
+}
+
+func NewRegionMerger(ch mergerCuboidHelper) *RegionMerger {
+	return &RegionMerger{cuboidHelper: ch}
 }
 
 func (svc *RegionMerger) Run(grid *stateful.VoxelIndex) []model.Cuboid {
@@ -242,9 +248,9 @@ func (svc *RegionMerger) expandRegion(grid *stateful.VoxelIndex, rect model.Rect
 	yMin := svc.expandDown(grid, y, rect, id, props)
 	height := yMax - yMin + 1
 
-	cx := float64(rect.X) + float64(rect.Width-1)/2.0
-	cz := float64(rect.Z) + float64(rect.Depth-1)/2.0
-	cy := float64(yMin+yMax) / 2.0
+	cx := svc.cuboidHelper.Center(rect.X, rect.Width)
+	cz := svc.cuboidHelper.Center(rect.Z, rect.Depth)
+	cy := svc.cuboidHelper.Center(yMin, height)
 
 	svc.markMerged(grid, yMin, yMax, rect)
 
