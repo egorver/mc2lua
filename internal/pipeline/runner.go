@@ -58,7 +58,7 @@ type faceCuller interface {
 }
 
 type luaGenerator interface {
-	Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
+	Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
 }
 
 type Runner struct {
@@ -163,7 +163,7 @@ func (svc *Runner) Run(cfg RunConfig) error {
 	visibility := svc.faceCuller.Run(occIdx, blockRegions, microRegions, blocks, *styledIdx)
 	svc.logFaceVisibility(visibility)
 
-	totalParts, err := svc.luaGenerator.Run(blocks, blockRegions, microRegions, *styledIdx, float64(cfg.Scale), cfg.Output)
+	totalParts, err := svc.luaGenerator.Run(blocks, blockRegions, microRegions, visibility, *styledIdx, float64(cfg.Scale), cfg.Output)
 	if err != nil {
 		return fmt.Errorf("generate lua: %w", err)
 	}

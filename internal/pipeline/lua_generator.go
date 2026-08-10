@@ -29,7 +29,7 @@ func NewLuaGenerator(fs fsApi, pkb generatorPropsKeyBuilder) *LuaGenerator {
 	return &LuaGenerator{fs: fs, propsKeyBuilder: pkb}
 }
 
-func (svc *LuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
+func (svc *LuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
 	var sb strings.Builder
 	svc.writeHeader(&sb, scale)
 

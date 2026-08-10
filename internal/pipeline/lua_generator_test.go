@@ -460,7 +460,7 @@ func TestRun(t *testing.T) {
 			svc, mockFS := testLuaGenerator(t, pkb)
 			outPath := "out.lua"
 
-			count, err := svc.Run(tt.blocks, tt.blockCuboids, tt.microCuboids, *tt.styleIdx, tt.scale, outPath)
+			count, err := svc.Run(tt.blocks, tt.blockCuboids, tt.microCuboids, model.FaceVisibility{}, *tt.styleIdx, tt.scale, outPath)
 			if tt.wantErrMsg != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.wantErrMsg)
@@ -487,7 +487,7 @@ func TestRun_WriteError(t *testing.T) {
 	svc, mockFS := testLuaGenerator(t, nil)
 	outPath := "out.lua"
 	mockFS.CreateErrors[outPath] = errors.New("create fail")
-	_, err := svc.Run(nil, nil, nil, *stateful.NewStyleIndex(), 4, outPath)
+	_, err := svc.Run(nil, nil, nil, model.FaceVisibility{}, *stateful.NewStyleIndex(), 4, outPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to write output file")
 }

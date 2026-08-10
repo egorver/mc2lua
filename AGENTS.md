@@ -6,7 +6,7 @@
 
 ## Code Quality
 
-- Run `go vet ./...` and `go test ./...` at the end of each work session
+- Run `go vet ./...`, `go test ./...`, and `golangci-lint run ./...` at the end of each work session
 
 ## Git Restrictions
 

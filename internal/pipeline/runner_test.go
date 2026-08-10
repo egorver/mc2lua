@@ -130,12 +130,12 @@ func (m *mockFaceCuller) Run(occ *stateful.OccupancyIndex, blockRegions, microRe
 }
 
 type mockLuaGenerator struct {
-	runFn func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
+	runFn func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
 }
 
-func (m *mockLuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
+func (m *mockLuaGenerator) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
 	if m.runFn != nil {
-		return m.runFn(blocks, blockCuboids, microCuboids, styleIndex, scale, outputPath)
+		return m.runFn(blocks, blockCuboids, microCuboids, visibility, styleIndex, scale, outputPath)
 	}
 	return 0, nil
 }
@@ -173,7 +173,7 @@ func TestRunner_Run(t *testing.T) {
 		mockCollect   func(blocks []model.RawBlock, namespaces map[string][]string) ([]model.ResolvedBlock, map[string]string)
 		mockBVI       func(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex
 		mockRM        func(grid *stateful.VoxelIndex) []model.Cuboid
-		mockLG        func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
+		mockLG        func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error)
 		wantErr       bool
 		wantErrMsg    string
 	}{
@@ -214,7 +214,7 @@ func TestRunner_Run(t *testing.T) {
 			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
 				return blocks, nil
 			},
-			mockLG: func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
+			mockLG: func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64, outputPath string) (int, error) {
 				return 0, errors.New("write failed")
 			},
 			wantErr:    true,

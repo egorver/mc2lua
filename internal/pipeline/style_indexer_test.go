@@ -419,7 +419,7 @@ func TestStyleIndexer_ZeroRotationKeptZero(t *testing.T) {
 	si := NewStyleIndexer(&mockGridAnalyzer{}, rotator, &mockMaterialMatcher{}, &mockBrightnessMatcher{}, &mockColorExtractor{}, &mockColorMatcher{})
 
 	block := model.ResolvedBlock{
-		ID:   "minecraft:stone",
+		ID: "minecraft:stone",
 		Elements: []model.ModelElement{
 			{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true},
 		},
