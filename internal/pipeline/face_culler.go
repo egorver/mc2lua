@@ -82,8 +82,8 @@ func (svc *FaceCuller) regionFaces(occ *stateful.OccupancyIndex, xMin, yMin, zMi
 	var mask model.FaceMask
 	mask[model.FaceIndexTop] = !svc.faceHidden(occ, xMin, xMax, yMax+1, yMax+1, zMin, zMax)
 	mask[model.FaceIndexBottom] = !svc.faceHidden(occ, xMin, xMax, yMin-1, yMin-1, zMin, zMax)
-	mask[model.FaceIndexFront] = !svc.faceHidden(occ, xMin, xMax, yMin, yMax, zMax+1, zMax+1)
-	mask[model.FaceIndexBack] = !svc.faceHidden(occ, xMin, xMax, yMin, yMax, zMin-1, zMin-1)
+	mask[model.FaceIndexFront] = !svc.faceHidden(occ, xMin, xMax, yMin, yMax, zMin-1, zMin-1)
+	mask[model.FaceIndexBack] = !svc.faceHidden(occ, xMin, xMax, yMin, yMax, zMax+1, zMax+1)
 	mask[model.FaceIndexLeft] = !svc.faceHidden(occ, xMin-1, xMin-1, yMin, yMax, zMin, zMax)
 	mask[model.FaceIndexRight] = !svc.faceHidden(occ, xMax+1, xMax+1, yMin, yMax, zMin, zMax)
 	return mask

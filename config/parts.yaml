@@ -1,7 +1,7 @@
 parts:
   minecraft:grass_block:
     top:
-      texture: rbxassetid://230536932
+      texture: rbxassetid://321821235
       color: [44, 101, 29]
     all:
       texture: rbxassetid://321821304

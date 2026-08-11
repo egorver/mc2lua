@@ -197,9 +197,9 @@ func directionToFace(dir model.Vector3) int {
 		return model.FaceIndexTop
 	case y == -1:
 		return model.FaceIndexBottom
-	case z == 1:
-		return model.FaceIndexFront
 	case z == -1:
+		return model.FaceIndexFront
+	case z == 1:
 		return model.FaceIndexBack
 	case x == -1:
 		return model.FaceIndexLeft
