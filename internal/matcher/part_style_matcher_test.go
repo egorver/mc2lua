@@ -56,12 +56,13 @@ parts:
       color: [191, 134, 60]
     faces:
       texture: rbxassetid://186400919
-      color: [120, 82, 40]
   minecraft:glass:
     transparency: 0.5
     all:
       texture: rbxassetid://186400927
       color: [191, 191, 191]
+  minecraft:water:
+    color: [38, 94, 173]
 `)}
 	m, err := NewPartStyleMatcher(mock, "test.yaml")
 	require.NoError(t, err)
@@ -82,6 +83,13 @@ parts:
 		require.NotNil(t, got.Transparency)
 		require.Equal(t, 0.5, *got.Transparency)
 		require.NotNil(t, got.All)
+	})
+
+	t.Run("water", func(t *testing.T) {
+		got, ok := m.Run("minecraft:water")
+		require.True(t, ok)
+		require.Equal(t, &model.Color{38, 94, 173}, got.Color)
+		require.Nil(t, got.All)
 	})
 
 	t.Run("unlisted block", func(t *testing.T) {

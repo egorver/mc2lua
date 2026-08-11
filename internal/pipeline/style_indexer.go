@@ -20,35 +20,25 @@ type materialMatcher interface {
 	Run(blockID string) string
 }
 
-type brightnessMatcher interface {
-	Run(material string) float64
-}
-
-type colorMatcher interface {
-	Run(blockID string) (model.Color, bool)
-}
-
 type colorExtractor interface {
 	Run(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error)
 }
 
 type StyleIndexer struct {
-	gridAnalyzer      gridAnalyzer
-	elementRotator    elementRotator
-	materialMatcher   materialMatcher
-	brightnessMatcher brightnessMatcher
-	colorMatcher      colorMatcher
-	colorExtractor    colorExtractor
+	gridAnalyzer     gridAnalyzer
+	elementRotator   elementRotator
+	materialMatcher  materialMatcher
+	partStyleMatcher partStyleMatcher
+	colorExtractor   colorExtractor
 }
 
-func NewStyleIndexer(ga gridAnalyzer, er elementRotator, mm materialMatcher, bm brightnessMatcher, ce colorExtractor, cm colorMatcher) *StyleIndexer {
+func NewStyleIndexer(ga gridAnalyzer, er elementRotator, mm materialMatcher, psm partStyleMatcher, ce colorExtractor) *StyleIndexer {
 	return &StyleIndexer{
-		gridAnalyzer:      ga,
-		elementRotator:    er,
-		materialMatcher:   mm,
-		brightnessMatcher: bm,
-		colorExtractor:    ce,
-		colorMatcher:      cm,
+		gridAnalyzer:     ga,
+		elementRotator:   er,
+		materialMatcher:  mm,
+		partStyleMatcher: psm,
+		colorExtractor:   ce,
 	}
 }
 
@@ -57,7 +47,6 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock, nsRoots map[string][]
 
 	for _, b := range blocks {
 		material := svc.materialMatcher.Run(b.ID)
-		brightness := svc.brightnessMatcher.Run(material)
 
 		elements := make([]model.StyledElement, len(b.Elements))
 		for i, el := range b.Elements {
@@ -66,7 +55,7 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock, nsRoots map[string][]
 				To:       el.To,
 				Rotation: el.Rotation,
 				Shade:    el.Shade,
-				Color:    svc.elementColor(el, b.Textures, nsRoots, b.ID, brightness),
+				Color:    svc.elementColor(el, b.Textures, nsRoots, b.ID),
 				Material: material,
 			}
 		}
@@ -89,9 +78,9 @@ func (svc *StyleIndexer) Run(blocks []model.ResolvedBlock, nsRoots map[string][]
 	return idx
 }
 
-func (svc *StyleIndexer) elementColor(el model.ModelElement, textures map[string]string, nsRoots map[string][]string, blockID string, brightness float64) model.Color {
-	if c, ok := svc.colorMatcher.Run(blockID); ok {
-		return svc.scaleColor(c, brightness)
+func (svc *StyleIndexer) elementColor(el model.ModelElement, textures map[string]string, nsRoots map[string][]string, blockID string) model.Color {
+	if style, ok := svc.partStyleMatcher.Run(blockID); ok && style.Color != nil {
+		return *style.Color
 	}
 	samples := svc.resolveTextureSamples(el.Faces, textures)
 	if len(samples) == 0 {
@@ -106,7 +95,7 @@ func (svc *StyleIndexer) elementColor(el model.ModelElement, textures map[string
 	if err != nil {
 		return model.DefaultColor
 	}
-	return svc.scaleColor(color, brightness)
+	return color
 }
 
 func (svc *StyleIndexer) resolveTextureSamples(faces map[string]model.ElementFace, textures map[string]string) []minecraft.TextureSample {
@@ -123,25 +112,4 @@ func (svc *StyleIndexer) resolveTextureSamples(faces map[string]model.ElementFac
 		})
 	}
 	return samples
-}
-
-func (svc *StyleIndexer) scaleColor(c model.Color, factor float64) model.Color {
-	if factor <= 0 {
-		return c
-	}
-	return model.Color{
-		svc.clampByte(int(float64(c[0]) * factor)),
-		svc.clampByte(int(float64(c[1]) * factor)),
-		svc.clampByte(int(float64(c[2]) * factor)),
-	}
-}
-
-func (svc *StyleIndexer) clampByte(v int) uint8 {
-	if v < 0 {
-		return 0
-	}
-	if v > 255 {
-		return 255
-	}
-	return uint8(v)
 }

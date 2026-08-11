@@ -1,11 +1,17 @@
 parts:
+  minecraft:water:
+    color: [38, 94, 173]
+
+  minecraft:bubble_column:
+    color: [38, 94, 173]
+
+  minecraft:lava:
+    color: [200, 82, 18]
+
   minecraft:grass_block:
-    top:
-      texture: rbxassetid://321821235
-      color: [44, 101, 29]
+    color: [44, 101, 29]
     all:
-      texture: rbxassetid://321821304
-      color: [106, 57, 9]
+      texture: rbxassetid://321821235
 
   minecraft:oak_log:
     top:

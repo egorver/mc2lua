@@ -75,6 +75,7 @@ func TestPartStyle(t *testing.T) {
 
 	t.Run("zero value", func(t *testing.T) {
 		var ps PartStyle
+		require.Nil(t, ps.Color)
 		require.Nil(t, ps.Transparency)
 		require.Nil(t, ps.Top)
 		require.Nil(t, ps.Bottom)
@@ -91,6 +92,7 @@ func TestPartStyle(t *testing.T) {
 	t.Run("full style", func(t *testing.T) {
 		alpha := 0.25
 		ps := PartStyle{
+			Color:        &Color{38, 94, 173},
 			Transparency: &alpha,
 			Top:          &Surface{Texture: "rbxassetid://1"},
 			Bottom:       &Surface{Texture: "rbxassetid://2"},
@@ -103,6 +105,7 @@ func TestPartStyle(t *testing.T) {
 			Walls:        &Surface{Texture: "rbxassetid://9"},
 			All:          &Surface{Texture: "rbxassetid://10"},
 		}
+		require.Equal(t, &Color{38, 94, 173}, ps.Color)
 		require.Equal(t, &alpha, ps.Transparency)
 		require.NotNil(t, ps.Top)
 		require.NotNil(t, ps.Bottom)

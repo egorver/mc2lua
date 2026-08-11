@@ -72,11 +72,6 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 		return nil, fmt.Errorf("create brightness matcher: %w", err)
 	}
 
-	colorMatcher, err := matcher.NewColorMatcher(fs, filepath.Join(configDir, "colors.yaml"))
-	if err != nil {
-		return nil, fmt.Errorf("create color matcher: %w", err)
-	}
-
 	partStyleMatcher, err := matcher.NewPartStyleMatcher(fs, filepath.Join(configDir, "parts.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("create part style matcher: %w", err)
@@ -87,7 +82,7 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	coordNormalizer := pipeline.NewCoordNormalizer()
 	blockCollector := pipeline.NewBlockCollector(blockResolver, propsKeyBuilder)
 	styleIndexer := pipeline.NewStyleIndexer(
-		gridAnalyzer, elementRotator, materialMatcher, brightnessMatcher, colorExtractor, colorMatcher)
+		gridAnalyzer, elementRotator, materialMatcher, partStyleMatcher, colorExtractor)
 	blockVoxelIndexer := pipeline.NewBlockVoxelIndexer(propsKeyBuilder)
 	microVoxelIndexer := pipeline.NewMicroVoxelIndexer(propsKeyBuilder)
 	cuboidHelper := pipeline.NewCuboidHelper()
@@ -95,7 +90,7 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	occupancyIndexer := pipeline.NewOccupancyIndexer(propsKeyBuilder)
 	faceCuller := pipeline.NewFaceCuller(propsKeyBuilder, cuboidHelper)
 	partBuilder := pipeline.NewPartBuilder(propsKeyBuilder)
-	partStylizer := pipeline.NewPartStylizer(partStyleMatcher)
+	partStylizer := pipeline.NewPartStylizer(partStyleMatcher, brightnessMatcher)
 	luaGenerator := pipeline.NewLuaGenerator(fs)
 
 	return pipeline.NewRunner(

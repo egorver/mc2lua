@@ -11,6 +11,10 @@ type partStyleMatcher interface {
 	Run(blockID string) (model.PartStyle, bool)
 }
 
+type brightnessMatcher interface {
+	Run(material string) float64
+}
+
 var namedFaces = []string{
 	model.FaceTop, model.FaceBottom,
 	model.FaceFront, model.FaceBack,
@@ -18,23 +22,23 @@ var namedFaces = []string{
 }
 
 type PartStylizer struct {
-	partStyleMatcher partStyleMatcher
+	partStyleMatcher  partStyleMatcher
+	brightnessMatcher brightnessMatcher
 }
 
-func NewPartStylizer(psm partStyleMatcher) *PartStylizer {
-	return &PartStylizer{partStyleMatcher: psm}
+func NewPartStylizer(psm partStyleMatcher, bm brightnessMatcher) *PartStylizer {
+	return &PartStylizer{partStyleMatcher: psm, brightnessMatcher: bm}
 }
 
 func (svc *PartStylizer) Run(parts []model.Part, styleIndex stateful.StyleIndex) []model.Part {
 	styled := make([]model.Part, len(parts))
 	for i, p := range parts {
-		partStyle, ok := svc.partStyleMatcher.Run(p.BlockID)
-		if !ok {
-			styled[i] = p
-			continue
+		if partStyle, ok := svc.partStyleMatcher.Run(p.BlockID); ok {
+			rotX, rotY := svc.blockRotation(styleIndex, p)
+			p = svc.applyPartStyle(p, partStyle, rotX, rotY)
 		}
-		rotX, rotY := svc.blockRotation(styleIndex, p)
-		styled[i] = svc.applyPartStyle(p, partStyle, rotX, rotY)
+		p.Color = svc.scaleColor(p.Color, svc.brightnessMatcher.Run(p.Material))
+		styled[i] = p
 	}
 	return styled
 }
@@ -217,4 +221,25 @@ func roundAxis(v float64) int {
 		return -1
 	}
 	return 0
+}
+
+func (svc *PartStylizer) scaleColor(c model.Color, factor float64) model.Color {
+	if factor <= 0 {
+		return c
+	}
+	return model.Color{
+		svc.clampByte(int(float64(c[0]) * factor)),
+		svc.clampByte(int(float64(c[1]) * factor)),
+		svc.clampByte(int(float64(c[2]) * factor)),
+	}
+}
+
+func (svc *PartStylizer) clampByte(v int) uint8 {
+	if v < 0 {
+		return 0
+	}
+	if v > 255 {
+		return 255
+	}
+	return uint8(v)
 }

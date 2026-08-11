@@ -44,7 +44,7 @@ func indexWithRotation(id string, rotX, rotY float64) stateful.StyleIndex {
 func TestPartStylizer_New(t *testing.T) {
 	t.Parallel()
 
-	svc := NewPartStylizer(&mockPartStyleMatcher{})
+	svc := NewPartStylizer(&mockPartStyleMatcher{}, &mockBrightnessMatcher{})
 	require.NotNil(t, svc)
 }
 
@@ -59,6 +59,7 @@ func TestPartStylizer_Run(t *testing.T) {
 		styles     map[string]model.PartStyle
 		parts      []model.Part
 		styleIndex stateful.StyleIndex
+		brightness func(material string) float64
 		wantCheck  func(t *testing.T, parts []model.Part)
 	}{
 		{
@@ -157,11 +158,56 @@ func TestPartStylizer_Run(t *testing.T) {
 				require.Equal(t, model.TexturelessMaterial, p.Material)
 			},
 		},
+		{
+			name:   "color scaled by base material brightness",
+			styles: map[string]model.PartStyle{},
+			parts:  []model.Part{{BlockID: "minecraft:stone", Color: model.Color{100, 100, 100}, Material: "Wood", VisibleFaces: visibleMask()}},
+			brightness: func(material string) float64 {
+				return 1.5
+			},
+			wantCheck: func(t *testing.T, parts []model.Part) {
+				require.Equal(t, model.Color{150, 150, 150}, parts[0].Color)
+			},
+		},
+		{
+			name: "textured part keeps color for SmoothPlastic",
+			styles: map[string]model.PartStyle{
+				"minecraft:glass": {All: surfPtr("rbxassetid://1", &red, nil)},
+			},
+			parts: []model.Part{{BlockID: "minecraft:glass", Color: model.Color{200, 100, 50}, Material: "Glass", VisibleFaces: visibleMask()}},
+			brightness: func(material string) float64 {
+				if material == "SmoothPlastic" {
+					return 1.0
+				}
+				return 1.2
+			},
+			wantCheck: func(t *testing.T, parts []model.Part) {
+				p := parts[0]
+				require.Equal(t, model.TexturelessMaterial, p.Material)
+				require.Equal(t, model.Color{200, 100, 50}, p.Color)
+			},
+		},
+		{
+			name: "styled part without textures keeps base material brightness",
+			styles: map[string]model.PartStyle{
+				"minecraft:stone": {Top: surfPtr("", &red, nil)},
+			},
+			parts: []model.Part{{BlockID: "minecraft:stone", Color: model.Color{100, 100, 100}, Material: "Wood", VisibleFaces: visibleMask()}},
+			brightness: func(material string) float64 {
+				return 1.5
+			},
+			wantCheck: func(t *testing.T, parts []model.Part) {
+				p := parts[0]
+				require.Equal(t, "Wood", p.Material)
+				require.Equal(t, model.Color{150, 150, 150}, p.Color)
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := NewPartStylizer(&mockPartStyleMatcher{styles: tt.styles})
+			bm := &mockBrightnessMatcher{runFn: tt.brightness}
+			svc := NewPartStylizer(&mockPartStyleMatcher{styles: tt.styles}, bm)
 			got := svc.Run(tt.parts, tt.styleIndex)
 			require.Len(t, got, len(tt.parts))
 			tt.wantCheck(t, got)
@@ -174,7 +220,7 @@ func TestPartStylizer_ResolveSurface(t *testing.T) {
 
 	red := model.Color{200, 30, 30}
 	green := model.Color{30, 200, 30}
-	svc := NewPartStylizer(nil)
+	svc := NewPartStylizer(nil, &mockBrightnessMatcher{})
 
 	tests := []struct {
 		name  string
@@ -263,7 +309,7 @@ func TestPartStylizer_ResolveSurface(t *testing.T) {
 func TestPartStylizer_MapFace(t *testing.T) {
 	t.Parallel()
 
-	svc := NewPartStylizer(nil)
+	svc := NewPartStylizer(nil, &mockBrightnessMatcher{})
 
 	tests := []struct {
 		name string
@@ -294,6 +340,60 @@ func TestPartStylizer_MapFace(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := svc.mapFace(tt.face, tt.rotX, tt.rotY)
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestPartStylizer_ScaleColor(t *testing.T) {
+	t.Parallel()
+
+	svc := NewPartStylizer(nil, &mockBrightnessMatcher{})
+
+	tests := []struct {
+		name   string
+		color  model.Color
+		factor float64
+		want   model.Color
+	}{
+		{name: "zero factor returns original", color: model.Color{100, 100, 100}, factor: 0, want: model.Color{100, 100, 100}},
+		{name: "negative factor returns original", color: model.Color{100, 100, 100}, factor: -1, want: model.Color{100, 100, 100}},
+		{name: "unit factor returns original", color: model.Color{100, 100, 100}, factor: 1, want: model.Color{100, 100, 100}},
+		{name: "scales up color", color: model.Color{100, 100, 100}, factor: 1.5, want: model.Color{150, 150, 150}},
+		{name: "rounds down on scale", color: model.Color{100, 100, 100}, factor: 1.25, want: model.Color{125, 125, 125}},
+		{name: "clamps overflow to 255", color: model.Color{200, 200, 200}, factor: 2, want: model.Color{255, 255, 255}},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, svc.scaleColor(tt.color, tt.factor))
+		})
+	}
+}
+
+func TestPartStylizer_ClampByte(t *testing.T) {
+	t.Parallel()
+
+	svc := NewPartStylizer(nil, &mockBrightnessMatcher{})
+
+	tests := []struct {
+		name string
+		in   int
+		want uint8
+	}{
+		{name: "negative clamped to zero", in: -10, want: 0},
+		{name: "zero", in: 0, want: 0},
+		{name: "mid value", in: 128, want: 128},
+		{name: "max value", in: 255, want: 255},
+		{name: "overflow clamped to 255", in: 300, want: 255},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, svc.clampByte(tt.in))
 		})
 	}
 }

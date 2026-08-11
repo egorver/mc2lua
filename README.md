@@ -117,15 +117,23 @@ outside the bounds are omitted from the output.
 
 ## Configuration
 
-### Colors (`config/colors.yaml`)
+### Parts (`config/parts.yaml`)
 
-Explicit RGB values (0–255) may be assigned to specific blocks. This is
-primarily used for blocks that are transparent in the source game:
+Per-block styling: surfaces (textures and tint colors) and, alongside
+`transparency`, an optional top-level `color` field that sets an explicit base
+color for the block. It is used for blocks whose color cannot be derived from a
+texture (for example, transparent liquids) and is scaled by the brightness
+factor of the part's final material from `materials.yaml`:
 
 ```yaml
-colors:
-  minecraft:water: [38, 94, 173]
-  minecraft:lava: [200, 82, 18]
+parts:
+  minecraft:glass:
+    transparency: 0.5
+    all:
+      texture: rbxassetid://232395521
+      color: [191, 191, 191]
+  minecraft:water:
+    color: [38, 94, 173]
 ```
 
 ### Materials (`config/materials.yaml`)

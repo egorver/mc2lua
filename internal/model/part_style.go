@@ -20,6 +20,7 @@ type Surface struct {
 }
 
 type PartStyle struct {
+	Color        *Color   `yaml:"color,omitempty"`
 	Transparency *float64 `yaml:"transparency,omitempty"`
 	Top          *Surface `yaml:"top,omitempty"`
 	Bottom       *Surface `yaml:"bottom,omitempty"`
