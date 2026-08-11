@@ -62,6 +62,18 @@ func TestBoundsResolver_Run(t *testing.T) {
 				ZMin: 0, ZMax: 100,
 			},
 		},
+		{
+			name: "z min from later block",
+			blocks: []model.RawBlock{
+				{X: 0, Y: 0, Z: 10},
+				{X: 5, Y: 5, Z: -5},
+			},
+			want: model.Bounds{
+				XMin: 0, XMax: 5,
+				YMin: 0, YMax: 5,
+				ZMin: -5, ZMax: 10,
+			},
+		},
 	}
 
 	for _, tt := range tests {

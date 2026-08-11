@@ -150,6 +150,56 @@ func TestFaceCuller_ComplexBlockSurrounded(t *testing.T) {
 	}, vis.ComplexFaces[0])
 }
 
+func TestFaceCuller_MicroFaces(t *testing.T) {
+	t.Parallel()
+
+	occ := stateful.NewOccupancyIndex()
+	occ.FillRegion(0, 0, 0, 4, 4, 4, true)
+	occ.FillRegion(4, 0, 0, 4, 4, 4, true)
+
+	microRegions := []model.Cuboid{
+		{ID: "minecraft:slab", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
+		{ID: "minecraft:slab", X: 1, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
+	}
+
+	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).
+		Run(occ, nil, microRegions, nil, styleIndex())
+
+	require.False(t, vis.MicroFaces[0][model.FaceIndexRight])
+	require.False(t, vis.MicroFaces[0][model.FaceIndexTop])
+	require.False(t, vis.MicroFaces[1][model.FaceIndexLeft])
+}
+
+func TestFaceCuller_ComplexBlockWithoutStyle(t *testing.T) {
+	t.Parallel()
+
+	occ := stateful.NewOccupancyIndex()
+	blocks := []model.RawBlock{
+		{ID: "minecraft:unknown_block", X: 0, Y: 0, Z: 0},
+	}
+
+	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).
+		Run(occ, nil, nil, blocks, styleIndex())
+
+	require.Equal(t, model.FaceMask{}, vis.ComplexFaces[0])
+}
+
+func TestFaceCuller_ComplexBlockWithFullBlockStyle(t *testing.T) {
+	t.Parallel()
+
+	occ := stateful.NewOccupancyIndex()
+	styles := styleIndex(struct {
+		id        string
+		prop      string
+		alignment model.GridAlignment
+	}{"minecraft:stone", "", model.GridFullBlock})
+
+	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).
+		Run(occ, nil, nil, []model.RawBlock{{ID: "minecraft:stone", X: 0, Y: 0, Z: 0}}, styles)
+
+	require.Equal(t, model.FaceMask{}, vis.ComplexFaces[0])
+}
+
 func TestFaceCuller_TransparentNeighborDoesNotHideFace(t *testing.T) {
 	t.Parallel()
 

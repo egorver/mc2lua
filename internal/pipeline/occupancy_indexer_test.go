@@ -96,3 +96,30 @@ func TestOccupancyIndexer_RunTransparent(t *testing.T) {
 	require.True(t, occ.Occupied(0, 0, 0))
 	require.False(t, occ.Occluding(0, 0, 0))
 }
+
+func TestOccupancyIndexer_Run_SkipsBlockWithoutStyle(t *testing.T) {
+	t.Parallel()
+
+	pkb := &mockMergerPropsKeyBuilder{
+		runFn: func(props map[string]string) string {
+			return ""
+		},
+	}
+
+	blockIdx := stateful.NewVoxelIndex()
+	blockIdx.AddBlock(&model.MergedBlock{ID: "minecraft:unknown", X: 0, Y: 0, Z: 0})
+
+	microIdx := stateful.NewVoxelIndex()
+	microIdx.AddBlock(&model.MergedBlock{ID: "minecraft:unknown_micro", X: 6, Y: 7, Z: 8})
+
+	styles := styleIndex(struct {
+		id        string
+		prop      string
+		alignment model.GridAlignment
+	}{"minecraft:stone", "", model.GridFullBlock})
+
+	occ := NewOccupancyIndexer(pkb).Run(nil, blockIdx, microIdx, styles)
+
+	require.False(t, occ.Occupied(0, 0, 0))
+	require.False(t, occ.Occluding(6, 7, 8))
+}

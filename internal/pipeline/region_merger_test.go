@@ -977,12 +977,13 @@ func TestRegionMerger_BuildBoolGrid(t *testing.T) {
 	svc := NewRegionMerger(NewCuboidHelper())
 
 	tests := []struct {
-		name    string
-		blocks  []*model.MergedBlock
-		wantX   int
-		wantZ   int
-		wantCol int
-		wantSet [][2]int
+		name     string
+		blocks   []*model.MergedBlock
+		wantX    int
+		wantZ    int
+		wantRows int
+		wantCols int
+		wantSet  [][2]int
 	}{
 		{
 			name: "positive coords",
@@ -990,10 +991,11 @@ func TestRegionMerger_BuildBoolGrid(t *testing.T) {
 				{X: 0, Z: 0},
 				{X: 1, Z: 1},
 			},
-			wantX:   0,
-			wantZ:   0,
-			wantCol: 2,
-			wantSet: [][2]int{{0, 0}, {1, 1}},
+			wantX:    0,
+			wantZ:    0,
+			wantRows: 2,
+			wantCols: 2,
+			wantSet:  [][2]int{{0, 0}, {1, 1}},
 		},
 		{
 			name: "negative coords",
@@ -1001,20 +1003,34 @@ func TestRegionMerger_BuildBoolGrid(t *testing.T) {
 				{X: -2, Z: -1},
 				{X: 1, Z: 2},
 			},
-			wantX:   -2,
-			wantZ:   -1,
-			wantCol: 4,
-			wantSet: [][2]int{{0, 0}, {3, 3}},
+			wantX:    -2,
+			wantZ:    -1,
+			wantRows: 4,
+			wantCols: 4,
+			wantSet:  [][2]int{{0, 0}, {3, 3}},
 		},
 		{
 			name: "single block",
 			blocks: []*model.MergedBlock{
 				{X: 5, Z: 5},
 			},
-			wantX:   5,
-			wantZ:   5,
-			wantCol: 1,
-			wantSet: [][2]int{{0, 0}},
+			wantX:    5,
+			wantZ:    5,
+			wantRows: 1,
+			wantCols: 1,
+			wantSet:  [][2]int{{0, 0}},
+		},
+		{
+			name: "decreasing coords",
+			blocks: []*model.MergedBlock{
+				{X: 5, Z: 5},
+				{X: -2, Z: -1},
+			},
+			wantX:    -2,
+			wantZ:    -1,
+			wantRows: 8,
+			wantCols: 7,
+			wantSet:  [][2]int{{7, 6}, {0, 0}},
 		},
 	}
 
@@ -1025,9 +1041,9 @@ func TestRegionMerger_BuildBoolGrid(t *testing.T) {
 			grid, xMin, zMin := svc.buildBoolGrid(tt.blocks)
 			require.Equal(t, tt.wantX, xMin)
 			require.Equal(t, tt.wantZ, zMin)
-			require.Len(t, grid, tt.wantCol)
+			require.Len(t, grid, tt.wantRows)
 			if len(grid) > 0 {
-				require.Len(t, grid[0], tt.wantCol)
+				require.Len(t, grid[0], tt.wantCols)
 			}
 			for _, rc := range tt.wantSet {
 				require.True(t, grid[rc[0]][rc[1]])

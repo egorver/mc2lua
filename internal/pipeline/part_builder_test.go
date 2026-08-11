@@ -513,6 +513,36 @@ func TestPartBuilder_Run(t *testing.T) {
 			scale:      4,
 			wantErrMsg: "visibility mismatch: got 0 block face mask(s) for 1 block cuboid(s)",
 		},
+		{
+			name: "visibility mismatch micro",
+			microCuboids: []model.Cuboid{
+				{ID: "minecraft:stone_slab", Width: 1, Height: 1, Depth: 1},
+			},
+			visibility: &model.FaceVisibility{},
+			styleIdx: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
+				idx.Add("minecraft:stone_slab", "", makeStyledBlock("minecraft:stone_slab", "", model.GridSubBlock,
+					makeStyledElement(0, 0, 0, 16, 8, 16, model.Color{128, 128, 128}, "Stone"),
+				))
+				return idx
+			}(),
+			scale:      4,
+			wantErrMsg: "visibility mismatch: got 0 micro face mask(s) for 1 micro cuboid(s)",
+		},
+		{
+			name: "visibility mismatch complex",
+			blocks: []model.RawBlock{
+				{ID: "minecraft:oak_stairs", X: 0, Y: 0, Z: 0},
+			},
+			visibility: &model.FaceVisibility{},
+			styleIdx: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
+				idx.Add("minecraft:oak_stairs", "", makeStyledBlock("minecraft:oak_stairs", "", model.GridNotAligned))
+				return idx
+			}(),
+			scale:      4,
+			wantErrMsg: "visibility mismatch: got 0 complex face mask(s) for 1 block(s)",
+		},
 	}
 
 	for _, tt := range tests {
