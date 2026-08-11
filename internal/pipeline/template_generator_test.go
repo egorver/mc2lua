@@ -149,3 +149,29 @@ func TestTemplateGenerator_Run_WriteError(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to write parts template file")
 }
+
+func TestTemplateGenerator_Run_WriteFailure(t *testing.T) {
+	t.Parallel()
+
+	svc := NewTemplateGenerator(runtime.NewFSMock(), &mockPartStyleMatcher{})
+	mockFS := runtime.NewFSMock()
+	mockFS.WriteErrors["out.yaml"] = errors.New("write fail")
+	svc.fs = mockFS
+
+	err := svc.Run(nil, nil, "out.yaml")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to write parts template file")
+}
+
+func TestTemplateGenerator_Run_CloseFailure(t *testing.T) {
+	t.Parallel()
+
+	svc := NewTemplateGenerator(runtime.NewFSMock(), &mockPartStyleMatcher{})
+	mockFS := runtime.NewFSMock()
+	mockFS.CloseErrors["out.yaml"] = errors.New("close fail")
+	svc.fs = mockFS
+
+	err := svc.Run(nil, nil, "out.yaml")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to write parts template file")
+}

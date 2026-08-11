@@ -296,3 +296,25 @@ func TestRun_WriteError(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to write output file")
 }
+
+func TestRun_WriteFailure(t *testing.T) {
+	t.Parallel()
+
+	svc, mockFS := testLuaGenerator(t)
+	outPath := "out.lua"
+	mockFS.WriteErrors[outPath] = errors.New("write fail")
+	err := svc.Run(nil, 4, outPath)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to write output file")
+}
+
+func TestRun_CloseFailure(t *testing.T) {
+	t.Parallel()
+
+	svc, mockFS := testLuaGenerator(t)
+	outPath := "out.lua"
+	mockFS.CloseErrors[outPath] = errors.New("close fail")
+	err := svc.Run(nil, 4, outPath)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to write output file")
+}
