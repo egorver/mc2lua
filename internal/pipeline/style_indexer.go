@@ -20,6 +20,10 @@ type materialMatcher interface {
 	Run(blockID string) string
 }
 
+type indexerPartStyleMatcher interface {
+	Run(blockID string) (model.PartStyle, bool)
+}
+
 type colorExtractor interface {
 	Run(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error)
 }
@@ -28,11 +32,11 @@ type StyleIndexer struct {
 	gridAnalyzer     gridAnalyzer
 	elementRotator   elementRotator
 	materialMatcher  materialMatcher
-	partStyleMatcher partStyleMatcher
+	partStyleMatcher indexerPartStyleMatcher
 	colorExtractor   colorExtractor
 }
 
-func NewStyleIndexer(ga gridAnalyzer, er elementRotator, mm materialMatcher, psm partStyleMatcher, ce colorExtractor) *StyleIndexer {
+func NewStyleIndexer(ga gridAnalyzer, er elementRotator, mm materialMatcher, psm indexerPartStyleMatcher, ce colorExtractor) *StyleIndexer {
 	return &StyleIndexer{
 		gridAnalyzer:     ga,
 		elementRotator:   er,

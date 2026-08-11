@@ -13,12 +13,16 @@ type blockColor struct {
 	count int
 }
 
-type TemplateGenerator struct {
-	fs               fsApi
-	partStyleMatcher partStyleMatcher
+type templatePartStyleMatcher interface {
+	Run(blockID string) (model.PartStyle, bool)
 }
 
-func NewTemplateGenerator(fs fsApi, psm partStyleMatcher) *TemplateGenerator {
+type TemplateGenerator struct {
+	fs               fsApi
+	partStyleMatcher templatePartStyleMatcher
+}
+
+func NewTemplateGenerator(fs fsApi, psm templatePartStyleMatcher) *TemplateGenerator {
 	return &TemplateGenerator{fs: fs, partStyleMatcher: psm}
 }
 
