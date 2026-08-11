@@ -13,51 +13,8 @@ parts:
     all:
       texture: rbxassetid://321821235
 
-  minecraft:oak_log:
-    top:
-      texture: rbxassetid://232395521
-      color: [191, 134, 60]
-    bottom:
-      texture: rbxassetid://232395521
-      color: [191, 134, 60]
-    faces:
-      texture: rbxassetid://232395521
-      color: [120, 82, 40]
-
-  minecraft:crafting_table:
-    top:
-      texture: rbxassetid://232395521
-      color: [150, 110, 70]
-    bottom:
-      texture: rbxassetid://186400921
-      color: [120, 90, 55]
-    front:
-      texture: rbxassetid://232395521
-      color: [130, 95, 60]
-    walls:
-      texture: rbxassetid://232395521
-      color: [125, 92, 58]
-
-  minecraft:barrel:
-    transparency: 0.0
-    top:
-      texture: rbxassetid://232395521
-      color: [110, 78, 48]
-    bottom:
-      texture: rbxassetid://232395521
-      color: [110, 78, 48]
-    front:
-      texture: rbxassetid://232395521
-      color: [105, 74, 45]
-    back:
-      texture: rbxassetid://232395521
-      color: [105, 74, 45]
-    sides:
-      texture: rbxassetid://232395521
-      color: [100, 70, 42]
-
   minecraft:glass:
+    color: [191, 191, 191]
     transparency: 0.5
     all:
       texture: rbxassetid://232395521
-      color: [191, 191, 191]

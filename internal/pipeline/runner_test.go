@@ -151,6 +151,17 @@ func (m *mockPartStylizer) Run(parts []model.Part, styleIndex stateful.StyleInde
 	return parts
 }
 
+type mockTemplateGenerator struct {
+	runFn func(parts []model.Part, blocks []model.RawBlock, outputPath string) error
+}
+
+func (m *mockTemplateGenerator) Run(parts []model.Part, blocks []model.RawBlock, outputPath string) error {
+	if m.runFn != nil {
+		return m.runFn(parts, blocks, outputPath)
+	}
+	return nil
+}
+
 type mockLuaGenerator struct {
 	runFn func(parts []model.Part, scale float64, outputPath string) error
 }
@@ -178,8 +189,9 @@ func TestRunner_New(t *testing.T) {
 	mockFC := &mockFaceCuller{}
 	mockPB := &mockPartBuilder{}
 	mockPS := &mockPartStylizer{}
+	mockTG := &mockTemplateGenerator{}
 	mockLG := &mockLuaGenerator{}
-	r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockPB, mockPS, mockLG, io.Discard)
+	r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockPB, mockTG, mockPS, mockLG, io.Discard)
 	require.NotNil(t, r)
 }
 
@@ -198,6 +210,7 @@ func TestRunner_Run(t *testing.T) {
 		mockBVI       func(blocks []model.RawBlock, styles stateful.StyleIndex) *stateful.VoxelIndex
 		mockRM        func(grid *stateful.VoxelIndex) []model.Cuboid
 		mockPB        func(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64) ([]model.Part, error)
+		mockTG        func(parts []model.Part, blocks []model.RawBlock, outputPath string) error
 		mockLG        func(parts []model.Part, scale float64, outputPath string) error
 		wantErr       bool
 		wantErrMsg    string
@@ -258,6 +271,20 @@ func TestRunner_Run(t *testing.T) {
 			},
 			wantErr:    true,
 			wantErrMsg: "build parts: build failed",
+		},
+		{
+			name: "template generator error",
+			mockRun: func(input string, bounds model.Bounds) ([]model.RawBlock, error) {
+				return []model.RawBlock{{}}, nil
+			},
+			mockNormalize: func(blocks []model.RawBlock, noOffset bool) ([]model.RawBlock, error) {
+				return blocks, nil
+			},
+			mockTG: func(parts []model.Part, blocks []model.RawBlock, outputPath string) error {
+				return errors.New("template failed")
+			},
+			wantErr:    true,
+			wantErrMsg: "generate parts template: template failed",
 		},
 		{
 			name: "log output written on success",
@@ -340,16 +367,21 @@ func TestRunner_Run(t *testing.T) {
 				mockPB.runFn = tt.mockPB
 			}
 			mockPS := &mockPartStylizer{}
+			mockTG := &mockTemplateGenerator{}
+			if tt.mockTG != nil {
+				mockTG.runFn = tt.mockTG
+			}
 			mockLG := &mockLuaGenerator{}
 			if tt.mockLG != nil {
 				mockLG.runFn = tt.mockLG
 			}
-			r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockPB, mockPS, mockLG, io.Discard)
+			r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockPB, mockTG, mockPS, mockLG, io.Discard)
 
 			err := r.Run(RunConfig{
-				Input:     "/test",
-				AssetsDir: "assets",
-				Bounds:    model.Bounds{XMin: 0, XMax: 10, YMin: 0, YMax: 10, ZMin: 0, ZMax: 10},
+				Input:         "/test",
+				AssetsDir:     "assets",
+				PartsTemplate: "parts.template.yaml",
+				Bounds:        model.Bounds{XMin: 0, XMax: 10, YMin: 0, YMax: 10, ZMin: 0, ZMax: 10},
 			})
 			if tt.wantErr {
 				require.Error(t, err)
@@ -445,6 +477,7 @@ func TestRunner_RunLogsArea(t *testing.T) {
 				&mockOccupancyIndexer{},
 				&mockFaceCuller{},
 				&mockPartBuilder{},
+				&mockTemplateGenerator{},
 				&mockPartStylizer{},
 				&mockLuaGenerator{},
 				&buf,

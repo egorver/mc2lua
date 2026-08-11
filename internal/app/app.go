@@ -35,11 +35,12 @@ func (svc *App) Run(cfg AppConfig) error {
 
 func buildConfig(cfg AppConfig) pipeline.RunConfig {
 	return pipeline.RunConfig{
-		Input:     cfg.Input,
-		AssetsDir: cfg.AssetsDir,
-		Output:    cfg.Output,
-		Scale:     cfg.Scale,
-		NoOffset:  cfg.NoOffset,
+		Input:         cfg.Input,
+		AssetsDir:     cfg.AssetsDir,
+		Output:        cfg.Output,
+		PartsTemplate: cfg.PartsTemplate,
+		Scale:         cfg.Scale,
+		NoOffset:      cfg.NoOffset,
 		Bounds: model.Bounds{
 			XMin: cfg.XMin, XMax: cfg.XMax,
 			YMin: cfg.YMin, YMax: cfg.YMax,
@@ -91,6 +92,7 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	faceCuller := pipeline.NewFaceCuller(propsKeyBuilder, cuboidHelper)
 	partBuilder := pipeline.NewPartBuilder(propsKeyBuilder)
 	partStylizer := pipeline.NewPartStylizer(partStyleMatcher, brightnessMatcher)
+	templateGenerator := pipeline.NewTemplateGenerator(fs, partStyleMatcher)
 	luaGenerator := pipeline.NewLuaGenerator(fs)
 
 	return pipeline.NewRunner(
@@ -106,6 +108,7 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 		occupancyIndexer,
 		faceCuller,
 		partBuilder,
+		templateGenerator,
 		partStylizer,
 		luaGenerator,
 		os.Stdout), nil

@@ -61,6 +61,10 @@ type partBuilder interface {
 	Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64) ([]model.Part, error)
 }
 
+type templateGenerator interface {
+	Run(parts []model.Part, blocks []model.RawBlock, outputPath string) error
+}
+
 type partStylizer interface {
 	Run(parts []model.Part, styleIndex stateful.StyleIndex) []model.Part
 }
@@ -82,6 +86,7 @@ type Runner struct {
 	occupancyIndexer  occupancyIndexer
 	faceCuller        faceCuller
 	partBuilder       partBuilder
+	templateGenerator templateGenerator
 	partStylizer      partStylizer
 	luaGenerator      luaGenerator
 	logOutput         io.Writer
@@ -100,6 +105,7 @@ func NewRunner(
 	oi occupancyIndexer,
 	fc faceCuller,
 	pb partBuilder,
+	tg templateGenerator,
 	ps partStylizer,
 	lg luaGenerator,
 	logOutput io.Writer,
@@ -117,6 +123,7 @@ func NewRunner(
 		occupancyIndexer:  oi,
 		faceCuller:        fc,
 		partBuilder:       pb,
+		templateGenerator: tg,
 		partStylizer:      ps,
 		luaGenerator:      lg,
 		logOutput:         logOutput,
@@ -124,12 +131,13 @@ func NewRunner(
 }
 
 type RunConfig struct {
-	Input     string
-	AssetsDir string
-	Output    string
-	Scale     int
-	NoOffset  bool
-	Bounds    model.Bounds
+	Input         string
+	AssetsDir     string
+	Output        string
+	PartsTemplate string
+	Scale         int
+	NoOffset      bool
+	Bounds        model.Bounds
 }
 
 func (svc *Runner) Run(cfg RunConfig) error {
@@ -182,6 +190,13 @@ func (svc *Runner) Run(cfg RunConfig) error {
 		return fmt.Errorf("build parts: %w", err)
 	}
 	svc.log("Built %d part(s)\n", len(parts))
+
+	if cfg.PartsTemplate != "" {
+		if err := svc.templateGenerator.Run(parts, blocks, cfg.PartsTemplate); err != nil {
+			return fmt.Errorf("generate parts template: %w", err)
+		}
+		svc.log("Parts template generated at %s\n", cfg.PartsTemplate)
+	}
 
 	parts = svc.partStylizer.Run(parts, *styledIdx)
 	svc.logStyling(parts)

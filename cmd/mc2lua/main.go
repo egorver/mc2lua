@@ -10,17 +10,19 @@ import (
 )
 
 const (
-	defaultInputDir   = "region"
-	defaultAssetsDir  = "assets"
-	defaultOutputFile = "output.lua"
-	defaultScale      = 4
-	defaultConfigDir  = "config"
+	defaultInputDir      = "region"
+	defaultAssetsDir     = "assets"
+	defaultOutputFile    = "output.lua"
+	defaultPartsTemplate = "output/template.yaml"
+	defaultScale         = 4
+	defaultConfigDir     = "config"
 )
 
 func main() {
 	inputPath := flag.String("input", defaultInputDir, "path to region files directory")
 	assetsDir := flag.String("assets", defaultAssetsDir, "path to Minecraft assets directory")
 	outputPath := flag.String("output", defaultOutputFile, "output Lua file")
+	partsTemplate := flag.String("parts-template", defaultPartsTemplate, "path to write template parts.yaml for new block types")
 	scale := flag.Int("scale", defaultScale, "block scale factor")
 	configDir := flag.String("config", defaultConfigDir, "path to configs directory")
 	noOffset := flag.Bool("no-offset", false, "disable auto-offset to y=0")
@@ -41,18 +43,19 @@ func main() {
 	}
 
 	cfg := app.AppConfig{
-		Input:     *inputPath,
-		AssetsDir: *assetsDir,
-		Output:    *outputPath,
-		Scale:     *scale,
-		NoOffset:  *noOffset,
-		ConfigDir: *configDir,
-		XMin:      *xmin,
-		XMax:      *xmax,
-		YMin:      *ymin,
-		YMax:      *ymax,
-		ZMin:      *zmin,
-		ZMax:      *zmax,
+		Input:         *inputPath,
+		AssetsDir:     *assetsDir,
+		Output:        *outputPath,
+		PartsTemplate: *partsTemplate,
+		Scale:         *scale,
+		NoOffset:      *noOffset,
+		ConfigDir:     *configDir,
+		XMin:          *xmin,
+		XMax:          *xmax,
+		YMin:          *ymin,
+		YMax:          *ymax,
+		ZMin:          *zmin,
+		ZMax:          *zmax,
 	}
 
 	if err := app.New().Run(cfg); err != nil {
