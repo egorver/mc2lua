@@ -2,6 +2,8 @@ package app
 
 import (
 	"math"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"mc2lua/internal/model"
@@ -51,6 +53,31 @@ func TestApp_Run_WithValidMaterials_ReturnsRunnerError(t *testing.T) {
 		ConfigDir: "../../config",
 	})
 	require.Error(t, err)
+}
+
+func TestApp_Run_WithBadAssets_ReturnsError(t *testing.T) {
+	t.Parallel()
+
+	a := New()
+	err := a.Run(AppConfig{
+		Input:     t.TempDir(),
+		AssetsDir: t.TempDir() + "/nope",
+		ConfigDir: "../../config",
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "run pipeline")
+}
+
+func TestBuildDeps_MissingPartsYAML(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "materials.yaml"),
+		[]byte("mappings:\n  stone: Slate\n"), 0o600))
+
+	_, err := buildDeps(dir)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "create part style matcher")
 }
 
 func TestBuildConfig(t *testing.T) {
