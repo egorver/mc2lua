@@ -16,6 +16,7 @@ func TestBlockstateParserRun(t *testing.T) {
 	addBlockstate(fs, "minecraft", "default", []byte(testBlockstateDefault))
 	addBlockstate(fs, "minecraft", "multipart", []byte(testBlockstateMultipart))
 	addBlockstate(fs, "minecraft", "empty_variants", []byte(testBlockstateEmptyVariants))
+	addBlockstate(fs, "minecraft", "empty_array", []byte(testBlockstateEmptyArray))
 	addBlockstate(fs, "minecraft", "bad_json", []byte(testBlockstateInvalidJSON))
 	addBlockstate(fs, "minecraft", "no_variants", []byte(testBlockstateNoVariants))
 
@@ -101,6 +102,12 @@ func TestBlockstateParserRun(t *testing.T) {
 			props:   map[string]string{},
 			wantErr: "no variants or multipart data",
 		},
+		{
+			name:      "empty variant array",
+			namespace: "minecraft", blockID: "empty_array",
+			props:   map[string]string{},
+			wantErr: "empty variant array",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -148,6 +155,7 @@ func TestBlockstateParserParseVariantValue(t *testing.T) {
 		{name: "single object", input: []byte(`{"model":"block/cube"}`), want: []blockstateMatch{{Model: "block/cube"}}},
 		{name: "object with rotation", input: []byte(`{"model":"block/furnace","x":90,"y":180}`), want: []blockstateMatch{{Model: "block/furnace", RotX: 90, RotY: 180}}},
 		{name: "array of variants uses first only", input: []byte(`[{"model":"block/stone"},{"model":"block/andesite"}]`), want: []blockstateMatch{{Model: "block/stone"}}},
+		{name: "empty array", input: []byte(`[]`), wantErr: "empty variant array"},
 		{name: "empty value", input: []byte(``), wantErr: "empty variant value"},
 		{name: "whitespace only", input: []byte(`   `), wantErr: "empty variant value"},
 		{name: "invalid JSON object", input: []byte(`{broken`), wantErr: "parse variant object"},

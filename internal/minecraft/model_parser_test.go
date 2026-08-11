@@ -18,6 +18,7 @@ func TestModelParserRun(t *testing.T) {
 	addModel(fs, "minecraft", "block/leaves", []byte(testModelNoElements))
 	addModel(fs, "minecraft", "block/no_textures", []byte(testModelNoTextures))
 	addModel(fs, "minecraft", "block/bad_json", []byte(testModelInvalidJSON))
+	addModel(fs, "minecraft", "block/bad_element", []byte(`{"elements":[{"from":"bad"}]}`))
 	addModel(fs, "minecraft", "block/implicit_shade", []byte(testModelImplicitShade))
 
 	svc := NewModelParser(fs)
@@ -90,6 +91,11 @@ func TestModelParserRun(t *testing.T) {
 			name:      "invalid JSON",
 			modelName: "minecraft:block/bad_json",
 			wantErr:   "parse",
+		},
+		{
+			name:      "broken element json",
+			modelName: "minecraft:block/bad_element",
+			wantErr:   "elements",
 		},
 	}
 	for _, tt := range tests {
