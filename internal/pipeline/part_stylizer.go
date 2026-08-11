@@ -76,7 +76,6 @@ func (svc *PartStylizer) applyPartStyle(p model.Part, style model.PartStyle, rot
 
 func (svc *PartStylizer) resolveSurface(style model.PartStyle, face string) *model.Surface {
 	var merged model.Surface
-	have := false
 
 	for _, name := range svc.surfaceSources(face) {
 		src := svc.surfaceByKey(style, name)
@@ -85,19 +84,16 @@ func (svc *PartStylizer) resolveSurface(style model.PartStyle, face string) *mod
 		}
 		if src.Texture != "" {
 			merged.Texture = src.Texture
-			have = true
 		}
 		if src.Color != nil {
 			merged.Color = src.Color
-			have = true
 		}
 		if src.Transparency != nil {
 			merged.Transparency = src.Transparency
-			have = true
 		}
 	}
 
-	if !have {
+	if merged.Texture == "" {
 		return nil
 	}
 	return &merged

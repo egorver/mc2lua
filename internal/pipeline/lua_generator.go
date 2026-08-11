@@ -71,10 +71,19 @@ func (svc *LuaGenerator) writeHeader(sb *strings.Builder, scale float64) {
 	sb.WriteString(partsPlaceholder + "\n")
 	sb.WriteString("local _counter = 0\n")
 	sb.WriteString("local _group\n\n")
+	fmt.Fprintf(sb, "local _tile = %g\n\n", scale)
+	sb.WriteString("local faceEnum = {\n")
+	sb.WriteString("    top = Enum.NormalId.Top,\n")
+	sb.WriteString("    bottom = Enum.NormalId.Bottom,\n")
+	sb.WriteString("    front = Enum.NormalId.Front,\n")
+	sb.WriteString("    back = Enum.NormalId.Back,\n")
+	sb.WriteString("    left = Enum.NormalId.Left,\n")
+	sb.WriteString("    right = Enum.NormalId.Right,\n")
+	sb.WriteString("}\n\n")
 	sb.WriteString("local folder = Instance.new(\"Folder\")\n")
 	fmt.Fprintf(sb, "folder.Name = %q\n", importedFolderName)
 	sb.WriteString("folder.Parent = workspace\n\n")
-	sb.WriteString("local function createPart(size, pos, r, g, b, material, name, blockId, properties, parent)\n")
+	sb.WriteString("local function createPart(size, pos, r, g, b, material, name, blockId, properties, transparency, faces, parent)\n")
 	sb.WriteString("    local p = Instance.new(\"Part\")\n")
 	sb.WriteString("    p.Size = size\n")
 	sb.WriteString("    p.Position = pos\n")
@@ -84,6 +93,25 @@ func (svc *LuaGenerator) writeHeader(sb *strings.Builder, scale float64) {
 	sb.WriteString("    p.Name = name\n")
 	sb.WriteString("    p:SetAttribute(\"original_block_id\", blockId)\n")
 	sb.WriteString("    p:SetAttribute(\"original_properties\", properties)\n")
+	sb.WriteString("    if transparency then\n")
+	sb.WriteString("        p.Transparency = transparency\n")
+	sb.WriteString("    end\n")
+	sb.WriteString("    if faces then\n")
+	sb.WriteString("        for _, f in ipairs(faces) do\n")
+	sb.WriteString("            local t = Instance.new(\"Texture\")\n")
+	sb.WriteString("            t.Face = faceEnum[f.face]\n")
+	sb.WriteString("            t.Texture = f.texture\n")
+	sb.WriteString("            t.StudsPerTileU = _tile\n")
+	sb.WriteString("            t.StudsPerTileV = _tile\n")
+	sb.WriteString("            if f.color then\n")
+	sb.WriteString("                t.Color3 = f.color\n")
+	sb.WriteString("            end\n")
+	sb.WriteString("            if f.transparency then\n")
+	sb.WriteString("                t.Transparency = f.transparency\n")
+	sb.WriteString("            end\n")
+	sb.WriteString("            t.Parent = p\n")
+	sb.WriteString("        end\n")
+	sb.WriteString("    end\n")
 	sb.WriteString("    p.Parent = parent or folder\n")
 	sb.WriteString("\n")
 	sb.WriteString("    _counter = _counter + 1\n")
@@ -96,11 +124,56 @@ func (svc *LuaGenerator) writeHeader(sb *strings.Builder, scale float64) {
 
 func (svc *LuaGenerator) writeCreatePart(sb *strings.Builder, p model.Part, parent string) {
 	fmt.Fprintf(sb,
-		"createPart(Vector3.new(%g, %g, %g), Vector3.new(%g, %g, %g), %d, %d, %d, %q, %q, %q, %q, %s)\n",
+		"createPart(Vector3.new(%g, %g, %g), Vector3.new(%g, %g, %g), %d, %d, %d, %q, %q, %q, %q, %s, %s, %s)\n",
 		svc.roundCoord(p.Size[0]), svc.roundCoord(p.Size[1]), svc.roundCoord(p.Size[2]),
 		svc.roundCoord(p.Position[0]), svc.roundCoord(p.Position[1]), svc.roundCoord(p.Position[2]),
-		p.Color[0], p.Color[1], p.Color[2], p.Material, p.Name, p.BlockID, p.PropsKey, parent,
+		p.Color[0], p.Color[1], p.Color[2], p.Material, p.Name, p.BlockID, p.PropsKey,
+		svc.luaTransparency(p), svc.luaFaces(p), parent,
 	)
+}
+
+func (svc *LuaGenerator) luaTransparency(p model.Part) string {
+	if p.Transparency == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%g", *p.Transparency)
+}
+
+func (svc *LuaGenerator) luaFaces(p model.Part) string {
+	faces := []struct {
+		name string
+		surf *model.Surface
+	}{
+		{model.FaceTop, p.Top},
+		{model.FaceBottom, p.Bottom},
+		{model.FaceFront, p.Front},
+		{model.FaceBack, p.Back},
+		{model.FaceLeft, p.Left},
+		{model.FaceRight, p.Right},
+	}
+
+	var entries []string
+	for _, f := range faces {
+		if f.surf == nil || f.surf.Texture == "" {
+			continue
+		}
+		parts := []string{
+			fmt.Sprintf("face=%q", f.name),
+			fmt.Sprintf("texture=%q", f.surf.Texture),
+		}
+		if f.surf.Color != nil {
+			parts = append(parts, fmt.Sprintf("color=Color3.fromRGB(%d, %d, %d)", f.surf.Color[0], f.surf.Color[1], f.surf.Color[2]))
+		}
+		if f.surf.Transparency != nil {
+			parts = append(parts, fmt.Sprintf("transparency=%g", *f.surf.Transparency))
+		}
+		entries = append(entries, "{"+strings.Join(parts, ", ")+"}")
+	}
+
+	if len(entries) == 0 {
+		return "nil"
+	}
+	return "{" + strings.Join(entries, ", ") + "}"
 }
 
 func (svc *LuaGenerator) roundCoord(v float64) float64 {

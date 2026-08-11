@@ -131,14 +131,14 @@ func TestPartStylizer_Run(t *testing.T) {
 			},
 		},
 		{
-			name: "style without texture keeps material",
+			name: "style without texture creates no surfaces",
 			styles: map[string]model.PartStyle{
 				"minecraft:stone": {Top: surfPtr("", &red, nil)},
 			},
 			parts: []model.Part{testPart("minecraft:stone", visibleMask())},
 			wantCheck: func(t *testing.T, parts []model.Part) {
 				require.Equal(t, model.DefaultMaterial, parts[0].Material)
-				require.Equal(t, &model.Surface{Color: &red}, parts[0].Top)
+				require.Nil(t, parts[0].Top)
 			},
 		},
 		{
