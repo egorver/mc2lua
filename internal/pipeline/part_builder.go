@@ -25,6 +25,15 @@ func NewPartBuilder(pkb partPropsKeyBuilder) *PartBuilder {
 }
 
 func (svc *PartBuilder) Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64) ([]model.Part, error) {
+	parts, err := svc.buildCuboidParts(blockCuboids, microCuboids, styleIndex, scale)
+	if err != nil {
+		return nil, err
+	}
+	parts = append(parts, svc.buildBlockParts(blocks, styleIndex, scale)...)
+	return parts, nil
+}
+
+func (svc *PartBuilder) buildCuboidParts(blockCuboids, microCuboids []model.Cuboid, styleIndex stateful.StyleIndex, scale float64) ([]model.Part, error) {
 	var parts []model.Part
 
 	for _, cuboids := range [][]model.Cuboid{blockCuboids, microCuboids} {
@@ -44,6 +53,12 @@ func (svc *PartBuilder) Run(blocks []model.RawBlock, blockCuboids, microCuboids 
 		}
 	}
 
+	return parts, nil
+}
+
+func (svc *PartBuilder) buildBlockParts(blocks []model.RawBlock, styleIndex stateful.StyleIndex, scale float64) []model.Part {
+	var parts []model.Part
+
 	for _, r := range blocks {
 		propsKey := svc.propsKeyBuilder.Run(r.Props)
 		style, ok := styleIndex.Get(r.ID, propsKey)
@@ -52,7 +67,7 @@ func (svc *PartBuilder) Run(blocks []model.RawBlock, blockCuboids, microCuboids 
 		}
 	}
 
-	return parts, nil
+	return parts
 }
 
 func (svc *PartBuilder) buildSimplePart(cuboid model.Cuboid, style model.StyledBlock, scale float64) (model.Part, error) {
@@ -96,63 +111,72 @@ func (svc *PartBuilder) buildComplexParts(block model.RawBlock, style model.Styl
 	yBase := float64(block.Y)*scale - scale/2.0
 	zBase := float64(block.Z)*scale - scale/2.0
 
-	groupID := 0
-	groupName := ""
-	if len(style.Elements) > 1 {
-		firstPos := svc.elementKey(style.Elements[0], xBase, yBase, zBase, scale)
-		distinct := false
-		for _, elem := range style.Elements[1:] {
-			if svc.elementKey(elem, xBase, yBase, zBase, scale) != firstPos {
-				distinct = true
-				break
-			}
-		}
-		if distinct {
-			svc.groupCounter++
-			groupID = svc.groupCounter
-			groupName = svc.makePartName(block.ID)
-		}
-	}
+	groupID, groupName := svc.resolveGroup(block, style, xBase, yBase, zBase, scale)
 
 	parts := make([]model.Part, 0, len(style.Elements))
 	for idx, elem := range style.Elements {
-		sizeX := (elem.To[0] - elem.From[0]) / model.FullBlockSize * scale
-		sizeY := (elem.To[1] - elem.From[1]) / model.FullBlockSize * scale
-		sizeZ := (elem.To[2] - elem.From[2]) / model.FullBlockSize * scale
-
-		cx := (elem.From[0] + elem.To[0]) / 2.0 / model.FullBlockSize * scale
-		cy := (elem.From[1] + elem.To[1]) / 2.0 / model.FullBlockSize * scale
-		cz := (elem.From[2] + elem.To[2]) / 2.0 / model.FullBlockSize * scale
-
-		px := xBase + cx
-		py := yBase + cy
-		pz := zBase + cz
-
-		partName := svc.makePartName(block.ID)
-		if groupID != 0 {
-			partName = fmt.Sprintf(elementNameFormat, idx+1)
-		}
-
-		parts = append(parts, model.Part{
-			Name:     partName,
-			Group:    groupName,
-			GroupID:  groupID,
-			BlockID:  block.ID,
-			PropsKey: style.PropsKey,
-			Size:     model.Vector3{sizeX, sizeY, sizeZ},
-			Position: model.Vector3{px, py, pz},
-			Color:    elem.Color,
-			Material: elem.Material,
-		})
+		parts = append(parts, svc.buildElementPart(block, elem, style.PropsKey, idx, groupID, groupName, xBase, yBase, zBase, scale))
 	}
 	return parts
 }
 
+func (svc *PartBuilder) resolveGroup(block model.RawBlock, style model.StyledBlock, xBase, yBase, zBase, scale float64) (int, string) {
+	if len(style.Elements) < 2 {
+		return 0, ""
+	}
+
+	firstPos := svc.elementKey(style.Elements[0], xBase, yBase, zBase, scale)
+	distinct := false
+	for _, elem := range style.Elements[1:] {
+		if svc.elementKey(elem, xBase, yBase, zBase, scale) != firstPos {
+			distinct = true
+			break
+		}
+	}
+	if !distinct {
+		return 0, ""
+	}
+
+	svc.groupCounter++
+	return svc.groupCounter, svc.makePartName(block.ID)
+}
+
+func (svc *PartBuilder) buildElementPart(block model.RawBlock, elem model.StyledElement, propsKey string, idx, groupID int, groupName string, xBase, yBase, zBase, scale float64) model.Part {
+	sizeX := (elem.To[0] - elem.From[0]) / model.FullBlockSize * scale
+	sizeY := (elem.To[1] - elem.From[1]) / model.FullBlockSize * scale
+	sizeZ := (elem.To[2] - elem.From[2]) / model.FullBlockSize * scale
+
+	center := svc.elementCenter(elem, xBase, yBase, zBase, scale)
+
+	partName := svc.makePartName(block.ID)
+	if groupID != 0 {
+		partName = fmt.Sprintf(elementNameFormat, idx+1)
+	}
+
+	return model.Part{
+		Name:     partName,
+		Group:    groupName,
+		GroupID:  groupID,
+		BlockID:  block.ID,
+		PropsKey: propsKey,
+		Size:     model.Vector3{sizeX, sizeY, sizeZ},
+		Position: model.Vector3{center[0], center[1], center[2]},
+		Color:    elem.Color,
+		Material: elem.Material,
+	}
+}
+
+func (svc *PartBuilder) elementCenter(elem model.StyledElement, xBase, yBase, zBase, scale float64) model.Vector3 {
+	return model.Vector3{
+		xBase + (elem.From[0]+elem.To[0])/2.0/model.FullBlockSize*scale,
+		yBase + (elem.From[1]+elem.To[1])/2.0/model.FullBlockSize*scale,
+		zBase + (elem.From[2]+elem.To[2])/2.0/model.FullBlockSize*scale,
+	}
+}
+
 func (svc *PartBuilder) elementKey(elem model.StyledElement, xBase, yBase, zBase, scale float64) string {
-	cx := xBase + (elem.From[0]+elem.To[0])/2.0/model.FullBlockSize*scale
-	cy := yBase + (elem.From[1]+elem.To[1])/2.0/model.FullBlockSize*scale
-	cz := zBase + (elem.From[2]+elem.To[2])/2.0/model.FullBlockSize*scale
-	return fmt.Sprintf("%.4f,%.4f,%.4f", cx, cy, cz)
+	center := svc.elementCenter(elem, xBase, yBase, zBase, scale)
+	return fmt.Sprintf("%.4f,%.4f,%.4f", center[0], center[1], center[2])
 }
 
 func (svc *PartBuilder) makePartName(blockID string) string {

@@ -1,49 +1,57 @@
 parts:
+  minecraft:grass_block:
+    top:
+      texture: rbxassetid://230536932
+      color: [44, 101, 29]
+    all:
+      texture: rbxassetid://321821304
+      color: [106, 57, 9]
+
   minecraft:oak_log:
     top:
-      texture: rbxassetid://186400918
+      texture: rbxassetid://232395521
       color: [191, 134, 60]
     bottom:
-      texture: rbxassetid://186400918
+      texture: rbxassetid://232395521
       color: [191, 134, 60]
     faces:
-      texture: rbxassetid://186400919
+      texture: rbxassetid://232395521
       color: [120, 82, 40]
 
   minecraft:crafting_table:
     top:
-      texture: rbxassetid://186400920
+      texture: rbxassetid://232395521
       color: [150, 110, 70]
     bottom:
       texture: rbxassetid://186400921
       color: [120, 90, 55]
     front:
-      texture: rbxassetid://186400922
+      texture: rbxassetid://232395521
       color: [130, 95, 60]
     walls:
-      texture: rbxassetid://186400923
+      texture: rbxassetid://232395521
       color: [125, 92, 58]
 
   minecraft:barrel:
     transparency: 0.0
     top:
-      texture: rbxassetid://186400924
+      texture: rbxassetid://232395521
       color: [110, 78, 48]
     bottom:
-      texture: rbxassetid://186400924
+      texture: rbxassetid://232395521
       color: [110, 78, 48]
     front:
-      texture: rbxassetid://186400925
+      texture: rbxassetid://232395521
       color: [105, 74, 45]
     back:
-      texture: rbxassetid://186400925
+      texture: rbxassetid://232395521
       color: [105, 74, 45]
     sides:
-      texture: rbxassetid://186400926
+      texture: rbxassetid://232395521
       color: [100, 70, 42]
 
   minecraft:glass:
     transparency: 0.5
     all:
-      texture: rbxassetid://186400927
+      texture: rbxassetid://232395521
       color: [191, 191, 191]
