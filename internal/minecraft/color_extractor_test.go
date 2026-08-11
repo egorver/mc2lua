@@ -37,78 +37,74 @@ func sample(path string) []TextureSample {
 	return []TextureSample{{TextureVar: path, UV: [4]float64{0, 0, 16, 16}}}
 }
 
-func TestColorExtractor_UniformTexture(t *testing.T) {
+func TestColorExtractor_TextureScenarios(t *testing.T) {
 	t.Parallel()
 
-	fs, extractor, roots := setupColorExtractorFS(t)
-	fs.AddFile("assets/minecraft/textures/block/uniform.png",
-		makePNG(t, 16, 16, func(x, y int) color.NRGBA { return color.NRGBA{150, 150, 150, 255} }), 0644)
+	tests := []struct {
+		name    string
+		px      func(x, y int) color.NRGBA
+		want    model.Color
+		wantErr bool
+	}{
+		{
+			name: "uniform",
+			px:   func(x, y int) color.NRGBA { return color.NRGBA{150, 150, 150, 255} },
+			want: model.Color{150, 150, 150},
+		},
+		{
+			name: "shaded",
+			px: func(x, y int) color.NRGBA {
+				if x < 8 {
+					return color.NRGBA{100, 100, 100, 255}
+				}
+				return color.NRGBA{150, 150, 150, 255}
+			},
+			want: model.Color{150, 150, 150},
+		},
+		{
+			name: "transparent pixels ignored",
+			px: func(x, y int) color.NRGBA {
+				if x < 8 {
+					return color.NRGBA{0, 0, 0, 0}
+				}
+				return color.NRGBA{120, 120, 120, 255}
+			},
+			want: model.Color{120, 120, 120},
+		},
+		{
+			name: "lift capped",
+			px: func(x, y int) color.NRGBA {
+				if x < 8 {
+					return color.NRGBA{30, 30, 30, 255}
+				}
+				return color.NRGBA{255, 255, 255, 255}
+			},
+			want: model.Color{177, 177, 177},
+		},
+		{
+			name:    "no valid pixels",
+			px:      func(x, y int) color.NRGBA { return color.NRGBA{0, 0, 0, 0} },
+			wantErr: true,
+		},
+	}
 
-	got, err := extractor.Run(sample("block/uniform"), roots, "minecraft:test_block")
-	require.NoError(t, err)
-	require.Equal(t, model.Color{150, 150, 150}, got)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-func TestColorExtractor_ShadedTexture(t *testing.T) {
-	t.Parallel()
+			fs, extractor, roots := setupColorExtractorFS(t)
+			fs.AddFile("assets/minecraft/textures/block/t.png",
+				makePNG(t, 16, 16, tt.px), 0644)
 
-	fs, extractor, roots := setupColorExtractorFS(t)
-	fs.AddFile("assets/minecraft/textures/block/shaded.png",
-		makePNG(t, 16, 16, func(x, y int) color.NRGBA {
-			if x < 8 {
-				return color.NRGBA{100, 100, 100, 255}
+			got, err := extractor.Run(sample("block/t"), roots, "minecraft:test_block")
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
-			return color.NRGBA{150, 150, 150, 255}
-		}), 0644)
-
-	got, err := extractor.Run(sample("block/shaded"), roots, "minecraft:test_block")
-	require.NoError(t, err)
-	require.Equal(t, model.Color{150, 150, 150}, got)
-}
-
-func TestColorExtractor_TransparentPixelsIgnored(t *testing.T) {
-	t.Parallel()
-
-	fs, extractor, roots := setupColorExtractorFS(t)
-	fs.AddFile("assets/minecraft/textures/block/transparent.png",
-		makePNG(t, 16, 16, func(x, y int) color.NRGBA {
-			if x < 8 {
-				return color.NRGBA{0, 0, 0, 0}
-			}
-			return color.NRGBA{120, 120, 120, 255}
-		}), 0644)
-
-	got, err := extractor.Run(sample("block/transparent"), roots, "minecraft:test_block")
-	require.NoError(t, err)
-	require.Equal(t, model.Color{120, 120, 120}, got)
-}
-
-func TestColorExtractor_LiftCapped(t *testing.T) {
-	t.Parallel()
-
-	fs, extractor, roots := setupColorExtractorFS(t)
-	fs.AddFile("assets/minecraft/textures/block/capped.png",
-		makePNG(t, 16, 16, func(x, y int) color.NRGBA {
-			if x < 8 {
-				return color.NRGBA{30, 30, 30, 255}
-			}
-			return color.NRGBA{255, 255, 255, 255}
-		}), 0644)
-
-	got, err := extractor.Run(sample("block/capped"), roots, "minecraft:test_block")
-	require.NoError(t, err)
-	require.Equal(t, model.Color{177, 177, 177}, got)
-}
-
-func TestColorExtractor_NoValidPixels(t *testing.T) {
-	t.Parallel()
-
-	fs, extractor, roots := setupColorExtractorFS(t)
-	fs.AddFile("assets/minecraft/textures/block/empty.png",
-		makePNG(t, 16, 16, func(x, y int) color.NRGBA { return color.NRGBA{0, 0, 0, 0} }), 0644)
-
-	_, err := extractor.Run(sample("block/empty"), roots, "minecraft:test_block")
-	require.Error(t, err)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
 }
 
 func TestColorExtractor_SplitBlockID(t *testing.T) {

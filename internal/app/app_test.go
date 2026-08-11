@@ -34,38 +34,47 @@ func TestBuildDeps(t *testing.T) {
 	})
 }
 
-func TestApp_Run_WithInvalidInput_ReturnsError(t *testing.T) {
+func TestApp_Run_ErrorCases(t *testing.T) {
 	t.Parallel()
 
-	a := New()
-	err := a.Run(AppConfig{
-		Input: t.TempDir() + "nonexistent",
-	})
-	require.Error(t, err)
-}
+	tests := []struct {
+		name         string
+		cfg          func(t *testing.T) AppConfig
+		wantContains string
+	}{
+		{
+			name: "invalid input",
+			cfg: func(t *testing.T) AppConfig {
+				return AppConfig{Input: t.TempDir() + "nonexistent"}
+			},
+		},
+		{
+			name: "valid materials returns runner error",
+			cfg: func(t *testing.T) AppConfig {
+				return AppConfig{Input: t.TempDir() + "nonexistent", ConfigDir: "../../config"}
+			},
+		},
+		{
+			name: "bad assets",
+			cfg: func(t *testing.T) AppConfig {
+				return AppConfig{Input: t.TempDir(), AssetsDir: t.TempDir() + "/nope", ConfigDir: "../../config"}
+			},
+			wantContains: "run pipeline",
+		},
+	}
 
-func TestApp_Run_WithValidMaterials_ReturnsRunnerError(t *testing.T) {
-	t.Parallel()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	a := New()
-	err := a.Run(AppConfig{
-		Input:     t.TempDir() + "nonexistent",
-		ConfigDir: "../../config",
-	})
-	require.Error(t, err)
-}
-
-func TestApp_Run_WithBadAssets_ReturnsError(t *testing.T) {
-	t.Parallel()
-
-	a := New()
-	err := a.Run(AppConfig{
-		Input:     t.TempDir(),
-		AssetsDir: t.TempDir() + "/nope",
-		ConfigDir: "../../config",
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "run pipeline")
+			a := New()
+			err := a.Run(tt.cfg(t))
+			require.Error(t, err)
+			if tt.wantContains != "" {
+				require.Contains(t, err.Error(), tt.wantContains)
+			}
+		})
+	}
 }
 
 func TestBuildDeps_MissingPartsYAML(t *testing.T) {

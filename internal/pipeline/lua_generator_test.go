@@ -75,40 +75,114 @@ func TestWriteHeader(t *testing.T) {
 func TestWriteCreatePart(t *testing.T) {
 	t.Parallel()
 
-	svc, _ := testLuaGenerator(t)
-	var sb strings.Builder
-	svc.writeCreatePart(&sb, makePart(
-		"stone", "", 0, "minecraft:stone", "",
-		model.Vector3{2, 3, 4}, model.Vector3{1.5, 2.5, 3.5},
-		model.Color{255, 128, 64}, "Wood",
-	), "folder")
-	got := sb.String()
+	tests := []struct {
+		name        string
+		setup       func() model.Part
+		contains    []string
+		notContains []string
+	}{
+		{
+			name: "basic part",
+			setup: func() model.Part {
+				return makePart(
+					"stone", "", 0, "minecraft:stone", "",
+					model.Vector3{2, 3, 4}, model.Vector3{1.5, 2.5, 3.5},
+					model.Color{255, 128, 64}, "Wood",
+				)
+			},
+			contains: []string{
+				"createPart(",
+				"Vector3.new(2, 3, 4)",
+				"Vector3.new(1.5, 2.5, 3.5)",
+				"255, 128, 64",
+				`"Wood"`,
+				`"stone"`,
+				`"minecraft:stone"`,
+				", folder)",
+			},
+		},
+		{
+			name: "rounds coordinates",
+			setup: func() model.Part {
+				return makePart(
+					"bush", "", 0, "minecraft:bush", "",
+					model.Vector3{292.00000000000006, 12, 8}, model.Vector3{3.5999999999999996, 4, 0},
+					model.Color{139, 140, 139}, "SmoothPlastic",
+				)
+			},
+			contains: []string{
+				"Vector3.new(292, 12, 8)",
+				"Vector3.new(3.6, 4, 0)",
+			},
+			notContains: []string{"3.5999999999999996"},
+		},
+		{
+			name: "transparency",
+			setup: func() model.Part {
+				part := makePart(
+					"glass", "", 0, "minecraft:glass", "",
+					model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0},
+					model.Color{255, 255, 255}, "SmoothPlastic",
+				)
+				part.Transparency = floatPtr(0.5)
+				return part
+			},
+			contains: []string{", 0.5, nil, folder)"},
+		},
+		{
+			name: "faces",
+			setup: func() model.Part {
+				part := makePart(
+					"oak", "", 0, "minecraft:oak", "",
+					model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0},
+					model.Color{131, 84, 50}, "SmoothPlastic",
+				)
+				red := model.Color{255, 0, 0}
+				part.Top = surfPtr("rbxassetid://top", &red, floatPtr(0.2))
+				part.Bottom = surfPtr("rbxassetid://bottom", nil, nil)
+				return part
+			},
+			contains: []string{
+				`{face="top", texture="rbxassetid://top", color=Color3.fromRGB(255, 0, 0), transparency=0.2}`,
+				`{face="bottom", texture="rbxassetid://bottom"}`,
+			},
+			notContains: []string{`face="front"`},
+		},
+		{
+			name: "skips textureless faces",
+			setup: func() model.Part {
+				part := makePart(
+					"oak", "", 0, "minecraft:oak", "",
+					model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0},
+					model.Color{131, 84, 50}, "Wood",
+				)
+				red := model.Color{255, 0, 0}
+				part.Top = surfPtr("", &red, nil)
+				part.Front = surfPtr("", nil, floatPtr(0.3))
+				return part
+			},
+			contains:    []string{", nil, nil, folder)"},
+			notContains: []string{"face="},
+		},
+	}
 
-	require.Contains(t, got, "createPart(")
-	require.Contains(t, got, "Vector3.new(2, 3, 4)")
-	require.Contains(t, got, "Vector3.new(1.5, 2.5, 3.5)")
-	require.Contains(t, got, "255, 128, 64")
-	require.Contains(t, got, `"Wood"`)
-	require.Contains(t, got, `"stone"`)
-	require.Contains(t, got, `"minecraft:stone"`)
-	require.Contains(t, got, ", folder)")
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-func TestWriteCreatePart_RoundsCoordinates(t *testing.T) {
-	t.Parallel()
+			svc, _ := testLuaGenerator(t)
+			var sb strings.Builder
+			svc.writeCreatePart(&sb, tt.setup(), "folder")
+			got := sb.String()
 
-	svc, _ := testLuaGenerator(t)
-	var sb strings.Builder
-	svc.writeCreatePart(&sb, makePart(
-		"bush", "", 0, "minecraft:bush", "",
-		model.Vector3{292.00000000000006, 12, 8}, model.Vector3{3.5999999999999996, 4, 0},
-		model.Color{139, 140, 139}, "SmoothPlastic",
-	), "folder")
-	got := sb.String()
-
-	require.Contains(t, got, "Vector3.new(292, 12, 8)")
-	require.Contains(t, got, "Vector3.new(3.6, 4, 0)")
-	require.NotContains(t, got, "3.5999999999999996")
+			for _, c := range tt.contains {
+				require.Contains(t, got, c)
+			}
+			for _, c := range tt.notContains {
+				require.NotContains(t, got, c)
+			}
+		})
+	}
 }
 
 func TestWriteBeginGroup(t *testing.T) {
@@ -122,64 +196,6 @@ func TestWriteBeginGroup(t *testing.T) {
 	require.Contains(t, got, "_group = Instance.new(\"Folder\")")
 	require.Contains(t, got, "_group.Name = \"oak_stairs\"")
 	require.Contains(t, got, "_group.Parent = folder")
-}
-
-func TestWriteCreatePart_Transparency(t *testing.T) {
-	t.Parallel()
-
-	svc, _ := testLuaGenerator(t)
-	var sb strings.Builder
-	part := makePart(
-		"glass", "", 0, "minecraft:glass", "",
-		model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0},
-		model.Color{255, 255, 255}, "SmoothPlastic",
-	)
-	part.Transparency = floatPtr(0.5)
-	svc.writeCreatePart(&sb, part, "folder")
-	got := sb.String()
-
-	require.Contains(t, got, ", 0.5, nil, folder)")
-}
-
-func TestWriteCreatePart_Faces(t *testing.T) {
-	t.Parallel()
-
-	svc, _ := testLuaGenerator(t)
-	var sb strings.Builder
-	part := makePart(
-		"oak", "", 0, "minecraft:oak", "",
-		model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0},
-		model.Color{131, 84, 50}, "SmoothPlastic",
-	)
-	red := model.Color{255, 0, 0}
-	part.Top = surfPtr("rbxassetid://top", &red, floatPtr(0.2))
-	part.Bottom = surfPtr("rbxassetid://bottom", nil, nil)
-	svc.writeCreatePart(&sb, part, "folder")
-	got := sb.String()
-
-	require.Contains(t, got, `{face="top", texture="rbxassetid://top", color=Color3.fromRGB(255, 0, 0), transparency=0.2}`)
-	require.Contains(t, got, `{face="bottom", texture="rbxassetid://bottom"}`)
-	require.NotContains(t, got, `face="front"`)
-}
-
-func TestWriteCreatePart_SkipsTexturelessFaces(t *testing.T) {
-	t.Parallel()
-
-	svc, _ := testLuaGenerator(t)
-	var sb strings.Builder
-	part := makePart(
-		"oak", "", 0, "minecraft:oak", "",
-		model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0},
-		model.Color{131, 84, 50}, "Wood",
-	)
-	red := model.Color{255, 0, 0}
-	part.Top = surfPtr("", &red, nil)
-	part.Front = surfPtr("", nil, floatPtr(0.3))
-	svc.writeCreatePart(&sb, part, "folder")
-	got := sb.String()
-
-	require.Contains(t, got, ", nil, nil, folder)")
-	require.NotContains(t, got, "face=")
 }
 
 func TestRun(t *testing.T) {

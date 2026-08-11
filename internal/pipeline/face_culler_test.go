@@ -17,208 +17,169 @@ func TestFaceCuller_New(t *testing.T) {
 	require.NotNil(t, svc)
 }
 
-func TestFaceCuller_TwoAdjacentFullCuboids(t *testing.T) {
-	t.Parallel()
+func faceMask(top, bottom, front, back, left, right bool) model.FaceMask {
+	return model.FaceMask{top, bottom, front, back, left, right}
+}
 
+func twoAdjacentFullCuboidsOcc() *stateful.OccupancyIndex {
 	occ := stateful.NewOccupancyIndex()
 	occ.FillRegion(0, 0, 0, 4, 4, 4, true)
 	occ.FillRegion(4, 0, 0, 4, 4, 4, true)
-
-	blockRegions := []model.Cuboid{
-		{ID: "minecraft:stone", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
-		{ID: "minecraft:stone", X: 1, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
-	}
-
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, blockRegions, nil, nil, styleIndex())
-
-	require.Equal(t, model.FaceMask{
-		model.FaceIndexTop:    true,
-		model.FaceIndexBottom: true,
-		model.FaceIndexFront:  true,
-		model.FaceIndexBack:   true,
-		model.FaceIndexLeft:   true,
-		model.FaceIndexRight:  false,
-	}, vis.BlockFaces[0])
-
-	require.Equal(t, model.FaceMask{
-		model.FaceIndexTop:    true,
-		model.FaceIndexBottom: true,
-		model.FaceIndexFront:  true,
-		model.FaceIndexBack:   true,
-		model.FaceIndexLeft:   false,
-		model.FaceIndexRight:  true,
-	}, vis.BlockFaces[1])
+	return occ
 }
 
-func TestFaceCuller_FullCuboidPartiallyCoveredByMicro(t *testing.T) {
+func TestFaceCuller_Run(t *testing.T) {
 	t.Parallel()
 
-	occ := stateful.NewOccupancyIndex()
-	occ.FillRegion(0, 0, 0, 4, 4, 4, true)
-	occ.FillRegion(4, 0, 0, 2, 2, 4, true)
-
-	blockRegions := []model.Cuboid{
-		{ID: "minecraft:stone", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
-	}
-	microRegions := []model.Cuboid{
-		{ID: "minecraft:flower", X: 4.5, Y: 0.5, Z: 1.5, Width: 2, Height: 2, Depth: 4},
-	}
-
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, blockRegions, microRegions, nil, styleIndex())
-
-	require.Equal(t, model.FaceMask{
-		model.FaceIndexTop:    true,
-		model.FaceIndexBottom: true,
-		model.FaceIndexFront:  true,
-		model.FaceIndexBack:   true,
-		model.FaceIndexLeft:   true,
-		model.FaceIndexRight:  true,
-	}, vis.BlockFaces[0])
-}
-
-func TestFaceCuller_FullCuboidFullyCoveredByMicro(t *testing.T) {
-	t.Parallel()
-
-	occ := stateful.NewOccupancyIndex()
-	occ.FillRegion(0, 0, 0, 4, 4, 4, true)
-	occ.FillRegion(4, 0, 0, 4, 4, 4, true)
-
-	blockRegions := []model.Cuboid{
-		{ID: "minecraft:stone", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
-	}
-
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, blockRegions, nil, nil, styleIndex())
-
-	require.Equal(t, model.FaceMask{
-		model.FaceIndexTop:    true,
-		model.FaceIndexBottom: true,
-		model.FaceIndexFront:  true,
-		model.FaceIndexBack:   true,
-		model.FaceIndexLeft:   true,
-		model.FaceIndexRight:  false,
-	}, vis.BlockFaces[0])
-}
-
-func TestFaceCuller_ComplexBlockAtWorldEdge(t *testing.T) {
-	t.Parallel()
-
-	occ := stateful.NewOccupancyIndex()
-	blocks := []model.RawBlock{
-		{ID: "minecraft:stairs", X: 0, Y: 0, Z: 0},
-	}
-	styles := styleIndex(struct {
+	stairsStyle := styleIndex(struct {
 		id        string
 		prop      string
 		alignment model.GridAlignment
 	}{"minecraft:stairs", "", model.GridNotAligned})
 
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, nil, nil, blocks, styles)
+	emptyMasks := []model.FaceMask{}
 
-	require.Equal(t, model.FaceMask{
-		model.FaceIndexTop:    true,
-		model.FaceIndexBottom: true,
-		model.FaceIndexFront:  true,
-		model.FaceIndexBack:   true,
-		model.FaceIndexLeft:   true,
-		model.FaceIndexRight:  true,
-	}, vis.ComplexFaces[0])
-}
-
-func TestFaceCuller_ComplexBlockSurrounded(t *testing.T) {
-	t.Parallel()
-
-	occ := stateful.NewOccupancyIndex()
-	occ.FillRegion(-4, -4, -4, 12, 12, 12, true)
-	blocks := []model.RawBlock{
-		{ID: "minecraft:stairs", X: 0, Y: 0, Z: 0},
+	tests := []struct {
+		name         string
+		setupOcc     func() *stateful.OccupancyIndex
+		blockRegions []model.Cuboid
+		microRegions []model.Cuboid
+		blocks       []model.RawBlock
+		styles       stateful.StyleIndex
+		wantBlock    []model.FaceMask
+		wantMicro    []model.FaceMask
+		wantComplex  []model.FaceMask
+	}{
+		{
+			name:     "two adjacent full cuboids",
+			setupOcc: twoAdjacentFullCuboidsOcc,
+			blockRegions: []model.Cuboid{
+				{ID: "minecraft:stone", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
+				{ID: "minecraft:stone", X: 1, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
+			},
+			styles:      styleIndex(),
+			wantBlock:   []model.FaceMask{faceMask(true, true, true, true, true, false), faceMask(true, true, true, true, false, true)},
+			wantMicro:   emptyMasks,
+			wantComplex: emptyMasks,
+		},
+		{
+			name: "full cuboid partially covered by micro",
+			setupOcc: func() *stateful.OccupancyIndex {
+				occ := stateful.NewOccupancyIndex()
+				occ.FillRegion(0, 0, 0, 4, 4, 4, true)
+				occ.FillRegion(4, 0, 0, 2, 2, 4, true)
+				return occ
+			},
+			blockRegions: []model.Cuboid{
+				{ID: "minecraft:stone", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
+			},
+			microRegions: []model.Cuboid{
+				{ID: "minecraft:flower", X: 4.5, Y: 0.5, Z: 1.5, Width: 2, Height: 2, Depth: 4},
+			},
+			styles:      styleIndex(),
+			wantBlock:   []model.FaceMask{faceMask(true, true, true, true, true, true)},
+			wantMicro:   []model.FaceMask{faceMask(true, true, true, true, false, true)},
+			wantComplex: emptyMasks,
+		},
+		{
+			name:     "full cuboid fully covered by micro",
+			setupOcc: twoAdjacentFullCuboidsOcc,
+			blockRegions: []model.Cuboid{
+				{ID: "minecraft:stone", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
+			},
+			styles:      styleIndex(),
+			wantBlock:   []model.FaceMask{faceMask(true, true, true, true, true, false)},
+			wantMicro:   emptyMasks,
+			wantComplex: emptyMasks,
+		},
+		{
+			name:        "complex block at world edge",
+			blocks:      []model.RawBlock{{ID: "minecraft:stairs", X: 0, Y: 0, Z: 0}},
+			styles:      stairsStyle,
+			wantBlock:   emptyMasks,
+			wantMicro:   emptyMasks,
+			wantComplex: []model.FaceMask{faceMask(true, true, true, true, true, true)},
+		},
+		{
+			name: "complex block surrounded",
+			setupOcc: func() *stateful.OccupancyIndex {
+				occ := stateful.NewOccupancyIndex()
+				occ.FillRegion(-4, -4, -4, 12, 12, 12, true)
+				return occ
+			},
+			blocks:      []model.RawBlock{{ID: "minecraft:stairs", X: 0, Y: 0, Z: 0}},
+			styles:      stairsStyle,
+			wantBlock:   emptyMasks,
+			wantMicro:   emptyMasks,
+			wantComplex: []model.FaceMask{faceMask(false, false, false, false, false, false)},
+		},
+		{
+			name:     "micro faces",
+			setupOcc: twoAdjacentFullCuboidsOcc,
+			microRegions: []model.Cuboid{
+				{ID: "minecraft:slab", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
+				{ID: "minecraft:slab", X: 1, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
+			},
+			styles:      styleIndex(),
+			wantBlock:   emptyMasks,
+			wantMicro:   []model.FaceMask{faceMask(false, true, true, false, true, false), faceMask(false, true, true, false, false, false)},
+			wantComplex: emptyMasks,
+		},
+		{
+			name:        "complex block without style",
+			blocks:      []model.RawBlock{{ID: "minecraft:unknown_block", X: 0, Y: 0, Z: 0}},
+			styles:      styleIndex(),
+			wantBlock:   emptyMasks,
+			wantMicro:   emptyMasks,
+			wantComplex: []model.FaceMask{faceMask(false, false, false, false, false, false)},
+		},
+		{
+			name: "complex block with full block style",
+			blocks: []model.RawBlock{
+				{ID: "minecraft:stone", X: 0, Y: 0, Z: 0},
+			},
+			styles: styleIndex(struct {
+				id        string
+				prop      string
+				alignment model.GridAlignment
+			}{"minecraft:stone", "", model.GridFullBlock}),
+			wantBlock:   emptyMasks,
+			wantMicro:   emptyMasks,
+			wantComplex: []model.FaceMask{faceMask(false, false, false, false, false, false)},
+		},
+		{
+			name: "transparent neighbor does not hide face",
+			setupOcc: func() *stateful.OccupancyIndex {
+				occ := stateful.NewOccupancyIndex()
+				occ.FillRegion(0, 0, 0, 4, 4, 4, true)
+				occ.FillRegion(4, 0, 0, 4, 4, 4, false)
+				return occ
+			},
+			blockRegions: []model.Cuboid{
+				{ID: "minecraft:stone", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
+			},
+			styles:      styleIndex(),
+			wantBlock:   []model.FaceMask{faceMask(true, true, true, true, true, true)},
+			wantMicro:   emptyMasks,
+			wantComplex: emptyMasks,
+		},
 	}
-	styles := styleIndex(struct {
-		id        string
-		prop      string
-		alignment model.GridAlignment
-	}{"minecraft:stairs", "", model.GridNotAligned})
 
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, nil, nil, blocks, styles)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	require.Equal(t, model.FaceMask{
-		model.FaceIndexTop:    false,
-		model.FaceIndexBottom: false,
-		model.FaceIndexFront:  false,
-		model.FaceIndexBack:   false,
-		model.FaceIndexLeft:   false,
-		model.FaceIndexRight:  false,
-	}, vis.ComplexFaces[0])
-}
+			occ := stateful.NewOccupancyIndex()
+			if tt.setupOcc != nil {
+				occ = tt.setupOcc()
+			}
 
-func TestFaceCuller_MicroFaces(t *testing.T) {
-	t.Parallel()
+			vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).
+				Run(occ, tt.blockRegions, tt.microRegions, tt.blocks, tt.styles)
 
-	occ := stateful.NewOccupancyIndex()
-	occ.FillRegion(0, 0, 0, 4, 4, 4, true)
-	occ.FillRegion(4, 0, 0, 4, 4, 4, true)
-
-	microRegions := []model.Cuboid{
-		{ID: "minecraft:slab", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
-		{ID: "minecraft:slab", X: 1, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
+			require.Equal(t, tt.wantBlock, vis.BlockFaces)
+			require.Equal(t, tt.wantMicro, vis.MicroFaces)
+			require.Equal(t, tt.wantComplex, vis.ComplexFaces)
+		})
 	}
-
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).
-		Run(occ, nil, microRegions, nil, styleIndex())
-
-	require.False(t, vis.MicroFaces[0][model.FaceIndexRight])
-	require.False(t, vis.MicroFaces[0][model.FaceIndexTop])
-	require.False(t, vis.MicroFaces[1][model.FaceIndexLeft])
-}
-
-func TestFaceCuller_ComplexBlockWithoutStyle(t *testing.T) {
-	t.Parallel()
-
-	occ := stateful.NewOccupancyIndex()
-	blocks := []model.RawBlock{
-		{ID: "minecraft:unknown_block", X: 0, Y: 0, Z: 0},
-	}
-
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).
-		Run(occ, nil, nil, blocks, styleIndex())
-
-	require.Equal(t, model.FaceMask{}, vis.ComplexFaces[0])
-}
-
-func TestFaceCuller_ComplexBlockWithFullBlockStyle(t *testing.T) {
-	t.Parallel()
-
-	occ := stateful.NewOccupancyIndex()
-	styles := styleIndex(struct {
-		id        string
-		prop      string
-		alignment model.GridAlignment
-	}{"minecraft:stone", "", model.GridFullBlock})
-
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).
-		Run(occ, nil, nil, []model.RawBlock{{ID: "minecraft:stone", X: 0, Y: 0, Z: 0}}, styles)
-
-	require.Equal(t, model.FaceMask{}, vis.ComplexFaces[0])
-}
-
-func TestFaceCuller_TransparentNeighborDoesNotHideFace(t *testing.T) {
-	t.Parallel()
-
-	occ := stateful.NewOccupancyIndex()
-	occ.FillRegion(0, 0, 0, 4, 4, 4, true)
-	occ.FillRegion(4, 0, 0, 4, 4, 4, false)
-
-	blockRegions := []model.Cuboid{
-		{ID: "minecraft:stone", X: 0, Y: 0, Z: 0, Width: 1, Height: 1, Depth: 1},
-	}
-
-	vis := NewFaceCuller(&mockMergerPropsKeyBuilder{}, NewCuboidHelper()).Run(occ, blockRegions, nil, nil, styleIndex())
-
-	require.Equal(t, model.FaceMask{
-		model.FaceIndexTop:    true,
-		model.FaceIndexBottom: true,
-		model.FaceIndexFront:  true,
-		model.FaceIndexBack:   true,
-		model.FaceIndexLeft:   true,
-		model.FaceIndexRight:  true,
-	}, vis.BlockFaces[0])
 }
