@@ -15,6 +15,8 @@ var (
 	errCreate   = errors.New("create fail")
 	errReadDir  = errors.New("readdir fail")
 	errReadFile = errors.New("read fail")
+	errWrite    = errors.New("write fail")
+	errClose    = errors.New("close fail")
 )
 
 func TestFSMock_Create(t *testing.T) {
@@ -243,6 +245,41 @@ func TestFSMock_ReadFile(t *testing.T) {
 			require.Equal(t, tc.want, string(data))
 		})
 	}
+}
+
+func TestFSMock_WriteError(t *testing.T) {
+	t.Parallel()
+
+	m := NewFSMock()
+	m.WriteErrors[filepath.Clean("/out.lua")] = errWrite
+
+	w, err := m.Create("/out.lua")
+	require.NoError(t, err)
+	n, err := w.Write([]byte("data"))
+	require.ErrorIs(t, err, errWrite)
+	require.Zero(t, n)
+
+	data, err := m.ReadFile("/out.lua")
+	require.NoError(t, err)
+	require.Empty(t, data)
+}
+
+func TestFSMock_CloseError(t *testing.T) {
+	t.Parallel()
+
+	m := NewFSMock()
+	m.CloseErrors[filepath.Clean("/out.lua")] = errClose
+
+	w, err := m.Create("/out.lua")
+	require.NoError(t, err)
+	n, err := w.Write([]byte("data"))
+	require.NoError(t, err)
+	require.Equal(t, 4, n)
+	require.ErrorIs(t, w.Close(), errClose)
+
+	data, err := m.ReadFile("/out.lua")
+	require.NoError(t, err)
+	require.Equal(t, "data", string(data))
 }
 
 func TestFSMock_Create_Overwrite(t *testing.T) {

@@ -15,6 +15,8 @@ type FSMock struct {
 	ReadFileErrors map[string]error
 	CreateErrors   map[string]error
 	ReadDirErrors  map[string]error
+	WriteErrors    map[string]error
+	CloseErrors    map[string]error
 	Calls          []string
 }
 
@@ -31,6 +33,8 @@ func NewFSMock() *FSMock {
 		ReadFileErrors: make(map[string]error),
 		CreateErrors:   make(map[string]error),
 		ReadDirErrors:  make(map[string]error),
+		WriteErrors:    make(map[string]error),
+		CloseErrors:    make(map[string]error),
 	}
 }
 
@@ -82,7 +86,11 @@ func (m *FSMock) Create(path string) (io.WriteCloser, error) {
 	defer m.mu.Unlock()
 	mf := &mockFile{name: path, data: bytes.NewBuffer(nil), mode: 0644, modTime: time.Now()}
 	m.files[cpath] = mf
-	return &mockFSWriter{buf: mf.data}, nil
+	return &mockFSWriter{
+		buf:      mf.data,
+		writeErr: m.WriteErrors[cpath],
+		closeErr: m.CloseErrors[cpath],
+	}, nil
 }
 
 func (m *FSMock) ReadDir(dirname string) ([]fs.DirEntry, error) {
@@ -110,11 +118,19 @@ func (m *FSMock) ReadDir(dirname string) ([]fs.DirEntry, error) {
 }
 
 type mockFSWriter struct {
-	buf *bytes.Buffer
+	buf      *bytes.Buffer
+	writeErr error
+	closeErr error
 }
 
-func (w *mockFSWriter) Write(p []byte) (int, error) { return w.buf.Write(p) }
-func (w *mockFSWriter) Close() error                { return nil }
+func (w *mockFSWriter) Write(p []byte) (int, error) {
+	if w.writeErr != nil {
+		return 0, w.writeErr
+	}
+	return w.buf.Write(p)
+}
+
+func (w *mockFSWriter) Close() error { return w.closeErr }
 
 type dirEntry struct {
 	name string
