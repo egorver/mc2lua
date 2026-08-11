@@ -8,10 +8,13 @@ import (
 )
 
 const (
-	maxTextureLift = 1.25
-	luminanceR     = 0.2126
-	luminanceG     = 0.7152
-	luminanceB     = 0.0722
+	maxTextureLift      = 1.25
+	luminanceR          = 0.2126
+	luminanceG          = 0.7152
+	luminanceB          = 0.0722
+	rgbaChannelShift    = 8
+	minLuminanceSamples = 2
+	maxByteValue        = 255
 )
 
 type PixelAccumulator struct {
@@ -28,7 +31,7 @@ func (a *PixelAccumulator) Add(r, g, b, alpha uint32) {
 	if alpha == 0 {
 		return
 	}
-	r8, g8, b8 := uint8(r>>8), uint8(g>>8), uint8(b>>8)
+	r8, g8, b8 := uint8(r>>rgbaChannelShift), uint8(g>>rgbaChannelShift), uint8(b>>rgbaChannelShift)
 	a.rSum += int64(r8)
 	a.gSum += int64(g8)
 	a.bSum += int64(b8)
@@ -49,7 +52,7 @@ func (a *PixelAccumulator) Result() (model.Color, error) {
 }
 
 func (a *PixelAccumulator) liftFactor() float64 {
-	if len(a.lums) < 2 {
+	if len(a.lums) < minLuminanceSamples {
 		return 1.0
 	}
 
@@ -100,8 +103,8 @@ func (a *PixelAccumulator) clampByte(v int) uint8 {
 	if v < 0 {
 		return 0
 	}
-	if v > 255 {
-		return 255
+	if v > maxByteValue {
+		return maxByteValue
 	}
 	return uint8(v)
 }

@@ -46,7 +46,7 @@ func (svc *FaceCuller) cullBlockRegions(occ *stateful.OccupancyIndex, regions []
 func (svc *FaceCuller) cullMicroRegions(occ *stateful.OccupancyIndex, regions []model.Cuboid) []model.FaceMask {
 	masks := make([]model.FaceMask, len(regions))
 	for i, c := range regions {
-		masks[i] = svc.cuboidFaces(occ, c, 1)
+		masks[i] = svc.cuboidFaces(occ, c, model.MicroVoxelSize)
 	}
 	return masks
 }

@@ -12,6 +12,11 @@ import (
 	"mc2lua/internal/runtime"
 )
 
+const (
+	materialsConfigFile = "materials.yaml"
+	partsConfigFile     = "parts.yaml"
+)
+
 type App struct{}
 
 func New() *App {
@@ -63,17 +68,17 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelParser, textureResolver, elementRotator)
 	colorExtractor := minecraft.NewColorExtractor(fs)
 
-	materialMatcher, err := matcher.NewMaterialMatcher(fs, filepath.Join(configDir, "materials.yaml"))
+	materialMatcher, err := matcher.NewMaterialMatcher(fs, filepath.Join(configDir, materialsConfigFile))
 	if err != nil {
 		return nil, fmt.Errorf("create material matcher: %w", err)
 	}
 
-	brightnessMatcher, err := matcher.NewBrightnessMatcher(fs, filepath.Join(configDir, "materials.yaml"))
+	brightnessMatcher, err := matcher.NewBrightnessMatcher(fs, filepath.Join(configDir, materialsConfigFile))
 	if err != nil {
 		return nil, fmt.Errorf("create brightness matcher: %w", err)
 	}
 
-	partStyleMatcher, err := matcher.NewPartStyleMatcher(fs, filepath.Join(configDir, "parts.yaml"))
+	partStyleMatcher, err := matcher.NewPartStyleMatcher(fs, filepath.Join(configDir, partsConfigFile))
 	if err != nil {
 		return nil, fmt.Errorf("create part style matcher: %w", err)
 	}

@@ -20,4 +20,10 @@ const (
 	TextureDirPath           = "/textures/"
 	PNGExtension             = ".png"
 	JSONExtension            = ".json"
+	TextureReferencePrefix   = "#"
+	TexturePixelSize         = 16.0
+	ParticleTextureKey       = "particle"
+	PropsSeparator           = ","
+	PropsEquals              = "="
+	VariantArrayOpen         = "["
 )

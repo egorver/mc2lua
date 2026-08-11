@@ -24,10 +24,10 @@ func (svc *PropsKeyBuilder) Run(props map[string]string) string {
 	var b strings.Builder
 	for i, k := range keys {
 		if i > 0 {
-			b.WriteByte(',')
+			b.WriteString(PropsSeparator)
 		}
 		b.WriteString(k)
-		b.WriteByte('=')
+		b.WriteString(PropsEquals)
 		b.WriteString(props[k])
 	}
 	return b.String()

@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	coordPrecision     = 100.0
-	partsPlaceholder   = "-- Total parts: XXX"
-	importedFolderName = "Imported"
+	coordPrecision      = 100.0
+	partsPlaceholder    = "-- Total parts: XXX"
+	importedFolderName  = "Imported"
+	progressLogInterval = 500
 )
 
 type LuaGenerator struct {
@@ -115,7 +116,7 @@ func (svc *LuaGenerator) writeHeader(sb *strings.Builder, scale float64) {
 	sb.WriteString("    p.Parent = parent or folder\n")
 	sb.WriteString("\n")
 	sb.WriteString("    _counter = _counter + 1\n")
-	sb.WriteString("    if _counter % 500 == 0 then\n")
+	fmt.Fprintf(sb, "    if _counter %% %d == 0 then\n", progressLogInterval)
 	sb.WriteString("        print(string.format(\"Building... %d/%d (%d%%)\", _counter, _total, _counter / _total * 100))\n")
 	sb.WriteString("        task.wait()\n")
 	sb.WriteString("    end\n")

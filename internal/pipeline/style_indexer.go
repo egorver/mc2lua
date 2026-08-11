@@ -88,8 +88,11 @@ func (svc *StyleIndexer) elementColor(el model.ModelElement, textures map[string
 	}
 	samples := svc.resolveTextureSamples(el.Faces, textures)
 	if len(samples) == 0 {
-		if tex, ok := textures["particle"]; ok && !strings.HasPrefix(tex, "#") {
-			samples = []minecraft.TextureSample{{TextureVar: tex, UV: [4]float64{0, 0, 16, 16}}}
+		if tex, ok := textures[minecraft.ParticleTextureKey]; ok && !strings.HasPrefix(tex, minecraft.TextureReferencePrefix) {
+			samples = []minecraft.TextureSample{{
+				TextureVar: tex,
+				UV:         [4]float64{0, 0, minecraft.TexturePixelSize, minecraft.TexturePixelSize},
+			}}
 		}
 	}
 	if len(samples) == 0 {
@@ -105,7 +108,7 @@ func (svc *StyleIndexer) elementColor(el model.ModelElement, textures map[string
 func (svc *StyleIndexer) resolveTextureSamples(faces map[string]model.ElementFace, textures map[string]string) []minecraft.TextureSample {
 	var samples []minecraft.TextureSample
 	for _, face := range faces {
-		texKey := strings.TrimPrefix(face.Texture, "#")
+		texKey := strings.TrimPrefix(face.Texture, minecraft.TextureReferencePrefix)
 		texVar, ok := textures[texKey]
 		if !ok {
 			continue

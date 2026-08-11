@@ -93,9 +93,9 @@ func (svc *BlockstateParser) matchKey(key string, props map[string]string) bool 
 	if key == "" {
 		return true
 	}
-	for _, part := range strings.Split(key, ",") {
+	for _, part := range strings.Split(key, PropsSeparator) {
 		part = strings.TrimSpace(part)
-		eq := strings.IndexByte(part, '=')
+		eq := strings.Index(part, PropsEquals)
 		if eq == -1 {
 			continue
 		}
@@ -128,7 +128,7 @@ func (svc *BlockstateParser) parseVariantValue(raw json.RawMessage) ([]blockstat
 		return nil, fmt.Errorf("empty variant value")
 	}
 
-	if text[0] == '[' {
+	if strings.HasPrefix(text, VariantArrayOpen) {
 		var entries []variantEntry
 		if err := json.Unmarshal(raw, &entries); err != nil {
 			return nil, fmt.Errorf("parse variant array: %w", err)

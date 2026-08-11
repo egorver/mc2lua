@@ -15,6 +15,11 @@ type brightnessMatcher interface {
 	Run(material string) float64
 }
 
+const (
+	axisRoundThreshold = 0.5
+	maxByteValue       = 255
+)
+
 var namedFaces = []string{
 	model.FaceTop, model.FaceBottom,
 	model.FaceFront, model.FaceBack,
@@ -158,14 +163,14 @@ func (svc *PartStylizer) setSurface(p *model.Part, worldFace int, surf *model.Su
 func (svc *PartStylizer) mapFace(face string, rotX, rotY float64) int {
 	dir := baseFaceDir(face)
 	if rotY != 0 {
-		rad := rotY * math.Pi / 180
+		rad := rotY * model.DegreesToRadians
 		c, s := math.Cos(rad), math.Sin(rad)
 		x, z := dir[0], dir[2]
 		dir[0] = x*c - z*s
 		dir[2] = x*s + z*c
 	}
 	if rotX != 0 {
-		rad := rotX * math.Pi / 180
+		rad := rotX * model.DegreesToRadians
 		c, s := math.Cos(rad), math.Sin(rad)
 		y, z := dir[1], dir[2]
 		dir[1] = y*c - z*s
@@ -215,9 +220,9 @@ func directionToFace(dir model.Vector3) int {
 
 func roundAxis(v float64) int {
 	switch {
-	case v > 0.5:
+	case v > axisRoundThreshold:
 		return 1
-	case v < -0.5:
+	case v < -axisRoundThreshold:
 		return -1
 	}
 	return 0
@@ -238,8 +243,8 @@ func (svc *PartStylizer) clampByte(v int) uint8 {
 	if v < 0 {
 		return 0
 	}
-	if v > 255 {
-		return 255
+	if v > maxByteValue {
+		return maxByteValue
 	}
 	return uint8(v)
 }

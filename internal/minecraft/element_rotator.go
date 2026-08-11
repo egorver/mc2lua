@@ -6,10 +6,7 @@ import (
 	"mc2lua/internal/model"
 )
 
-const (
-	rotationPrecision = 64.0
-	degreesToRadians  = math.Pi / 180
-)
+const rotationPrecision = 64.0
 
 type ElementRotator struct{}
 
@@ -70,13 +67,13 @@ func (svc *ElementRotator) rotateBounds(from, to model.Vector3, rotX, rotY float
 func (svc *ElementRotator) rotatePoint(p model.Vector3, rotX, rotY float64) model.Vector3 {
 	x, y, z := p[0], p[1], p[2]
 	if rotY != 0 {
-		rad := rotY * degreesToRadians
+		rad := rotY * model.DegreesToRadians
 		c, s := math.Cos(rad), math.Sin(rad)
 		dx, dz := x-model.BlockCenter, z-model.BlockCenter
 		x, z = model.BlockCenter+dx*c-dz*s, model.BlockCenter+dx*s+dz*c
 	}
 	if rotX != 0 {
-		rad := rotX * degreesToRadians
+		rad := rotX * model.DegreesToRadians
 		c, s := math.Cos(rad), math.Sin(rad)
 		dy, dz := y-model.BlockCenter, z-model.BlockCenter
 		y, z = model.BlockCenter+dy*c-dz*s, model.BlockCenter+dy*s+dz*c

@@ -55,10 +55,10 @@ func (svc *ColorExtractor) accumulateRegion(img image.Image, uv [4]float64, acc 
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
 
-	uMin := svc.clamp(int(uv[0]*float64(w)/16), 0, w-1)
-	uMax := svc.clamp(int(uv[2]*float64(w)/16), uMin+1, w)
-	vMin := svc.clamp(int(uv[1]*float64(h)/16), 0, h-1)
-	vMax := svc.clamp(int(uv[3]*float64(h)/16), vMin+1, h)
+	uMin := svc.clamp(int(uv[0]*float64(w)/TexturePixelSize), 0, w-1)
+	uMax := svc.clamp(int(uv[2]*float64(w)/TexturePixelSize), uMin+1, w)
+	vMin := svc.clamp(int(uv[1]*float64(h)/TexturePixelSize), 0, h-1)
+	vMax := svc.clamp(int(uv[3]*float64(h)/TexturePixelSize), vMin+1, h)
 
 	for y := vMin; y < vMax; y++ {
 		for x := uMin; x < uMax; x++ {

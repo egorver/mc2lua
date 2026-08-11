@@ -15,8 +15,8 @@ func (svc *TextureResolver) Run(textures map[string]string) map[string]string {
 		resolved := v
 		visited := map[string]bool{k: true}
 
-		for strings.HasPrefix(resolved, "#") {
-			refKey := resolved[1:]
+		for strings.HasPrefix(resolved, TextureReferencePrefix) {
+			refKey := resolved[len(TextureReferencePrefix):]
 			if visited[refKey] {
 				resolved = v
 				break
