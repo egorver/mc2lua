@@ -140,6 +140,17 @@ func (m *mockPartBuilder) Run(blocks []model.RawBlock, blockCuboids, microCuboid
 	return nil, nil
 }
 
+type mockPartStylizer struct {
+	runFn func(parts []model.Part, styleIndex stateful.StyleIndex) []model.Part
+}
+
+func (m *mockPartStylizer) Run(parts []model.Part, styleIndex stateful.StyleIndex) []model.Part {
+	if m.runFn != nil {
+		return m.runFn(parts, styleIndex)
+	}
+	return parts
+}
+
 type mockLuaGenerator struct {
 	runFn func(parts []model.Part, scale float64, outputPath string) error
 }
@@ -166,8 +177,9 @@ func TestRunner_New(t *testing.T) {
 	mockOI := &mockOccupancyIndexer{}
 	mockFC := &mockFaceCuller{}
 	mockPB := &mockPartBuilder{}
+	mockPS := &mockPartStylizer{}
 	mockLG := &mockLuaGenerator{}
-	r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockPB, mockLG, io.Discard)
+	r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockPB, mockPS, mockLG, io.Discard)
 	require.NotNil(t, r)
 }
 
@@ -327,11 +339,12 @@ func TestRunner_Run(t *testing.T) {
 			if tt.mockPB != nil {
 				mockPB.runFn = tt.mockPB
 			}
+			mockPS := &mockPartStylizer{}
 			mockLG := &mockLuaGenerator{}
 			if tt.mockLG != nil {
 				mockLG.runFn = tt.mockLG
 			}
-			r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockPB, mockLG, io.Discard)
+			r := NewRunner(mockRR, mockBR, mockCN, mockAS, mockCol, mockIdx, mockBVI, mockMVI, mockRM, mockOI, mockFC, mockPB, mockPS, mockLG, io.Discard)
 
 			err := r.Run(RunConfig{
 				Input:     "/test",
@@ -348,6 +361,29 @@ func TestRunner_Run(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestRunner_LogStyling(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	r := &Runner{logOutput: &buf}
+
+	red := model.Color{200, 30, 30}
+	half := 0.5
+	parts := []model.Part{
+		{
+			Top:          &model.Surface{Texture: "rbxassetid://1"},
+			Bottom:       &model.Surface{Color: &red},
+			Front:        &model.Surface{Color: &red},
+			Transparency: &half,
+		},
+		{},
+		{Left: &model.Surface{Transparency: &half}},
+	}
+
+	r.logStyling(parts)
+	require.Equal(t, "Styled 2 part(s), 4 face(s) in total\n", buf.String())
 }
 
 func TestRunner_RunLogsArea(t *testing.T) {
@@ -409,6 +445,7 @@ func TestRunner_RunLogsArea(t *testing.T) {
 				&mockOccupancyIndexer{},
 				&mockFaceCuller{},
 				&mockPartBuilder{},
+				&mockPartStylizer{},
 				&mockLuaGenerator{},
 				&buf,
 			)

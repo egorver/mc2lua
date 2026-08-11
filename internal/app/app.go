@@ -81,7 +81,6 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create part style matcher: %w", err)
 	}
-	_ = partStyleMatcher
 
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
 	boundsResolver := pipeline.NewBoundsResolver()
@@ -96,6 +95,7 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	occupancyIndexer := pipeline.NewOccupancyIndexer(propsKeyBuilder)
 	faceCuller := pipeline.NewFaceCuller(propsKeyBuilder, cuboidHelper)
 	partBuilder := pipeline.NewPartBuilder(propsKeyBuilder)
+	partStylizer := pipeline.NewPartStylizer(partStyleMatcher)
 	luaGenerator := pipeline.NewLuaGenerator(fs)
 
 	return pipeline.NewRunner(
@@ -111,6 +111,7 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 		occupancyIndexer,
 		faceCuller,
 		partBuilder,
+		partStylizer,
 		luaGenerator,
 		os.Stdout), nil
 }

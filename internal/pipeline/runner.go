@@ -61,6 +61,10 @@ type partBuilder interface {
 	Run(blocks []model.RawBlock, blockCuboids, microCuboids []model.Cuboid, visibility model.FaceVisibility, styleIndex stateful.StyleIndex, scale float64) ([]model.Part, error)
 }
 
+type partStylizer interface {
+	Run(parts []model.Part, styleIndex stateful.StyleIndex) []model.Part
+}
+
 type luaGenerator interface {
 	Run(parts []model.Part, scale float64, outputPath string) error
 }
@@ -78,6 +82,7 @@ type Runner struct {
 	occupancyIndexer  occupancyIndexer
 	faceCuller        faceCuller
 	partBuilder       partBuilder
+	partStylizer      partStylizer
 	luaGenerator      luaGenerator
 	logOutput         io.Writer
 }
@@ -95,6 +100,7 @@ func NewRunner(
 	oi occupancyIndexer,
 	fc faceCuller,
 	pb partBuilder,
+	ps partStylizer,
 	lg luaGenerator,
 	logOutput io.Writer,
 ) *Runner {
@@ -111,6 +117,7 @@ func NewRunner(
 		occupancyIndexer:  oi,
 		faceCuller:        fc,
 		partBuilder:       pb,
+		partStylizer:      ps,
 		luaGenerator:      lg,
 		logOutput:         logOutput,
 	}
@@ -175,6 +182,9 @@ func (svc *Runner) Run(cfg RunConfig) error {
 		return fmt.Errorf("build parts: %w", err)
 	}
 	svc.log("Built %d part(s)\n", len(parts))
+
+	parts = svc.partStylizer.Run(parts, *styledIdx)
+	svc.logStyling(parts)
 
 	if err := svc.luaGenerator.Run(parts, float64(cfg.Scale), cfg.Output); err != nil {
 		return fmt.Errorf("generate lua: %w", err)
@@ -241,4 +251,27 @@ func (svc *Runner) logMergeStats(voxelCount, regionCount int) {
 func (svc *Runner) logFaceVisibility(v model.FaceVisibility) {
 	svc.log("Computed face visibility: %d block region(s), %d micro region(s), %d complex block(s)\n",
 		len(v.BlockFaces), len(v.MicroFaces), len(v.ComplexFaces))
+}
+
+func (svc *Runner) logStyling(parts []model.Part) {
+	styledParts := 0
+	styledFaces := 0
+	for _, p := range parts {
+		faces := svc.styledFaceCount(p)
+		styledFaces += faces
+		if faces > 0 || p.Transparency != nil {
+			styledParts++
+		}
+	}
+	svc.log("Styled %d part(s), %d face(s) in total\n", styledParts, styledFaces)
+}
+
+func (svc *Runner) styledFaceCount(p model.Part) int {
+	count := 0
+	for _, face := range []*model.Surface{p.Top, p.Bottom, p.Front, p.Back, p.Left, p.Right} {
+		if face != nil {
+			count++
+		}
+	}
+	return count
 }

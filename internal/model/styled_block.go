@@ -4,7 +4,10 @@ type Color [3]uint8
 
 var DefaultColor = Color{191, 191, 191}
 
-const DefaultMaterial = "Plastic"
+const (
+	DefaultMaterial     = "Plastic"
+	TexturelessMaterial = "SmoothPlastic"
+)
 
 type GridAlignment int
 

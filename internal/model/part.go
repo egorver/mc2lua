@@ -10,6 +10,7 @@ type Part struct {
 	Position     Vector3
 	Color        Color
 	Material     string
+	VisibleFaces FaceMask
 	Transparency *float64
 	Top          *Surface
 	Bottom       *Surface

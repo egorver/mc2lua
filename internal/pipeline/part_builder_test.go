@@ -28,6 +28,28 @@ func testPartBuilder(t *testing.T, pkb *mockGeneratorPropsKeyBuilder) *PartBuild
 	return NewPartBuilder(pkb)
 }
 
+func visibleMask() model.FaceMask {
+	return model.FaceMask{true, true, true, true, true, true}
+}
+
+func makeVisibility(blockCuboids, microCuboids []model.Cuboid, blocks []model.RawBlock) model.FaceVisibility {
+	vis := model.FaceVisibility{
+		BlockFaces:   make([]model.FaceMask, len(blockCuboids)),
+		MicroFaces:   make([]model.FaceMask, len(microCuboids)),
+		ComplexFaces: make([]model.FaceMask, len(blocks)),
+	}
+	for i := range vis.BlockFaces {
+		vis.BlockFaces[i] = visibleMask()
+	}
+	for i := range vis.MicroFaces {
+		vis.MicroFaces[i] = visibleMask()
+	}
+	for i := range vis.ComplexFaces {
+		vis.ComplexFaces[i] = visibleMask()
+	}
+	return vis
+}
+
 func makeStyledBlock(id, propsKey string, alignment model.GridAlignment, elems ...model.StyledElement) model.StyledBlock {
 	return model.StyledBlock{ID: id, PropsKey: propsKey, GridAlignment: alignment, Elements: elems}
 }
@@ -113,6 +135,7 @@ func TestBuildSimplePart(t *testing.T) {
 				require.Equal(t, model.Vector3{0, 8, 4}, part.Position)
 				require.Equal(t, model.Color{131, 84, 50}, part.Color)
 				require.Equal(t, "Wood", part.Material)
+				require.Equal(t, visibleMask(), part.VisibleFaces)
 			},
 		},
 		{
@@ -139,7 +162,7 @@ func TestBuildSimplePart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			part, err := svc.buildSimplePart(tt.cuboid, tt.style, tt.scale)
+			part, err := svc.buildSimplePart(tt.cuboid, tt.style, visibleMask(), tt.scale)
 			if tt.wantErr {
 				require.Error(t, err)
 				if tt.wantErrMsg != "" {
@@ -210,6 +233,8 @@ func TestBuildComplexParts(t *testing.T) {
 				require.Equal(t, "oak_stairs", parts[0].Group)
 				require.Equal(t, "elem 1", parts[0].Name)
 				require.Equal(t, "elem 2", parts[1].Name)
+				require.Equal(t, visibleMask(), parts[0].VisibleFaces)
+				require.Equal(t, visibleMask(), parts[1].VisibleFaces)
 			},
 		},
 		{
@@ -224,7 +249,7 @@ func TestBuildComplexParts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := testPartBuilder(t, nil)
-			parts := svc.buildComplexParts(tt.block, tt.style, tt.scale)
+			parts := svc.buildComplexParts(tt.block, tt.style, visibleMask(), tt.scale)
 			require.Len(t, parts, tt.wantCount)
 			if tt.wantCheck != nil {
 				tt.wantCheck(t, parts)
@@ -241,6 +266,7 @@ func TestPartBuilder_Run(t *testing.T) {
 		blocks       []model.RawBlock
 		blockCuboids []model.Cuboid
 		microCuboids []model.Cuboid
+		visibility   *model.FaceVisibility
 		styleIdx     *stateful.StyleIndex
 		pkbFn        func(props map[string]string) string
 		scale        float64
@@ -442,6 +468,51 @@ func TestPartBuilder_Run(t *testing.T) {
 				require.Equal(t, 2, parts[3].GroupID)
 			},
 		},
+		{
+			name: "stamps face mask aligned to source index after skips",
+			blockCuboids: []model.Cuboid{
+				{ID: "minecraft:oak_stairs", PropsKey: "facing=north", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
+				{ID: "minecraft:stone", PropsKey: "", X: 3, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
+			},
+			visibility: &model.FaceVisibility{
+				BlockFaces: []model.FaceMask{
+					visibleMask(),
+					model.FaceMask{false, false, true, true, false, false},
+				},
+			},
+			styleIdx: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
+				idx.Add("minecraft:oak_stairs", "facing=north", makeStyledBlock(
+					"minecraft:oak_stairs", "facing=north", model.GridNotAligned,
+				))
+				idx.Add("minecraft:stone", "", makeStyledBlock("minecraft:stone", "", model.GridFullBlock,
+					makeStyledElement(0, 0, 0, 16, 16, 16, model.Color{128, 128, 128}, "Slate"),
+				))
+				return idx
+			}(),
+			scale:     4,
+			wantCount: 1,
+			wantCheck: func(t *testing.T, parts []model.Part) {
+				require.Equal(t, "minecraft:stone", parts[0].BlockID)
+				require.Equal(t, model.FaceMask{false, false, true, true, false, false}, parts[0].VisibleFaces)
+			},
+		},
+		{
+			name: "visibility length mismatch returns error",
+			blockCuboids: []model.Cuboid{
+				{ID: "minecraft:stone", PropsKey: "", X: 0, Y: 0, Z: 0, Width: 1, Depth: 1, Height: 1},
+			},
+			visibility: &model.FaceVisibility{},
+			styleIdx: func() *stateful.StyleIndex {
+				idx := stateful.NewStyleIndex()
+				idx.Add("minecraft:stone", "", makeStyledBlock("minecraft:stone", "", model.GridFullBlock,
+					makeStyledElement(0, 0, 0, 16, 16, 16, model.Color{128, 128, 128}, "Slate"),
+				))
+				return idx
+			}(),
+			scale:      4,
+			wantErrMsg: "visibility mismatch: got 0 block face mask(s) for 1 block cuboid(s)",
+		},
 	}
 
 	for _, tt := range tests {
@@ -449,7 +520,12 @@ func TestPartBuilder_Run(t *testing.T) {
 			pkb := &mockGeneratorPropsKeyBuilder{runFn: tt.pkbFn}
 			svc := testPartBuilder(t, pkb)
 
-			parts, err := svc.Run(tt.blocks, tt.blockCuboids, tt.microCuboids, model.FaceVisibility{}, *tt.styleIdx, tt.scale)
+			visibility := makeVisibility(tt.blockCuboids, tt.microCuboids, tt.blocks)
+			if tt.visibility != nil {
+				visibility = *tt.visibility
+			}
+
+			parts, err := svc.Run(tt.blocks, tt.blockCuboids, tt.microCuboids, visibility, *tt.styleIdx, tt.scale)
 			if tt.wantErrMsg != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.wantErrMsg)
