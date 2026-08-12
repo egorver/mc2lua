@@ -29,6 +29,9 @@ func NewChunkDecoder() *ChunkDecoder {
 }
 
 func (svc *ChunkDecoder) Run(data []byte, chunkX, chunkZ int) ([]model.RawBlock, error) {
+	if len(data) == 0 {
+		return nil, fmt.Errorf("decode chunk (%d, %d): empty data", chunkX, chunkZ)
+	}
 	var sc save.Chunk
 	if err := sc.Load(data); err != nil {
 		return nil, fmt.Errorf("decode chunk (%d, %d): %w", chunkX, chunkZ, err)
