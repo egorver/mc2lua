@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makePNG(t *testing.T, w, h int, px func(x, y int) color.NRGBA) []byte {
+func makePNG(t testing.TB, w, h int, px func(x, y int) color.NRGBA) []byte {
 	t.Helper()
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
 	for y := 0; y < h; y++ {
