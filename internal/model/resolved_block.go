@@ -10,8 +10,9 @@ type ElementRotation struct {
 }
 
 type ElementFace struct {
-	UV      [4]float64 `json:"uv"`
-	Texture string     `json:"texture"`
+	UV        [4]float64 `json:"uv"`
+	Texture   string     `json:"texture"`
+	TintIndex *int       `json:"tintindex,omitempty"`
 }
 
 type ModelElement struct {

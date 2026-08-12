@@ -148,6 +148,20 @@ assignment:
 - `overrides` — explicit per-block material assignments
 - `brightness` — per-material brightness factors applied to extracted colors
 
+### Tints (`config/tints.yaml`)
+
+Block faces whose model declares a `tintindex` are multiplied by a tint color.
+`grass` and `foliage` colors are sampled from the vanilla biome colormaps
+(`colormap/grass.png` and `colormap/foliage.png`) at a fixed plains climate;
+`water` and `redstone` use fixed colors. Add mod blocks to this file so they
+receive the same tinting:
+
+```yaml
+tints:
+  minecraft:grass_block: grass
+  minecraft:oak_leaves: foliage
+```
+
 ## Output Format
 
 The generated script consists of:

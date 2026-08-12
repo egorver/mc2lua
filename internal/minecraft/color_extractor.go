@@ -14,6 +14,8 @@ type ColorExtractor struct {
 	fs fsApi
 }
 
+const rgbaChannelShift = 8
+
 func NewColorExtractor(fs fsApi) *ColorExtractor {
 	return &ColorExtractor{fs: fs}
 }
@@ -21,6 +23,7 @@ func NewColorExtractor(fs fsApi) *ColorExtractor {
 type TextureSample struct {
 	TextureVar string
 	UV         [4]float64
+	Tint       *model.Color
 }
 
 func (svc *ColorExtractor) Run(samples []TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
@@ -37,7 +40,7 @@ func (svc *ColorExtractor) Run(samples []TextureSample, nsRoots map[string][]str
 			continue
 		}
 
-		svc.accumulateRegion(img, sample.UV, acc)
+		svc.accumulateRegion(img, sample.UV, sample.Tint, acc)
 	}
 
 	return acc.Result()
@@ -51,7 +54,7 @@ func (svc *ColorExtractor) decodeTexture(filePath string) (image.Image, error) {
 	return png.Decode(bytes.NewReader(data))
 }
 
-func (svc *ColorExtractor) accumulateRegion(img image.Image, uv [4]float64, acc *stateful.PixelAccumulator) {
+func (svc *ColorExtractor) accumulateRegion(img image.Image, uv [4]float64, tint *model.Color, acc *stateful.PixelAccumulator) {
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
 
@@ -63,9 +66,24 @@ func (svc *ColorExtractor) accumulateRegion(img image.Image, uv [4]float64, acc 
 	for y := vMin; y < vMax; y++ {
 		for x := uMin; x < uMax; x++ {
 			r, g, b, a := img.At(x, y).RGBA()
-			acc.Add(r, g, b, a)
+			r8, g8, b8 := uint8(r>>rgbaChannelShift), uint8(g>>rgbaChannelShift), uint8(b>>rgbaChannelShift)
+			if tint != nil {
+				r8, g8, b8 = svc.tintPixel(r8, g8, b8, *tint)
+			}
+			acc.Add(uint32(r8)<<rgbaChannelShift, uint32(g8)<<rgbaChannelShift, uint32(b8)<<rgbaChannelShift, a)
 		}
 	}
+}
+
+func (svc *ColorExtractor) tintPixel(r, g, b uint8, tint model.Color) (uint8, uint8, uint8) {
+	return svc.tintChannel(r, tint[0]), svc.tintChannel(g, tint[1]), svc.tintChannel(b, tint[2])
+}
+
+func (svc *ColorExtractor) tintChannel(v, tint uint8) uint8 {
+	if tint == 0 {
+		return 0
+	}
+	return uint8((int(v)*int(tint) + 127) / 255)
 }
 
 func (svc *ColorExtractor) buildTexturePath(textureVar string, nsRoots map[string][]string, blockID string) string {

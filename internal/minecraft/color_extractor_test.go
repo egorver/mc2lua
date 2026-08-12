@@ -107,6 +107,46 @@ func TestColorExtractor_TextureScenarios(t *testing.T) {
 	}
 }
 
+func TestColorExtractor_Tint(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		px   func(x, y int) color.NRGBA
+		tint *model.Color
+		want model.Color
+	}{
+		{
+			name: "no tint keeps color",
+			px:   func(x, y int) color.NRGBA { return color.NRGBA{150, 150, 150, 255} },
+			tint: nil,
+			want: model.Color{150, 150, 150},
+		},
+		{
+			name: "gray pixel tinted foliage green",
+			px:   func(x, y int) color.NRGBA { return color.NRGBA{150, 150, 150, 255} },
+			tint: &model.Color{119, 171, 47},
+			want: model.Color{70, 101, 28},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fs, extractor, roots := setupColorExtractorFS(t)
+			fs.AddFile("assets/minecraft/textures/block/t.png",
+				makePNG(t, 16, 16, tt.px), 0644)
+
+			s := []TextureSample{{TextureVar: "block/t", UV: [4]float64{0, 0, 16, 16}, Tint: tt.tint}}
+			got, err := extractor.Run(s, roots, "minecraft:test_block")
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestColorExtractor_SplitBlockID(t *testing.T) {
 	t.Parallel()
 

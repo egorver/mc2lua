@@ -55,6 +55,8 @@ func TestStress_E2E(t *testing.T) {
 		[]byte("mappings:\n  stone: Slate\nbrightness:\n  Slate: 1.0\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(configDir, "parts.yaml"),
 		[]byte("parts:\n  minecraft:stone:\n    color: [125, 125, 125]\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "tints.yaml"),
+		[]byte("tints:\n"), 0o644))
 
 	outputPath := filepath.Join(dir, "output.lua")
 

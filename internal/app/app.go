@@ -67,6 +67,7 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 	elementRotator := minecraft.NewElementRotator()
 	blockResolver := minecraft.NewBlockResolver(blockstateParser, modelParser, textureResolver, elementRotator)
 	colorExtractor := minecraft.NewColorExtractor(fs)
+	colormapResolver := minecraft.NewColormapResolver(fs)
 
 	materialMatcher, err := matcher.NewMaterialMatcher(fs, filepath.Join(configDir, materialsConfigFile))
 	if err != nil {
@@ -85,12 +86,17 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 		return nil, fmt.Errorf("create part style matcher: %w", err)
 	}
 
+	tintMatcher, err := matcher.NewTintMatcher(fs, filepath.Join(configDir, "tints.yaml"))
+	if err != nil {
+		return nil, fmt.Errorf("create tint matcher: %w", err)
+	}
+
 	regionReader := pipeline.NewRegionReader(fs, chunkDecoder)
 	boundsResolver := pipeline.NewBoundsResolver()
 	coordNormalizer := pipeline.NewCoordNormalizer()
 	blockCollector := pipeline.NewBlockCollector(blockResolver, propsKeyBuilder)
 	styleIndexer := pipeline.NewStyleIndexer(
-		gridAnalyzer, elementRotator, materialMatcher, partStyleMatcher, colorExtractor)
+		gridAnalyzer, elementRotator, materialMatcher, partStyleMatcher, colorExtractor, tintMatcher, colormapResolver)
 	blockVoxelIndexer := pipeline.NewBlockVoxelIndexer(propsKeyBuilder)
 	microVoxelIndexer := pipeline.NewMicroVoxelIndexer(propsKeyBuilder)
 	cuboidHelper := pipeline.NewCuboidHelper()

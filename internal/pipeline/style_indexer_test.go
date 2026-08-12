@@ -66,6 +66,28 @@ func (m *mockColorExtractor) Run(samples []minecraft.TextureSample, nsRoots map[
 	return model.DefaultColor, nil
 }
 
+type mockTintMatcher struct {
+	runFn func(blockID string) (model.TintType, bool)
+}
+
+func (m *mockTintMatcher) Run(blockID string) (model.TintType, bool) {
+	if m.runFn != nil {
+		return m.runFn(blockID)
+	}
+	return model.TintGrass, false
+}
+
+type mockColormapResolver struct {
+	runFn func(nsRoots map[string][]string) (*model.Colormap, error)
+}
+
+func (m *mockColormapResolver) Run(nsRoots map[string][]string) (*model.Colormap, error) {
+	if m.runFn != nil {
+		return m.runFn(nsRoots)
+	}
+	return nil, nil
+}
+
 func TestStyleIndexer_ElementColorParticleFallback(t *testing.T) {
 	t.Parallel()
 
@@ -126,8 +148,8 @@ func TestStyleIndexer_ElementColorParticleFallback(t *testing.T) {
 			ce := &mockColorExtractor{runFn: func(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
 				return tt.extractor(samples), nil
 			}}
-			si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, ce)
-			got := si.elementColor(tt.el, tt.textures, nil, "minecraft:water")
+			si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, ce, &mockTintMatcher{}, &mockColormapResolver{})
+			got := si.elementColor(tt.el, tt.textures, nil, "minecraft:water", nil)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -136,7 +158,7 @@ func TestStyleIndexer_ElementColorParticleFallback(t *testing.T) {
 func TestStyleIndexer_New(t *testing.T) {
 	t.Parallel()
 
-	si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, &mockColorExtractor{})
+	si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, &mockColorExtractor{}, &mockTintMatcher{}, &mockColormapResolver{})
 	require.NotNil(t, si)
 }
 
@@ -153,8 +175,8 @@ func TestStyleIndexer_ElementColorOverride(t *testing.T) {
 			require.Fail(t, "extractor should not be called when override exists")
 			return model.DefaultColor, nil
 		}}
-		si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, psm, ce)
-		got := si.elementColor(el, map[string]string{"particle": "block/water_still"}, nil, "minecraft:water")
+		si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, psm, ce, &mockTintMatcher{}, &mockColormapResolver{})
+		got := si.elementColor(el, map[string]string{"particle": "block/water_still"}, nil, "minecraft:water", nil)
 		require.Equal(t, model.Color{38, 94, 173}, got)
 	})
 
@@ -165,8 +187,8 @@ func TestStyleIndexer_ElementColorOverride(t *testing.T) {
 		ce := &mockColorExtractor{runFn: func(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
 			return model.Color{10, 20, 30}, nil
 		}}
-		si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, psm, ce)
-		got := si.elementColor(el, map[string]string{"particle": "block/stone"}, nil, "minecraft:stone")
+		si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, psm, ce, &mockTintMatcher{}, &mockColormapResolver{})
+		got := si.elementColor(el, map[string]string{"particle": "block/stone"}, nil, "minecraft:stone", nil)
 		require.Equal(t, model.Color{10, 20, 30}, got)
 	})
 
@@ -175,8 +197,8 @@ func TestStyleIndexer_ElementColorOverride(t *testing.T) {
 		ce := &mockColorExtractor{runFn: func(samples []minecraft.TextureSample, nsRoots map[string][]string, blockID string) (model.Color, error) {
 			return model.Color{10, 20, 30}, nil
 		}}
-		si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, psm, ce)
-		got := si.elementColor(el, map[string]string{"particle": "block/stone"}, nil, "minecraft:stone")
+		si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, psm, ce, &mockTintMatcher{}, &mockColormapResolver{})
+		got := si.elementColor(el, map[string]string{"particle": "block/stone"}, nil, "minecraft:stone", nil)
 		require.Equal(t, model.Color{10, 20, 30}, got)
 	})
 }
@@ -321,7 +343,7 @@ func TestStyleIndexer_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ga := &mockGridAnalyzer{runFn: tt.analyzer}
 			mm := &mockMaterialMatcher{runFn: tt.matcher}
-			si := NewStyleIndexer(ga, &mockElementRotator{}, mm, &mockPartStyleMatcher{}, &mockColorExtractor{})
+			si := NewStyleIndexer(ga, &mockElementRotator{}, mm, &mockPartStyleMatcher{}, &mockColorExtractor{}, &mockTintMatcher{}, &mockColormapResolver{})
 
 			idx := si.Run(tt.blocks, nil)
 			require.Equal(t, tt.wantLen, idx.Len())
@@ -341,7 +363,7 @@ func TestStyleIndexer_RotationPassedUnchangedToRotator(t *testing.T) {
 		return elements
 	}}
 
-	si := NewStyleIndexer(&mockGridAnalyzer{}, rotator, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, &mockColorExtractor{})
+	si := NewStyleIndexer(&mockGridAnalyzer{}, rotator, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, &mockColorExtractor{}, &mockTintMatcher{}, &mockColormapResolver{})
 
 	block := model.ResolvedBlock{
 		ID:   "minecraft:stone",
@@ -372,7 +394,7 @@ func TestStyleIndexer_ZeroRotationKeptZero(t *testing.T) {
 		return elements
 	}}
 
-	si := NewStyleIndexer(&mockGridAnalyzer{}, rotator, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, &mockColorExtractor{})
+	si := NewStyleIndexer(&mockGridAnalyzer{}, rotator, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, &mockColorExtractor{}, &mockTintMatcher{}, &mockColormapResolver{})
 
 	block := model.ResolvedBlock{
 		ID: "minecraft:stone",
@@ -444,10 +466,111 @@ func TestStyleIndexer_ElementColor(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ce := &mockColorExtractor{runFn: tt.colorRun}
-			svc := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, ce)
+			svc := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, ce, &mockTintMatcher{}, &mockColormapResolver{})
 
-			got := svc.elementColor(tt.el, tt.textures, nil, "minecraft:stone")
+			got := svc.elementColor(tt.el, tt.textures, nil, "minecraft:stone", nil)
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestStyleIndexer_ResolveTextureSamplesTint(t *testing.T) {
+	t.Parallel()
+
+	textures := map[string]string{"all": "block/stone"}
+	tintIndex := 0
+
+	tests := []struct {
+		name     string
+		faces    map[string]model.ElementFace
+		matcher  func(blockID string) (model.TintType, bool)
+		colormap *model.Colormap
+		wantTint []*model.Color
+	}{
+		{
+			name:     "no tintindex leaves tint nil",
+			faces:    map[string]model.ElementFace{"up": {Texture: "#all", UV: [4]float64{0, 0, 16, 16}}},
+			wantTint: []*model.Color{nil},
+		},
+		{
+			name:  "grass tint applied",
+			faces: map[string]model.ElementFace{"up": {Texture: "#all", UV: [4]float64{0, 0, 16, 16}, TintIndex: &tintIndex}},
+			matcher: func(blockID string) (model.TintType, bool) {
+				return model.TintGrass, true
+			},
+			colormap: &model.Colormap{Grass: model.Color{145, 189, 89}, Foliage: model.Color{119, 171, 47}},
+			wantTint: []*model.Color{{145, 189, 89}},
+		},
+		{
+			name:  "unmatched block keeps tint nil",
+			faces: map[string]model.ElementFace{"up": {Texture: "#all", UV: [4]float64{0, 0, 16, 16}, TintIndex: &tintIndex}},
+			matcher: func(blockID string) (model.TintType, bool) {
+				return model.TintGrass, false
+			},
+			colormap: &model.Colormap{Grass: model.Color{145, 189, 89}},
+			wantTint: []*model.Color{nil},
+		},
+		{
+			name:  "grass without colormap keeps tint nil",
+			faces: map[string]model.ElementFace{"up": {Texture: "#all", UV: [4]float64{0, 0, 16, 16}, TintIndex: &tintIndex}},
+			matcher: func(blockID string) (model.TintType, bool) {
+				return model.TintGrass, true
+			},
+			colormap: nil,
+			wantTint: []*model.Color{nil},
+		},
+		{
+			name:  "water tint works without colormap",
+			faces: map[string]model.ElementFace{"up": {Texture: "#all", UV: [4]float64{0, 0, 16, 16}, TintIndex: &tintIndex}},
+			matcher: func(blockID string) (model.TintType, bool) {
+				return model.TintWater, true
+			},
+			colormap: nil,
+			wantTint: []*model.Color{{63, 118, 228}},
+		},
+		{
+			name: "multiple faces tint individually",
+			faces: map[string]model.ElementFace{
+				"up":   {Texture: "#all", UV: [4]float64{0, 0, 16, 16}, TintIndex: &tintIndex},
+				"down": {Texture: "#all", UV: [4]float64{0, 0, 16, 16}},
+			},
+			matcher: func(blockID string) (model.TintType, bool) {
+				return model.TintFoliage, true
+			},
+			colormap: &model.Colormap{Foliage: model.Color{119, 171, 47}},
+			wantTint: []*model.Color{{119, 171, 47}, nil},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tm := &mockTintMatcher{runFn: tt.matcher}
+			si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, &mockColorExtractor{}, tm, &mockColormapResolver{})
+
+			got := si.resolveTextureSamples(tt.faces, textures, "minecraft:grass_block", tt.colormap)
+			require.Len(t, got, len(tt.wantTint))
+			for i, want := range tt.wantTint {
+				require.Equal(t, want, got[i].Tint, "sample %d tint mismatch", i)
+			}
+		})
+	}
+}
+
+func TestStyleIndexer_Run_ResolvesColormap(t *testing.T) {
+	t.Parallel()
+
+	var gotRoots map[string][]string
+	cr := &mockColormapResolver{runFn: func(nsRoots map[string][]string) (*model.Colormap, error) {
+		gotRoots = nsRoots
+		return &model.Colormap{Grass: model.Color{145, 189, 89}}, nil
+	}}
+	si := NewStyleIndexer(&mockGridAnalyzer{}, &mockElementRotator{}, &mockMaterialMatcher{}, &mockPartStyleMatcher{}, &mockColorExtractor{}, &mockTintMatcher{}, cr)
+
+	si.Run([]model.ResolvedBlock{
+		{ID: "minecraft:stone", Elements: []model.ModelElement{{From: model.Vector3{0, 0, 0}, To: model.Vector3{16, 16, 16}, Shade: true}}},
+	}, map[string][]string{"minecraft": {"assets/minecraft"}})
+
+	require.Equal(t, map[string][]string{"minecraft": {"assets/minecraft"}}, gotRoots)
 }

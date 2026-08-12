@@ -145,6 +145,7 @@ func TestModelParser_ParseElements(t *testing.T) {
 	t.Parallel()
 
 	svc := &ModelParser{}
+	tintIndex := 0
 
 	tests := []struct {
 		name    string
@@ -206,6 +207,22 @@ func TestModelParser_ParseElements(t *testing.T) {
 					Shade: true,
 					Faces: map[string]model.ElementFace{
 						"north": {UV: [4]float64{0, 0, 16, 16}, Texture: "#all"},
+					},
+				},
+			},
+		},
+		{
+			name: "element with tinted face",
+			raws: []json.RawMessage{
+				json.RawMessage(`{"from":[0,0,0],"to":[16,16,16],"faces":{"up":{"uv":[0,0,16,16],"texture":"#all","tintindex":0}}}`),
+			},
+			want: []model.ModelElement{
+				{
+					From:  model.Vector3{0, 0, 0},
+					To:    model.Vector3{16, 16, 16},
+					Shade: true,
+					Faces: map[string]model.ElementFace{
+						"up": {UV: [4]float64{0, 0, 16, 16}, Texture: "#all", TintIndex: &tintIndex},
 					},
 				},
 			},
