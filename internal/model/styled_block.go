@@ -6,7 +6,7 @@ var DefaultColor = Color{191, 191, 191}
 
 const (
 	DefaultMaterial     = "Plastic"
-	TexturelessMaterial = "SmoothPlastic"
+	TexturelessMaterial = "Neon"
 )
 
 type GridAlignment int
