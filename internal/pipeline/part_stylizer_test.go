@@ -334,6 +334,7 @@ func TestPartStylizer_MapFace(t *testing.T) {
 		{name: "rotX 90 top to south", face: model.FaceTop, rotX: 90, want: model.FaceIndexBack},
 		{name: "rotX 90 bottom to north", face: model.FaceBottom, rotX: 90, want: model.FaceIndexFront},
 		{name: "rotX 180 top to bottom", face: model.FaceTop, rotX: 180, want: model.FaceIndexBottom},
+		{name: "rotY 45 front rounds to north", face: model.FaceFront, rotY: 45, want: model.FaceIndexFront},
 	}
 
 	for _, tt := range tests {

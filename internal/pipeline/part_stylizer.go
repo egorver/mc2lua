@@ -140,6 +140,7 @@ func (svc *PartStylizer) surfaceByKey(style model.PartStyle, name string) *model
 	case model.FaceAll:
 		return style.All
 	}
+	// Unreachable for the fixed set of face keys used as input.
 	return nil
 }
 
@@ -194,6 +195,7 @@ func baseFaceDir(face string) model.Vector3 {
 	case model.FaceRight:
 		return model.Vector3{1, 0, 0}
 	}
+	// Unreachable: only the six named faces are passed in.
 	return model.Vector3{}
 }
 
@@ -215,6 +217,8 @@ func directionToFace(dir model.Vector3) int {
 	case x == 1:
 		return model.FaceIndexRight
 	}
+	// Unreachable: rotations are multiples of 90 degrees, so the rounded
+	// direction always lands on one of the six faces above.
 	return model.FaceIndexTop
 }
 

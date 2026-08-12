@@ -79,9 +79,6 @@ func (svc *RegionMerger) processComponent(grid *stateful.VoxelIndex, blocks []*m
 	for _, b := range blocks {
 		byY[b.Y] = append(byY[b.Y], b)
 	}
-	if len(byY) == 0 {
-		return nil
-	}
 
 	var ys []int
 	for y := range byY {

@@ -57,17 +57,15 @@ func (svc *MaterialMatcher) Run(blockID string) string {
 
 	block := strings.TrimPrefix(blockID, minecraft.MinecraftNamespacePrefix)
 
+	// Keywords are matched against the full block name only: the stripped suffix
+	// base is a substring of the block name, so matchKeywords would have already
+	// returned on it during the call above.
 	if m, ok := matchKeywords(block, svc.sortedKeys, svc.mappings); ok {
 		return m
 	}
 
-	if base, ok := svc.findSuffix(block); ok {
-		if m, ok := matchKeywords(base, svc.sortedKeys, svc.mappings); ok {
-			return m
-		}
-		if strings.HasSuffix(base, planksSuffix) {
-			return defaultWoodMaterial
-		}
+	if base, ok := svc.findSuffix(block); ok && strings.HasSuffix(base, planksSuffix) {
+		return defaultWoodMaterial
 	}
 
 	return defaultFallbackMaterial

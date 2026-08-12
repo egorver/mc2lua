@@ -73,6 +73,8 @@ func buildDeps(configDir string) (*pipeline.Runner, error) {
 		return nil, fmt.Errorf("create material matcher: %w", err)
 	}
 
+	// The error branch is defensive: materials.yaml was already read
+	// successfully by NewMaterialMatcher above.
 	brightnessMatcher, err := matcher.NewBrightnessMatcher(fs, filepath.Join(configDir, materialsConfigFile))
 	if err != nil {
 		return nil, fmt.Errorf("create brightness matcher: %w", err)

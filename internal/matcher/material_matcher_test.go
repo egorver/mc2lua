@@ -147,7 +147,7 @@ overrides: {}
 			want:    "SmoothPlastic",
 		},
 		{
-			name:    "keyword match still works via suffix base",
+			name:    "keyword matched before suffix stripping",
 			blockID: "minecraft:nether_brick_frame",
 			want:    "NetherBrick",
 		},
