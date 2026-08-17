@@ -1,10 +1,13 @@
 parts:
-  minecraft:andesite:
+  minecraft:andesite: &andesite_style
     color: [136, 136, 138]
     all:
       texture: rbxassetid://645835568
 
-  minecraft:bookshelf:
+  minecraft:andesite_stairs:
+    <<: *andesite_style
+
+  minecraft:bookshelf: &bookshelf_style
     color: [145, 117, 74]
     all:
       texture: rbxassetid://5118112742
@@ -13,30 +16,63 @@ parts:
   minecraft:bubble_column:
     color: [38, 94, 173]
 
-  minecraft:dark_oak_slab: &dark_oak_style
+  minecraft:chiseled_bookshelf:
+    <<: *bookshelf_style
+
+  minecraft:coarse_dirt: &dirt_style
+    color: [130, 92, 63]
+    all:
+      texture: rbxassetid://5143825625
+
+  minecraft:dark_oak_button: &dark_oak_style
     color: [65, 40, 18]
     all:
       texture: rbxassetid://296812735
       studs_per_tile: 16
 
+  minecraft:dark_oak_fence:
+    <<: *dark_oak_style
+
+  minecraft:dark_oak_hanging_sign:
+    <<: *dark_oak_style
+
+  minecraft:dark_oak_planks:
+    <<: *dark_oak_style
+
+  minecraft:dark_oak_slab:
+    <<: *dark_oak_style
+
   minecraft:dark_oak_stairs:
     <<: *dark_oak_style
 
-  minecraft:dark_prismarine_stairs:
+  minecraft:dark_oak_trapdoor:
+    <<: *dark_oak_style
+
+  minecraft:dark_prismarine: &dark_prismarine_style
     color: [50, 90, 75]
     all:
       texture: rbxassetid://5113433886
 
-  minecraft:dirt:
-    color: [130, 92, 63]
-    all:
-      texture: rbxassetid://5143825625
+  minecraft:dark_prismarine_stairs:
+    <<: *dark_prismarine_style
 
-  minecraft:glass:
+  minecraft:dirt:
+    <<: *dirt_style
+
+  minecraft:dirt_path:
+    <<: *dirt_style
+
+  minecraft:farmland:
+    <<: *dirt_style
+
+  minecraft:glass: &glass_style
     color: [191, 191, 191]
     transparency: 0.5
     all:
       texture: rbxassetid://232395521
+
+  minecraft:glass_pane:
+    <<: *glass_style
 
   minecraft:grass_block: &grass_style
     color: [44, 101, 29]
@@ -46,42 +82,81 @@ parts:
   minecraft:lava:
     color: [200, 82, 18]
 
+  minecraft:polished_andesite:
+    <<: *andesite_style
+
   minecraft:short_grass:
     <<: *grass_style
 
-  minecraft:spruce_planks: &spruce_style
+  minecraft:spruce_door: &spruce_style
     color: [116, 90, 52]
     all:
       texture: rbxassetid://296812735
       studs_per_tile: 16
 
+  minecraft:spruce_fence:
+    <<: *spruce_style
+
+  minecraft:spruce_fence_gate:
+    <<: *spruce_style
+
+  minecraft:spruce_log:
+    <<: *spruce_style
+
+  minecraft:spruce_planks:
+    <<: *spruce_style
+
+  minecraft:spruce_slab:
+    <<: *spruce_style
+
+  minecraft:spruce_stairs:
+    <<: *spruce_style
+
   minecraft:spruce_trapdoor:
-    color: [96, 75, 47]
-    all:
-      texture: rbxassetid://296812735
-      studs_per_tile: 16
+    <<: *spruce_style
+
+  minecraft:spruce_wall_sign:
+    <<: *spruce_style
+
+  minecraft:stripped_dark_oak_log:
+    <<: *dark_oak_style
 
   minecraft:stripped_spruce_log:
     <<: *spruce_style
+
+  minecraft:stripped_spruce_wood:
+    <<: *spruce_style
+
+  minecraft:tall_grass:
+    <<: *grass_style
 
   minecraft:tuff:
     color: [183, 185, 179]
     all:
       texture: rbxassetid://5054117081
 
-  minecraft:tuff_brick_wall: &tuff_brick_style
+  minecraft:tuff_brick_slab: &tuff_brick_style
     color: [118, 120, 114]
     all:
       texture: rbxassetid://187626492
       studs_per_tile: 12
 
-  minecraft:tuff_bricks: 
+  minecraft:tuff_brick_stairs:
+    <<: *tuff_brick_style
+
+  minecraft:tuff_brick_wall:
+    <<: *tuff_brick_style
+
+  minecraft:tuff_bricks:
     <<: *tuff_brick_style
 
   minecraft:water:
     color: [38, 94, 173]
 
-  minecraft:white_concrete:
+  minecraft:white_concrete: &white_concrete_style
     color: [207, 213, 214]
     all:
       texture: rbxassetid://299427211
+
+  minecraft:white_concrete_powder:
+    <<: *white_concrete_style
