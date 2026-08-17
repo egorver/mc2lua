@@ -100,6 +100,9 @@ func (svc *PartStylizer) resolveSurface(style model.PartStyle, face string) *mod
 		if src.Transparency != nil {
 			merged.Transparency = src.Transparency
 		}
+		if src.StudsPerTile != nil {
+			merged.StudsPerTile = src.StudsPerTile
+		}
 	}
 
 	if merged.Texture == "" {

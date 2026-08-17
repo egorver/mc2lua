@@ -63,6 +63,10 @@ parts:
       color: [191, 191, 191]
   minecraft:water:
     color: [38, 94, 173]
+  minecraft:tuff_bricks:
+    all:
+      texture: rbxassetid://186400940
+      studs_per_tile: 12
 `)}
 	m, err := NewPartStyleMatcher(mock, "test.yaml")
 	require.NoError(t, err)
@@ -90,6 +94,13 @@ parts:
 		require.True(t, ok)
 		require.Equal(t, &model.Color{38, 94, 173}, got.Color)
 		require.Nil(t, got.All)
+	})
+
+	t.Run("tuff bricks", func(t *testing.T) {
+		got, ok := m.Run("minecraft:tuff_bricks")
+		require.True(t, ok)
+		require.NotNil(t, got.All)
+		require.Equal(t, 12.0, *got.All.StudsPerTile)
 	})
 
 	t.Run("unlisted block", func(t *testing.T) {

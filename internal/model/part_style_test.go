@@ -41,18 +41,22 @@ func TestSurface(t *testing.T) {
 		require.Empty(t, s.Texture)
 		require.Nil(t, s.Color)
 		require.Nil(t, s.Transparency)
+		require.Nil(t, s.StudsPerTile)
 	})
 
 	t.Run("full surface", func(t *testing.T) {
 		alpha := 0.5
+		tile := 12.0
 		s := Surface{
 			Texture:      "rbxassetid://186400918",
 			Color:        &Color{191, 134, 60},
 			Transparency: &alpha,
+			StudsPerTile: &tile,
 		}
 		require.Equal(t, "rbxassetid://186400918", s.Texture)
 		require.Equal(t, &Color{191, 134, 60}, s.Color)
 		require.Equal(t, &alpha, s.Transparency)
+		require.Equal(t, &tile, s.StudsPerTile)
 	})
 
 	t.Run("texture only", func(t *testing.T) {

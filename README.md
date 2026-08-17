@@ -132,9 +132,17 @@ parts:
     all:
       texture: rbxassetid://232395521
       color: [191, 191, 191]
+  minecraft:tuff_bricks:
+    all:
+      texture: rbxassetid://187626492
+      studs_per_tile: 12
   minecraft:water:
     color: [38, 94, 173]
 ```
+
+The optional `studs_per_tile` field lives on a surface alongside its `texture`
+and overrides the default texture tile size (the block `-scale` value) for that
+surface in the generated Lua script.
 
 ### Materials (`config/materials.yaml`)
 

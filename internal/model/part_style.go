@@ -17,6 +17,7 @@ type Surface struct {
 	Texture      string   `yaml:"texture,omitempty"`
 	Color        *Color   `yaml:"color,omitempty"`
 	Transparency *float64 `yaml:"transparency,omitempty"`
+	StudsPerTile *float64 `yaml:"studs_per_tile,omitempty"`
 }
 
 type PartStyle struct {

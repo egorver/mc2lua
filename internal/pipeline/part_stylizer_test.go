@@ -100,6 +100,53 @@ func TestPartStylizer_Run(t *testing.T) {
 			},
 		},
 		{
+			name: "studs_per_tile without texture creates no surfaces",
+			styles: map[string]model.PartStyle{
+				"minecraft:stone": {All: &model.Surface{StudsPerTile: floatPtr(12)}},
+			},
+			parts: []model.Part{testPart("minecraft:stone", visibleMask())},
+			wantCheck: func(t *testing.T, parts []model.Part) {
+				p := parts[0]
+				require.Nil(t, p.Top)
+				require.Nil(t, p.Bottom)
+				require.Nil(t, p.Front)
+				require.Nil(t, p.Back)
+				require.Nil(t, p.Left)
+				require.Nil(t, p.Right)
+				require.Equal(t, model.DefaultMaterial, p.Material)
+			},
+		},
+		{
+			name: "surface studs_per_tile applies to all textured faces",
+			styles: map[string]model.PartStyle{
+				"minecraft:tuff_bricks": {
+					All: &model.Surface{Texture: "rbxassetid://1", StudsPerTile: floatPtr(12)},
+				},
+			},
+			parts: []model.Part{testPart("minecraft:tuff_bricks", visibleMask())},
+			wantCheck: func(t *testing.T, parts []model.Part) {
+				for _, face := range []*model.Surface{parts[0].Top, parts[0].Bottom, parts[0].Front, parts[0].Back, parts[0].Left, parts[0].Right} {
+					require.NotNil(t, face)
+					require.Equal(t, float64(12), *face.StudsPerTile)
+				}
+			},
+		},
+		{
+			name: "specific face studs_per_tile wins over all value",
+			styles: map[string]model.PartStyle{
+				"minecraft:stone": {
+					Top: &model.Surface{Texture: "rbxassetid://top", StudsPerTile: floatPtr(3)},
+					All: &model.Surface{Texture: "rbxassetid://all", StudsPerTile: floatPtr(12)},
+				},
+			},
+			parts: []model.Part{testPart("minecraft:stone", visibleMask())},
+			wantCheck: func(t *testing.T, parts []model.Part) {
+				p := parts[0]
+				require.Equal(t, float64(3), *p.Top.StudsPerTile)
+				require.Equal(t, float64(12), *p.Front.StudsPerTile)
+			},
+		},
+		{
 			name: "hidden faces are not styled",
 			styles: map[string]model.PartStyle{
 				"minecraft:stone": {
@@ -170,13 +217,13 @@ func TestPartStylizer_Run(t *testing.T) {
 			},
 		},
 		{
-			name: "textured part keeps color for SmoothPlastic",
+			name: "textured part keeps color for textureless material",
 			styles: map[string]model.PartStyle{
 				"minecraft:glass": {All: surfPtr("rbxassetid://1", &red, nil)},
 			},
 			parts: []model.Part{{BlockID: "minecraft:glass", Color: model.Color{200, 100, 50}, Material: "Glass", VisibleFaces: visibleMask()}},
 			brightness: func(material string) float64 {
-				if material == "SmoothPlastic" {
+				if material == model.TexturelessMaterial {
 					return 1.0
 				}
 				return 1.2
@@ -250,6 +297,15 @@ func TestPartStylizer_ResolveSurface(t *testing.T) {
 			},
 			face: model.FaceTop,
 			want: &model.Surface{Texture: "rbxassetid://t", Color: &green, Transparency: floatPtr(0.2)},
+		},
+		{
+			name: "studs_per_tile merged per field",
+			style: model.PartStyle{
+				Top: &model.Surface{Texture: "rbxassetid://t", StudsPerTile: floatPtr(3)},
+				All: &model.Surface{Texture: "rbxassetid://a", Color: &red, StudsPerTile: floatPtr(5)},
+			},
+			face: model.FaceTop,
+			want: &model.Surface{Texture: "rbxassetid://t", Color: &red, StudsPerTile: floatPtr(3)},
 		},
 		{
 			name: "sides override all on side faces only",

@@ -64,6 +64,8 @@ func TestWriteHeader(t *testing.T) {
 		"folder.Name = \"Imported\"",
 		"folder.Parent = workspace",
 		"local function createPart(size, pos, r, g, b, material, name, blockId, properties, transparency, faces, parent)",
+		"t.StudsPerTileU = f.studs_per_tile or _tile",
+		"t.StudsPerTileV = f.studs_per_tile or _tile",
 		"p:SetAttribute(\"original_block_id\", blockId)",
 	}
 
@@ -149,6 +151,36 @@ func TestWriteCreatePart(t *testing.T) {
 			notContains: []string{`face="front"`},
 		},
 		{
+			name: "faces with studs_per_tile",
+			setup: func() model.Part {
+				part := makePart(
+					"tuff_bricks", "", 0, "minecraft:tuff_bricks", "",
+					model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0},
+					model.Color{118, 120, 114}, "SmoothPlastic",
+				)
+				part.Top = &model.Surface{Texture: "rbxassetid://t", StudsPerTile: floatPtr(12)}
+				return part
+			},
+			contains: []string{
+				`{face="top", texture="rbxassetid://t", studs_per_tile=12}`,
+			},
+		},
+		{
+			name: "fractional studs_per_tile",
+			setup: func() model.Part {
+				part := makePart(
+					"stone", "", 0, "minecraft:stone", "",
+					model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0},
+					model.Color{128, 128, 128}, "SmoothPlastic",
+				)
+				part.Top = &model.Surface{Texture: "rbxassetid://t", StudsPerTile: floatPtr(12.5)}
+				return part
+			},
+			contains: []string{
+				`{face="top", texture="rbxassetid://t", studs_per_tile=12.5}`,
+			},
+		},
+		{
 			name: "skips textureless faces",
 			setup: func() model.Part {
 				part := makePart(
@@ -223,6 +255,22 @@ func TestRun(t *testing.T) {
 				makePart("stone", "", 0, "minecraft:stone", "", model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0}, model.Color{128, 128, 128}, "Slate"),
 			},
 			scale: 4,
+		},
+		{
+			name: "textured face with studs_per_tile",
+			parts: []model.Part{
+				func() model.Part {
+					p := makePart("tuff_bricks", "", 0, "minecraft:tuff_bricks", "", model.Vector3{4, 4, 4}, model.Vector3{0, 0, 0}, model.Color{118, 120, 114}, "SmoothPlastic")
+					p.Top = &model.Surface{Texture: "rbxassetid://187626492", StudsPerTile: floatPtr(12)}
+					return p
+				}(),
+			},
+			scale: 4,
+			wantCheck: func(t *testing.T, data string) {
+				require.Contains(t, data, `{face="top", texture="rbxassetid://187626492", studs_per_tile=12}`)
+				require.Contains(t, data, "t.StudsPerTileU = f.studs_per_tile or _tile")
+				require.Contains(t, data, "t.StudsPerTileV = f.studs_per_tile or _tile")
+			},
 		},
 		{
 			name: "single micro block",

@@ -1,6 +1,7 @@
 .samples/
 docs/
 output/
+textures/
 
 assets/**
 !assets/README.md

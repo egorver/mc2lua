@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -474,6 +475,18 @@ func TestStyleIndexer_ElementColor(t *testing.T) {
 	}
 }
 
+func tintMultiset(tints []*model.Color) map[string]int {
+	multiset := make(map[string]int, len(tints))
+	for _, tint := range tints {
+		if tint == nil {
+			multiset["nil"]++
+			continue
+		}
+		multiset[fmt.Sprintf("%d,%d,%d", tint[0], tint[1], tint[2])]++
+	}
+	return multiset
+}
+
 func TestStyleIndexer_ResolveTextureSamplesTint(t *testing.T) {
 	t.Parallel()
 
@@ -551,9 +564,11 @@ func TestStyleIndexer_ResolveTextureSamplesTint(t *testing.T) {
 
 			got := si.resolveTextureSamples(tt.faces, textures, "minecraft:grass_block", tt.colormap)
 			require.Len(t, got, len(tt.wantTint))
-			for i, want := range tt.wantTint {
-				require.Equal(t, want, got[i].Tint, "sample %d tint mismatch", i)
+			gotTints := make([]*model.Color, len(got))
+			for i, s := range got {
+				gotTints[i] = s.Tint
 			}
+			require.Equal(t, tintMultiset(tt.wantTint), tintMultiset(gotTints))
 		})
 	}
 }

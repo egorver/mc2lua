@@ -102,8 +102,8 @@ func (svc *LuaGenerator) writeHeader(sb *strings.Builder, scale float64) {
 	sb.WriteString("            local t = Instance.new(\"Texture\")\n")
 	sb.WriteString("            t.Face = faceEnum[f.face]\n")
 	sb.WriteString("            t.Texture = f.texture\n")
-	sb.WriteString("            t.StudsPerTileU = _tile\n")
-	sb.WriteString("            t.StudsPerTileV = _tile\n")
+	sb.WriteString("            t.StudsPerTileU = f.studs_per_tile or _tile\n")
+	sb.WriteString("            t.StudsPerTileV = f.studs_per_tile or _tile\n")
 	sb.WriteString("            if f.color then\n")
 	sb.WriteString("                t.Color3 = f.color\n")
 	sb.WriteString("            end\n")
@@ -167,6 +167,9 @@ func (svc *LuaGenerator) luaFaces(p model.Part) string {
 		}
 		if f.surf.Transparency != nil {
 			parts = append(parts, fmt.Sprintf("transparency=%g", *f.surf.Transparency))
+		}
+		if f.surf.StudsPerTile != nil {
+			parts = append(parts, fmt.Sprintf("studs_per_tile=%g", *f.surf.StudsPerTile))
 		}
 		entries = append(entries, "{"+strings.Join(parts, ", ")+"}")
 	}
