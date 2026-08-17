@@ -1,61 +1,8 @@
 parts:
-  minecraft:water:
-    color: [38, 94, 173]
-
-  minecraft:bubble_column:
-    color: [38, 94, 173]
-
-  minecraft:lava:
-    color: [200, 82, 18]
-
-  minecraft:grass_block:
-    color: [44, 101, 29]
-    all:
-      texture: rbxassetid://321821235
-
-  minecraft:glass:
-    color: [191, 191, 191]
-    transparency: 0.5
-    all:
-      texture: rbxassetid://232395521
-
-  minecraft:dirt:
-    color: [130, 92, 63]
-    all:
-      texture: rbxassetid://5143825625
-
-  minecraft:tuff_bricks:
-    color: [118, 120, 114]
-    all:
-      texture: rbxassetid://187626492
-      studs_per_tile: 12
-
-  minecraft:stripped_spruce_log:
-    color: [116, 90, 52]
-    all:
-      texture: rbxassetid://5088147439
-
-  minecraft:tuff:
-    color: [183, 185, 179]
-    all:
-      texture: rbxassetid://5054117081
-
-  minecraft:spruce_planks:
-    color: [110, 80, 45]
-    all:
-      texture: rbxassetid://296812735
-      studs_per_tile: 16
-
   minecraft:andesite:
     color: [136, 136, 138]
     all:
       texture: rbxassetid://645835568
-
-  minecraft:dark_oak_slab:
-    color: [65, 40, 18]
-    all:
-      texture: rbxassetid://296812735
-      studs_per_tile: 16
 
   minecraft:bookshelf:
     color: [145, 117, 74]
@@ -63,27 +10,50 @@ parts:
       texture: rbxassetid://5118112742
       studs_per_tile: 12
 
-  minecraft:dark_prismarine_stairs:
-    color: [50, 90, 75]
-    all:
-      texture: rbxassetid://5113433886
+  minecraft:bubble_column:
+    color: [38, 94, 173]
 
-  minecraft:dark_oak_stairs:
+  minecraft:dark_oak_slab: &dark_oak_style
     color: [65, 40, 18]
     all:
       texture: rbxassetid://296812735
       studs_per_tile: 16
 
-  minecraft:white_concrete:
-    color: [207, 213, 214]
-    all:
-      texture: rbxassetid://299427211
+  minecraft:dark_oak_stairs:
+    <<: *dark_oak_style
 
-  minecraft:tuff_brick_wall:
-    color: [118, 120, 114]
+  minecraft:dark_prismarine_stairs:
+    color: [50, 90, 75]
     all:
-      texture: rbxassetid://187626492
-      studs_per_tile: 12
+      texture: rbxassetid://5113433886
+
+  minecraft:dirt:
+    color: [130, 92, 63]
+    all:
+      texture: rbxassetid://5143825625
+
+  minecraft:glass:
+    color: [191, 191, 191]
+    transparency: 0.5
+    all:
+      texture: rbxassetid://232395521
+
+  minecraft:grass_block: &grass_style
+    color: [44, 101, 29]
+    all:
+      texture: rbxassetid://321821235
+
+  minecraft:lava:
+    color: [200, 82, 18]
+
+  minecraft:short_grass:
+    <<: *grass_style
+
+  minecraft:spruce_planks: &spruce_style
+    color: [116, 90, 52]
+    all:
+      texture: rbxassetid://296812735
+      studs_per_tile: 16
 
   minecraft:spruce_trapdoor:
     color: [96, 75, 47]
@@ -91,7 +61,27 @@ parts:
       texture: rbxassetid://296812735
       studs_per_tile: 16
 
-  minecraft:short_grass:
-    color: [44, 101, 29]
+  minecraft:stripped_spruce_log:
+    <<: *spruce_style
+
+  minecraft:tuff:
+    color: [183, 185, 179]
     all:
-      texture: rbxassetid://321821235
+      texture: rbxassetid://5054117081
+
+  minecraft:tuff_brick_wall: &tuff_brick_style
+    color: [118, 120, 114]
+    all:
+      texture: rbxassetid://187626492
+      studs_per_tile: 12
+
+  minecraft:tuff_bricks: 
+    <<: *tuff_brick_style
+
+  minecraft:water:
+    color: [38, 94, 173]
+
+  minecraft:white_concrete:
+    color: [207, 213, 214]
+    all:
+      texture: rbxassetid://299427211
