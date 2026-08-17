@@ -127,6 +127,21 @@ parts:
   minecraft:stripped_spruce_wood:
     <<: *spruce_style
 
+  minecraft:stone_brick_slab: &stone_brick_style
+    color: [139, 137, 139]
+    all:
+      texture: rbxassetid://187626479
+      studs_per_tile: 12
+
+  minecraft:stone_brick_stairs:
+    <<: *stone_brick_style
+
+  minecraft:stone_brick_wall:
+    <<: *stone_brick_style
+
+  minecraft:stone_bricks:
+    <<: *stone_brick_style
+
   minecraft:tall_grass:
     <<: *grass_style
 
