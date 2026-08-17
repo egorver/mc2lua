@@ -64,6 +64,10 @@ func TestTemplateGenerator_Run(t *testing.T) {
 	require.Contains(t, got, "color: [70, 72, 74]")
 	require.Contains(t, got, "color: [61, 103, 45]")
 
+	require.Contains(t, got, "count: 5")
+	require.Contains(t, got, "count: 2")
+	require.Contains(t, got, "count: 1")
+
 	stoneIdx := strings.Index(got, "minecraft:stone:")
 	deepslateIdx := strings.Index(got, "minecraft:deepslate:")
 	oakIdx := strings.Index(got, "minecraft:oak_leaves:")

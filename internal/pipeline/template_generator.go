@@ -31,7 +31,7 @@ func (svc *TemplateGenerator) Run(parts []model.Part, blocks []model.RawBlock, o
 	popularity := svc.countPopularity(blocks)
 	ids := svc.orderedIDs(colors, popularity)
 
-	data := svc.buildYAML(ids, colors)
+	data := svc.buildYAML(ids, colors, popularity)
 	return svc.writeFile(outputPath, []byte(data))
 }
 
@@ -50,7 +50,7 @@ func (svc *TemplateGenerator) orderedIDs(colors map[string]*blockColor, populari
 	return ids
 }
 
-func (svc *TemplateGenerator) buildYAML(ids []string, colors map[string]*blockColor) string {
+func (svc *TemplateGenerator) buildYAML(ids []string, colors map[string]*blockColor, popularity map[string]int) string {
 	var sb strings.Builder
 	for _, id := range ids {
 		if _, ok := svc.partStyleMatcher.Run(id); ok {
@@ -62,6 +62,7 @@ func (svc *TemplateGenerator) buildYAML(ids []string, colors map[string]*blockCo
 		avg := colors[id]
 		fmt.Fprintf(&sb, "  %s:\n", id)
 		fmt.Fprintf(&sb, "    color: [%d, %d, %d]\n", avg.sum[0]/avg.count, avg.sum[1]/avg.count, avg.sum[2]/avg.count)
+		fmt.Fprintf(&sb, "    count: %d\n", popularity[id])
 	}
 	if sb.Len() == 0 {
 		sb.WriteString("parts: {}\n")
