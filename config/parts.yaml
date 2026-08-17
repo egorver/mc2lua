@@ -94,6 +94,21 @@ parts:
   minecraft:mossy_stone_bricks:
     <<: *mossy_stone_brick_style
 
+  minecraft:mud_brick_slab: &mud_brick_style
+    color: [138, 105, 82]
+    all:
+      texture: rbxassetid://296397676
+      studs_per_tile: 12
+
+  minecraft:mud_brick_stairs:
+    <<: *mud_brick_style
+
+  minecraft:mud_brick_wall:
+    <<: *mud_brick_style
+
+  minecraft:mud_bricks:
+    <<: *mud_brick_style
+
   minecraft:polished_andesite:
     <<: *andesite_style
 
