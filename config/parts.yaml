@@ -24,6 +24,12 @@ parts:
     all:
       texture: rbxassetid://5143825625
 
+  minecraft:cobblestone:
+    color: [110, 109, 109]
+    all:
+      texture: rbxassetid://5143826163
+      studs_per_tile: 32
+
   minecraft:dark_oak_button: &dark_oak_style
     color: [65, 40, 18]
     all:
@@ -134,6 +140,11 @@ parts:
 
   minecraft:polished_andesite:
     <<: *andesite_style
+
+  minecraft:sand:
+    color: [245, 210, 130]
+    all:
+      texture: rbxassetid://5162204506
 
   minecraft:short_grass:
     <<: *grass_style
