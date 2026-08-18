@@ -1,25 +1,25 @@
 local Lighting = game:GetService("Lighting")
 
--- Убрать глобальные тени
+-- Disable global shadows
 Lighting.GlobalShadows = false
 
--- Увеличить Ambient освещение
+-- Increase ambient lighting
 Lighting.Ambient = Color3.fromRGB(200, 200, 200)
 Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
 
--- Установить время дня (высокое солнце)
+-- Set time of day (high sun)
 Lighting.ClockTime = 14
 
--- Убрать лучи солнца
+-- Remove sun rays
 local sunRays = Lighting:FindFirstChild("SunRaysEffect")
 if sunRays then
 	sunRays:Destroy()
 end
 
--- Убрать атмосферу
+-- Remove atmosphere
 local atmosphere = Lighting:FindFirstChild("Atmosphere")
 if atmosphere then
 	atmosphere:Destroy()
 end
 
-print("Освещение настроено на равномерное без теней!")
+print("Lighting configured: uniform with no shadows!")

@@ -59,6 +59,11 @@ parts:
   minecraft:dark_prismarine_stairs:
     <<: *dark_prismarine_style
 
+  minecraft:diorite_wall: &diorite_style
+    color: [145, 143, 140]
+    all:
+      texture: rbxassetid://232876874
+
   minecraft:dirt:
     <<: *dirt_style
 
@@ -74,6 +79,12 @@ parts:
 
   minecraft:glass_pane:
     <<: *glass_style
+
+  minecraft:glowstone:
+    color: [180, 140, 50]
+    all:
+      texture: rbxassetid://186398588
+      studs_per_tile: 12
 
   minecraft:grass_block: &grass_style
     color: [66, 150, 46]
@@ -135,6 +146,14 @@ parts:
 
   minecraft:polished_andesite:
     <<: *andesite_style
+
+  minecraft:polished_diorite:
+    <<: *diorite_style
+
+  minecraft:polished_granite_stairs: &granite_style
+    color: [135, 96, 78]
+    all:
+      texture: rbxassetid://5689466677
 
   minecraft:sand:
     color: [245, 210, 130]

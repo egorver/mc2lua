@@ -42,7 +42,7 @@ func (svc *OccupancyIndexer) Run(blocks []model.RawBlock, blockIdx, microIdx *st
 		if !ok || style.GridAlignment != model.GridNotAligned {
 			continue
 		}
-		svc.fillCell(occ, b.X, b.Y, b.Z, style)
+		svc.fillComplexCell(occ, b.X, b.Y, b.Z, style)
 	}
 
 	return occ
@@ -51,4 +51,31 @@ func (svc *OccupancyIndexer) Run(blocks []model.RawBlock, blockIdx, microIdx *st
 func (svc *OccupancyIndexer) fillCell(occ *stateful.OccupancyIndex, x, y, z int, style model.StyledBlock) {
 	occ.FillRegion(x*model.SubGridSize, y*model.SubGridSize, z*model.SubGridSize,
 		model.SubGridSize, model.SubGridSize, model.SubGridSize, !style.Transparent)
+}
+
+func (svc *OccupancyIndexer) fillComplexCell(occ *stateful.OccupancyIndex, x, y, z int, style model.StyledBlock) {
+	occluding := !style.Transparent
+	for _, elem := range style.Elements {
+		xFrom := int(elem.From[0]) / model.SubGridSize
+		xTo := int(elem.To[0]) / model.SubGridSize
+		yFrom := int(elem.From[1]) / model.SubGridSize
+		yTo := int(elem.To[1]) / model.SubGridSize
+		zFrom := int(elem.From[2]) / model.SubGridSize
+		zTo := int(elem.To[2]) / model.SubGridSize
+
+		w := xTo - xFrom
+		h := yTo - yFrom
+		d := zTo - zFrom
+		if w <= 0 || h <= 0 || d <= 0 {
+			continue
+		}
+
+		occ.FillRegion(
+			x*model.SubGridSize+xFrom,
+			y*model.SubGridSize+yFrom,
+			z*model.SubGridSize+zFrom,
+			w, h, d,
+			occluding,
+		)
+	}
 }
