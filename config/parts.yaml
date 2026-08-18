@@ -13,9 +13,6 @@ parts:
       texture: rbxassetid://5118112742
       studs_per_tile: 12
 
-  minecraft:bubble_column:
-    color: [38, 94, 173]
-
   minecraft:chiseled_bookshelf:
     <<: *bookshelf_style
 
@@ -74,14 +71,12 @@ parts:
   minecraft:glass: &glass_style
     color: [191, 191, 191]
     transparency: 0.5
-    all:
-      texture: rbxassetid://232395521
 
   minecraft:glass_pane:
     <<: *glass_style
 
   minecraft:grass_block: &grass_style
-    color: [44, 101, 29]
+    color: [66, 150, 46]
     all:
       texture: rbxassetid://321821235
 
@@ -116,7 +111,7 @@ parts:
     <<: *mud_brick_style
 
   minecraft:oak_button: &oak_style
-    color: [184, 148, 88]
+    color: [143, 114, 67]
     all:
       texture: rbxassetid://296812735
       studs_per_tile: 16
@@ -134,7 +129,7 @@ parts:
     <<: *oak_style
 
   minecraft:podzol:
-    color: [120, 86, 46]
+    color: [105, 74, 38]
     all:
       texture: rbxassetid://5937586391
 
