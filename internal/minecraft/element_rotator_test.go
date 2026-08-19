@@ -106,7 +106,7 @@ func TestElementRotator_RotatePoint(t *testing.T) {
 			p:    model.Vector3{12, 12, 4},
 			rotX: 90,
 			rotY: 90,
-			want: model.Vector3{12, 4, 12},
+			want: model.Vector3{4, 12, 12},
 		},
 	}
 	for _, tt := range tests {

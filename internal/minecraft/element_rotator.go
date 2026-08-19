@@ -66,17 +66,17 @@ func (svc *ElementRotator) rotateBounds(from, to model.Vector3, rotX, rotY float
 
 func (svc *ElementRotator) rotatePoint(p model.Vector3, rotX, rotY float64) model.Vector3 {
 	x, y, z := p[0], p[1], p[2]
-	if rotY != 0 {
-		rad := rotY * model.DegreesToRadians
-		c, s := math.Cos(rad), math.Sin(rad)
-		dx, dz := x-model.BlockCenter, z-model.BlockCenter
-		x, z = model.BlockCenter+dx*c-dz*s, model.BlockCenter+dx*s+dz*c
-	}
 	if rotX != 0 {
 		rad := rotX * model.DegreesToRadians
 		c, s := math.Cos(rad), math.Sin(rad)
 		dy, dz := y-model.BlockCenter, z-model.BlockCenter
 		y, z = model.BlockCenter+dy*c-dz*s, model.BlockCenter+dy*s+dz*c
+	}
+	if rotY != 0 {
+		rad := rotY * model.DegreesToRadians
+		c, s := math.Cos(rad), math.Sin(rad)
+		dx, dz := x-model.BlockCenter, z-model.BlockCenter
+		x, z = model.BlockCenter+dx*c-dz*s, model.BlockCenter+dx*s+dz*c
 	}
 	return model.Vector3{svc.roundCoord(x), svc.roundCoord(y), svc.roundCoord(z)}
 }

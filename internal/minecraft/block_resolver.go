@@ -23,8 +23,6 @@ type elementRotator interface {
 	RunModel(elements []model.ModelElement, rotX, rotY float64) []model.ModelElement
 }
 
-const trapdoorIDSubstring = "trapdoor"
-
 type BlockResolver struct {
 	blockstateParser blockstateParser
 	modelParser      modelParser
@@ -56,10 +54,6 @@ func (svc *BlockResolver) Run(id string, propsKey string, props map[string]strin
 	}
 
 	fm, rotX, rotY := svc.resolveFlattened(matches, namespaces)
-
-	if strings.Contains(blockID, trapdoorIDSubstring) {
-		rotX, rotY = svc.correctTrapdoorRotation(props, rotX, rotY)
-	}
 
 	if len(fm.Elements) == 0 {
 		return nil, fmt.Errorf("no elements found for block %s", id)
@@ -131,19 +125,5 @@ func (svc *BlockResolver) resolveMatch(match blockstateMatch, namespaces map[str
 	return &flattenedModel{
 		Elements: svc.elementRotator.RunModel(fm.Elements, match.RotX, match.RotY),
 		Textures: fm.Textures,
-	}
-}
-
-func (svc *BlockResolver) correctTrapdoorRotation(props map[string]string, rotX, rotY float64) (float64, float64) {
-	if props["half"] != "top" || props["open"] != "true" {
-		return rotX, rotY
-	}
-	switch rotY {
-	case 90:
-		return 0, 270
-	case 270:
-		return 0, 90
-	default:
-		return 0, rotY
 	}
 }
