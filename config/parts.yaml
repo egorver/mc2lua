@@ -75,7 +75,7 @@ parts:
 
   minecraft:glass: &glass_style
     color: [191, 191, 191]
-    transparency: 0.5
+    transparency: 0.3
 
   minecraft:glass_pane:
     <<: *glass_style
@@ -87,7 +87,7 @@ parts:
       studs_per_tile: 12
 
   minecraft:grass_block: &grass_style
-    color: [66, 150, 46]
+    color: [95, 175, 55]
     all:
       texture: rbxassetid://321821235
 
@@ -154,6 +154,11 @@ parts:
     color: [135, 96, 78]
     all:
       texture: rbxassetid://5689466677
+
+  minecraft:potted_fern:
+    color: [90, 60, 35]
+    all:
+      texture: rbxassetid://319943116
 
   minecraft:sand:
     color: [245, 210, 130]
@@ -246,7 +251,7 @@ parts:
   minecraft:white_concrete: &white_concrete_style
     color: [207, 213, 214]
     all:
-      texture: rbxassetid://299427211
+      texture: rbxassetid://5088163487
 
   minecraft:white_concrete_powder:
     <<: *white_concrete_style
