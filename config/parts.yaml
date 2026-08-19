@@ -1,4 +1,9 @@
 parts:
+  cobblemon:apricorn_trapdoor:
+    color: [124, 92, 70]
+    all:
+      texture: rbxassetid://230530847
+
   minecraft:andesite: &andesite_style
     color: [136, 136, 138]
     all:
