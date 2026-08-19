@@ -114,6 +114,11 @@ parts:
   minecraft:lava:
     color: [200, 82, 18]
 
+  minecraft:mangrove_leaves:
+    color: [58, 130, 30]
+    all:
+      texture: rbxassetid://189852675
+
   minecraft:mossy_stone_brick_slab: &mossy_stone_brick_style
     color: [127, 134, 115]
     all:
