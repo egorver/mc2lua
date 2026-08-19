@@ -7,11 +7,21 @@ parts:
   minecraft:andesite_stairs:
     <<: *andesite_style
 
+  minecraft:black_carpet:
+    color: [25, 26, 31]
+    all:
+      texture: rbxassetid://6715314063
+
   minecraft:bookshelf: &bookshelf_style
     color: [145, 117, 74]
     all:
       texture: rbxassetid://5118112742
       studs_per_tile: 12
+
+  minecraft:brown_carpet:
+    color: [124, 77, 43]
+    all:
+      texture: rbxassetid://6715314063
 
   minecraft:chiseled_bookshelf:
     <<: *bookshelf_style
@@ -91,6 +101,11 @@ parts:
     all:
       texture: rbxassetid://321821235
 
+  minecraft:gray_carpet:
+    color: [67, 73, 76]
+    all:
+      texture: rbxassetid://6715314063
+
   minecraft:lava:
     color: [200, 82, 18]
 
@@ -159,6 +174,11 @@ parts:
     color: [90, 60, 35]
     all:
       texture: rbxassetid://319943116
+
+  minecraft:red_carpet:
+    color: [172, 42, 36]
+    all:
+      texture: rbxassetid://6715314063
 
   minecraft:sand:
     color: [245, 210, 130]
