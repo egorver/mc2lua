@@ -150,7 +150,7 @@ parts:
   minecraft:polished_diorite:
     <<: *diorite_style
 
-  minecraft:polished_granite_stairs: &granite_style
+  minecraft:polished_granite_stairs:
     color: [135, 96, 78]
     all:
       texture: rbxassetid://5689466677
