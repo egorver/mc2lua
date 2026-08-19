@@ -12,6 +12,11 @@ parts:
     all:
       texture: rbxassetid://6715314063
 
+  minecraft:black_glazed_terracotta:
+    color: [30, 25, 25]
+    all:
+      texture: rbxassetid://5192459252
+
   minecraft:bookshelf: &bookshelf_style
     color: [145, 117, 74]
     all:
