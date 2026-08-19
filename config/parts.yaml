@@ -23,6 +23,11 @@ parts:
     all:
       texture: rbxassetid://6715314063
 
+  minecraft:chain:
+    color: [64, 64, 64]
+    all:
+      texture: rbxassetid://5192463330
+
   minecraft:chiseled_bookshelf:
     <<: *bookshelf_style
 
